@@ -55,7 +55,7 @@
     const total = classes.reduce((sum, c) => sum + c.count, 0);
     if (total < 3) {
       alert(
-        "Faz upload de pelo menos 3 imagens totais (ex: 2 na Classe 1, e 1 na Classe 2) para o modelo aprender alguma coisa!",
+        "Faça upload de pelo menos 3 imagens totais (ex: 2 na Classe 1, e 1 na Classe 2) para o modelo aprender alguma coisa!",
       );
       return;
     }
@@ -85,7 +85,13 @@
     if (!isReady || !previewImageElement || !isModelTrained) return;
 
     const numExamples = classes.reduce((sum, c) => sum + c.count, 0);
-    let k = numExamples >= 5 ? 5 : 3;
+    
+    // Se o dataset tem p.ex. 5 imagens de treino, e o K for = 5,
+    // ele vai pedir todas as imagens para ir a votos, e o resultado final será SEMPRE a percentagem exata da quantidade que fizeste upload (ex: 3 de classe1 e 2 de classe2 = 60/40), ignorando a imagem nova
+    // Para evitar que a matemática anule a imagem, o K tem de ser minúsculo em datasets pequeninos.
+    let k = 1; // Para poucos envios, procura só a sua "cara metade" e dá 100% de confiança
+    if (numExamples > 15) k = 3; // Se já tiverem metido 15 imagens, já podemos usar K=3 saudavelmente
+    if (numExamples > 30) k = 5; // Se meteram dezenas de imagens, usamos a sabedoria máxima K=5.
 
     const activation = net.infer(previewImageElement, "conv_preds");
     const result = await classifier.predictClass(activation, k);
@@ -225,6 +231,7 @@
 
         <div class="p-4">
           <div class="font-bold text-slate-600 mb-4">Output</div>
+
 
           <div class="flex flex-col gap-4">
             {#each classes as item}
