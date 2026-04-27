@@ -25,11 +25,11 @@
   let isTrainingModel = false;
   let trainingError = "";
   let isLoadingModel = false;
-  let trainingProgress = 0; // 0-100
-  let trainedCounts: { [key: number]: number } = {}; // incremental training
-  let classCounter = 2; // for naming new classes beyond A/B
+  let trainingProgress = 0;
+  let trainedCounts: { [key: number]: number } = {};
+  let classCounter = 2;
   let previewUrl = "";
-  let previewImageElement: HTMLImageElement;
+  // previewImgRef declared below near handlePreviewUpload
 
   // Guarda as fotos de cada classe
   let trainingImages: { [key: number]: string[] } = {};
@@ -128,7 +128,12 @@
          for (let i = startFrom; i < imgs.length; i++) {
              const img = new Image();
              img.src = imgs[i];
-             await new Promise(resolve => img.onload = resolve);
+             await new Promise<void>((resolve, reject) => {
+               img.onload = () => resolve();
+               img.onerror = () => reject(new Error('Failed to load image'));
+               if (img.complete && img.naturalWidth > 0) resolve();
+             }).catch(e => console.warn('[train] Skipped:', e));
+             if (img.naturalWidth === 0) continue;
              const activation = net.infer(img, true);
              classifier.addExample(activation, c.id);
              activation.dispose();
@@ -191,12 +196,19 @@
   }
 
   function removeClass(idToRemove: number) {
+     // Revoke training image blob URLs before deletion
+     (trainingImages[idToRemove] || []).forEach(url => URL.revokeObjectURL(url));
      classes = classes.filter(c => c.id !== idToRemove);
      delete trainingImages[idToRemove];
+     delete trainedCounts[idToRemove]; // Bug fix: stale count would skip re-training
      trainingImages = { ...trainingImages };
+     // Revoke test image blob URLs
+     (testSamples[idToRemove] || []).forEach(url => URL.revokeObjectURL(url));
      delete testSamples[idToRemove];
      testSamples = { ...testSamples };
      isModelTrained = false;
+     confusionMatrix = [];
+     detailedResults = [];
   }
 
   // ─── XAI state ────────────────────────────────────────
@@ -320,6 +332,7 @@
   let inspectorCell: { rIdx: number; cIdx: number } | null = null;
   let inspectorExplainUrl = "";
   let inspectorExplainingIdx: number | null = null;
+  let inspectorLastExplainedIdx: number | null = null; // tracks which thumbnail has the heatmap
 
   function removeTestImage(classId: number, index: number) {
     testSamples[classId].splice(index, 1);
@@ -351,7 +364,8 @@
      confusionMatrix = Array(size).fill(0).map(() => Array(size).fill(0));
      detailedResults = Array.from({ length: size }, () => Array.from({ length: size }, () => []));
      const numExamples = classes.reduce((sum, c) => sum + (trainingImages[c.id] ? trainingImages[c.id].length : 0), 0);
-     let k = numExamples >= 5 ? 5 : 3;
+     // Bug fix: k must be <= total training examples, else KNN throws
+     const k = Math.min(numExamples, numExamples >= 10 ? 5 : 3);
 
      for (const realClass of classes) {
          const realIdx = classIndexMap[realClass.id];
@@ -359,12 +373,20 @@
          for (const imgUrl of samples) {
              const img = new Image();
              img.src = imgUrl;
-             await new Promise(resolve => img.onload = resolve);
+             await new Promise<void>((resolve, reject) => {
+               img.onload = () => resolve();
+               img.onerror = () => reject(new Error(`Failed to load: ${imgUrl}`));
+               if (img.complete && img.naturalWidth > 0) resolve();
+             }).catch(e => console.warn('[eval] Image skipped:', e));
+             if (img.naturalWidth === 0) continue;
              const activation = net.infer(img, "conv_preds");
              const result = await classifier.predictClass(activation, k);
              activation.dispose();
-             const predIdx = classIndexMap[Number(result.label)] ?? 0;
-             const conf = Math.round((result.confidences[Number(result.label)] || 0) * 100);
+             // Bug fix: result.label may not match any class id if classes were removed
+             const predClassId = Number(result.label);
+             const predIdx = classIndexMap[predClassId] ?? -1;
+             if (predIdx < 0) continue; // orphaned prediction, skip
+             const conf = Math.round((result.confidences[predClassId] || 0) * 100);
              confusionMatrix[realIdx][predIdx]++;
              detailedResults[realIdx][predIdx].push({ imgUrl, confidence: conf, confRow: realIdx, confCol: predIdx });
          }
@@ -377,12 +399,14 @@
   async function explainInspectorImage(imgUrl: string, idx: number) {
     if (!isReady || !isModelTrained) return;
     inspectorExplainingIdx = idx;
+    inspectorLastExplainedIdx = null; // clear previous while loading
     inspectorExplainUrl = "";
     const img = new Image();
     img.src = imgUrl;
     await new Promise(r => img.onload = r);
     const { heatNorm, steps } = await computeOcclusionMap(img);
     inspectorExplainUrl = renderOcclusionOverlay(img, heatNorm, steps);
+    inspectorLastExplainedIdx = idx; // mark this thumbnail as having the heatmap
     inspectorExplainingIdx = null;
   }
 
@@ -410,7 +434,7 @@
 <div class="min-h-screen bg-zinc-50 flex flex-col font-sans text-zinc-900 pb-20">
 
   <!-- Loading overlay while MobileNet initialises -->
-  {#if isLoadingModel || !isReady}
+  {#if isLoadingModel}
   <div class="fixed inset-0 z-[100] bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center gap-4">
     <div class="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
     <p class="text-sm font-medium text-zinc-600">A carregar modelo MobileNet...</p>
@@ -783,7 +807,7 @@
                      <div>
                        <p class="text-sm font-semibold {isCorrect ? 'text-indigo-800' : 'text-red-800'}">
                          {classes[inspectorCell.rIdx]?.name} → {classes[inspectorCell.cIdx]?.name}
-                         <span class="ml-2 text-xs font-normal opacity-70">{isCorrect ? 'sample_correct' : 'sample_wrong'}</span>
+                         <span class="ml-2 text-xs font-normal opacity-70">{isCorrect ? $t('sample_correct') : $t('sample_wrong')}</span>
                        </p>
                        <p class="text-xs opacity-60 mt-0.5">{cell.length} {$t('inspector_hint')}</p>
                      </div>
@@ -797,7 +821,7 @@
                      <div class="flex flex-col items-center gap-1.5">
                        <div class="relative group/s w-20 h-20 rounded-lg overflow-hidden border-2 {inspectorExplainingIdx === sIdx ? 'border-indigo-400' : 'border-zinc-200 hover:border-indigo-300'} cursor-pointer transition-colors"
                             on:click={() => explainInspectorImage(sample.imgUrl, sIdx)}>
-                         {#if inspectorExplainUrl && inspectorCell && inspectorExplainingIdx === null && sIdx === cell.findIndex(s => s.imgUrl === cell[sIdx]?.imgUrl)}
+                         {#if inspectorExplainUrl && inspectorCell && inspectorExplainingIdx === null && sIdx === inspectorLastExplainedIdx}
                            <img src={inspectorExplainUrl} class="w-full h-full object-cover" alt="heatmap" />
                          {:else}
                            <img src={sample.imgUrl} class="w-full h-full object-cover" alt="sample" />
