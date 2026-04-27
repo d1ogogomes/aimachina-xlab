@@ -145,26 +145,35 @@
      if (previewUrl) runPrediction();
   };
 
+  // Pre-loaded reference so explain never races with DOM rendering
+  let previewImgRef: HTMLImageElement | null = null;
+
   async function handlePreviewUpload(event: Event) {
     const target = event.target as HTMLInputElement;
     if (target.files && target.files.length > 0) {
       const file = target.files[0];
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      showExplanation = false;
+      explanationDataUrl = "";
       previewUrl = URL.createObjectURL(file);
-      setTimeout(() => {
-          if (isModelTrained) runPrediction();
-      }, 100);
+      // Eagerly load into a stable reference — avoids DOM race
+      const img = new Image();
+      img.src = previewUrl;
+      await new Promise(r => img.onload = r);
+      previewImgRef = img;
+      if (isModelTrained) runPrediction();
     }
   }
 
   async function runPrediction() {
-     if (!isReady || !previewImageElement || !isModelTrained) return;
+     if (!isReady || !previewImgRef || !isModelTrained) return;
      
      const numExamples = classes.reduce((sum, c) => sum + (trainingImages[c.id] ? trainingImages[c.id].length : 0), 0);
      let k = 1; 
      if (numExamples > 10) k = 3;
      if (numExamples > 20) k = 5;
 
-     const activation = net.infer(previewImageElement, "conv_preds");
+     const activation = net.infer(previewImgRef, "conv_preds");
      const result = await classifier.predictClass(activation, k);
      activation.dispose();
      
@@ -190,95 +199,113 @@
      isModelTrained = false;
   }
 
-  // --- XAI: Occlusion Sensitivity Map ---
+  // ─── XAI state ────────────────────────────────────────
   let isExplaining = false;
   let explanationDataUrl = "";
   let showExplanation = false;
 
-  async function explainPrediction() {
-    if (!isReady || !previewImageElement || !isModelTrained) return;
-    isExplaining = true;
-    showExplanation = false;
-    explanationDataUrl = "";
+  // ─── XAI helpers ──────────────────────────────────────
+  // L2 distance between two Float32Array embeddings
+  function embL2(a: Float32Array, b: Float32Array): number {
+    let s = 0;
+    for (let i = 0; i < a.length; i++) s += (a[i] - b[i]) ** 2;
+    return Math.sqrt(s);
+  }
 
-    const IMG_SIZE = 224;
-    const PATCH = 56;  // occlude 1/4 of width at a time
-    const STRIDE = 28; // 50% overlap → 7x7 = 49 passes
+  // Percentile-robust normalise: squashes outliers, ensures contrast
+  function robustNorm(vals: number[]): number[] {
+    const sorted = [...vals].sort((a, b) => a - b);
+    const n = sorted.length;
+    const lo = sorted[Math.floor(n * 0.05)];
+    const hi = sorted[Math.floor(n * 0.95)];
+    const range = hi - lo + 1e-8;
+    return vals.map(v => Math.max(0, Math.min(1, (v - lo) / range)));
+  }
+
+  // Core occlusion engine shared by both explain functions
+  async function computeOcclusionMap(
+    img: HTMLImageElement,
+    IMG_SIZE = 224,
+    PATCH = 80,  // larger patch = stronger signal through GAP layer
+    STRIDE = 24  // 7x7 grid: floor((224-80)/24)+1 = 7
+  ): Promise<{ heatNorm: number[][], steps: number }> {
     const STEPS = Math.floor((IMG_SIZE - PATCH) / STRIDE) + 1;
 
-    const numEx = classes.reduce((s, c) => s + (trainingImages[c.id]?.length || 0), 0);
-    const k = numEx > 20 ? 5 : numEx > 10 ? 3 : 1;
-
-    // Offscreen canvas to apply occlusion patches
     const canvas = document.createElement('canvas');
     canvas.width = IMG_SIZE;
     canvas.height = IMG_SIZE;
     const ctx = canvas.getContext('2d')!;
 
-    // Baseline confidence for the winning class
-    ctx.drawImage(previewImageElement, 0, 0, IMG_SIZE, IMG_SIZE);
-    const baseEmb = net.infer(canvas, true);
-    const baseResult = await classifier.predictClass(baseEmb, k);
-    baseEmb.dispose();
-    const predClass = Number(baseResult.label);
-    const baseConf = baseResult.confidences[predClass];
+    // --- Baseline embedding (no occlusion) ---
+    ctx.drawImage(img, 0, 0, IMG_SIZE, IMG_SIZE);
+    const baseTensor = net.infer(canvas, true) as import('@tensorflow/tfjs').Tensor;
+    const baseEmb = new Float32Array(await baseTensor.data());
+    baseTensor.dispose();
 
-    // Occlusion grid
+    // --- Occlusion grid: measure L2 distance from baseline embedding ---
     const heatmap: number[][] = Array.from({ length: STEPS }, () => Array(STEPS).fill(0));
-
     for (let row = 0; row < STEPS; row++) {
       for (let col = 0; col < STEPS; col++) {
-        const x = col * STRIDE;
-        const y = row * STRIDE;
-
-        ctx.drawImage(previewImageElement, 0, 0, IMG_SIZE, IMG_SIZE);
-        ctx.fillStyle = '#808080';
-        ctx.fillRect(x, y, PATCH, PATCH);
-
-        const emb = net.infer(canvas, true);
-        const res = await classifier.predictClass(emb, k);
-        emb.dispose();
-
-        const conf = res.confidences[predClass] || 0;
-        heatmap[row][col] = baseConf - conf; // positive = region mattered
+        ctx.drawImage(img, 0, 0, IMG_SIZE, IMG_SIZE);
+        // Use mean-grey patch (128,128,128) — neutral, avoids colour bias
+        ctx.fillStyle = 'rgb(128,128,128)';
+        ctx.fillRect(col * STRIDE, row * STRIDE, PATCH, PATCH);
+        const occTensor = net.infer(canvas, true) as import('@tensorflow/tfjs').Tensor;
+        const occEmb = new Float32Array(await occTensor.data());
+        occTensor.dispose();
+        // Higher L2 distance = covering this region changed the representation more = important
+        heatmap[row][col] = embL2(baseEmb, occEmb);
       }
     }
 
-    // Normalize
     const flat = heatmap.flat();
-    const maxImpact = Math.max(...flat);
-    const minImpact = Math.min(...flat);
-    const range = maxImpact - minImpact + 1e-8;
+    const normFlat = robustNorm(flat);
+    const heatNorm: number[][] = Array.from({ length: STEPS }, (_, r) =>
+      Array.from({ length: STEPS }, (__, c) => normFlat[r * STEPS + c])
+    );
+    return { heatNorm, steps: STEPS };
+  }
 
-    // Render overlay at NATIVE image resolution so size never changes
-    const origW = previewImageElement.naturalWidth  || previewImageElement.width;
-    const origH = previewImageElement.naturalHeight || previewImageElement.height;
-    const outCanvas = document.createElement('canvas');
-    outCanvas.width  = origW;
-    outCanvas.height = origH;
-    const outCtx = outCanvas.getContext('2d')!;
-    outCtx.drawImage(previewImageElement, 0, 0, origW, origH);
-
-    // Scale each patch cell to output resolution
-    const scaleX = origW / IMG_SIZE;
-    const scaleY = origH / IMG_SIZE;
+  function renderOcclusionOverlay(
+    img: HTMLImageElement,
+    heatNorm: number[][],
+    STEPS: number,
+    IMG_SIZE = 224,
+    PATCH = 80,
+    STRIDE = 24
+  ): string {
+    const origW = img.naturalWidth  || img.width  || IMG_SIZE;
+    const origH = img.naturalHeight || img.height || IMG_SIZE;
+    const out = document.createElement('canvas');
+    out.width  = origW;
+    out.height = origH;
+    const outCtx = out.getContext('2d')!;
+    outCtx.drawImage(img, 0, 0, origW, origH);
+    const sx = origW / IMG_SIZE;
+    const sy = origH / IMG_SIZE;
     for (let row = 0; row < STEPS; row++) {
       for (let col = 0; col < STEPS; col++) {
-        const n = (heatmap[row][col] - minImpact) / range;
-        // green (irrelevant) → yellow → red (important), fixed alpha so green is always visible
+        const n = heatNorm[row][col];
+        // green(irrelevant) → yellow → red(important) with fixed alpha
         const r = Math.round(255 * Math.min(1, n * 2));
         const g = Math.round(255 * Math.max(0, 1 - n * 2));
-        outCtx.fillStyle = `rgba(${r},${g},0,0.48)`;
+        outCtx.fillStyle = `rgba(${r},${g},0,0.50)`;
         outCtx.fillRect(
-          Math.round(col * STRIDE * scaleX),
-          Math.round(row * STRIDE * scaleY),
-          Math.round(PATCH * scaleX),
-          Math.round(PATCH * scaleY)
+          Math.round(col * STRIDE * sx), Math.round(row * STRIDE * sy),
+          Math.round(PATCH * sx),        Math.round(PATCH * sy)
         );
       }
     }
+    return out.toDataURL('image/jpeg', 0.92);
+  }
 
-    explanationDataUrl = outCanvas.toDataURL('image/jpeg', 0.92);
+  async function explainPrediction() {
+    if (!isReady || !previewImgRef || !isModelTrained) return;
+    isExplaining = true;
+    showExplanation = false;
+    explanationDataUrl = "";
+    const { heatNorm, steps } = await computeOcclusionMap(previewImgRef);
+    explanationDataUrl = renderOcclusionOverlay(previewImgRef, heatNorm, steps);
     showExplanation = true;
     isExplaining = false;
   }
@@ -351,72 +378,11 @@
     if (!isReady || !isModelTrained) return;
     inspectorExplainingIdx = idx;
     inspectorExplainUrl = "";
-
-    const IMG_SIZE = 224;
-    const PATCH = 56;
-    const STRIDE = 28;
-    const STEPS = Math.floor((IMG_SIZE - PATCH) / STRIDE) + 1;
-    const numEx = classes.reduce((s, c) => s + (trainingImages[c.id]?.length || 0), 0);
-    const k = numEx > 20 ? 5 : numEx > 10 ? 3 : 1;
-
     const img = new Image();
     img.src = imgUrl;
     await new Promise(r => img.onload = r);
-
-    const canvas = document.createElement('canvas');
-    canvas.width = IMG_SIZE; canvas.height = IMG_SIZE;
-    const ctx = canvas.getContext('2d')!;
-
-    ctx.drawImage(img, 0, 0, IMG_SIZE, IMG_SIZE);
-    const baseEmb = net.infer(canvas, true);
-    const baseResult = await classifier.predictClass(baseEmb, k);
-    baseEmb.dispose();
-    const predClass = Number(baseResult.label);
-    const baseConf = baseResult.confidences[predClass];
-
-    const heatmap: number[][] = Array.from({ length: STEPS }, () => Array(STEPS).fill(0));
-    for (let row = 0; row < STEPS; row++) {
-      for (let col = 0; col < STEPS; col++) {
-        ctx.drawImage(img, 0, 0, IMG_SIZE, IMG_SIZE);
-        ctx.fillStyle = '#808080';
-        ctx.fillRect(col * STRIDE, row * STRIDE, PATCH, PATCH);
-        const emb = net.infer(canvas, true);
-        const res = await classifier.predictClass(emb, k);
-        emb.dispose();
-        heatmap[row][col] = baseConf - (res.confidences[predClass] || 0);
-      }
-    }
-
-    const flat = heatmap.flat();
-    const range = Math.max(...flat) - Math.min(...flat) + 1e-8;
-    const minV = Math.min(...flat);
-
-    // Render overlay at NATIVE image resolution
-    const origW = img.naturalWidth  || img.width;
-    const origH = img.naturalHeight || img.height;
-    const outCanvas = document.createElement('canvas');
-    outCanvas.width  = origW;
-    outCanvas.height = origH;
-    const outCtx = outCanvas.getContext('2d')!;
-    outCtx.drawImage(img, 0, 0, origW, origH);
-
-    const scaleX = origW / IMG_SIZE;
-    const scaleY = origH / IMG_SIZE;
-    for (let row = 0; row < STEPS; row++) {
-      for (let col = 0; col < STEPS; col++) {
-        const n = (heatmap[row][col] - minV) / range;
-        const r = Math.round(255 * Math.min(1, n * 2));
-        const g = Math.round(255 * Math.max(0, 1 - n * 2));
-        outCtx.fillStyle = `rgba(${r},${g},0,0.48)`;
-        outCtx.fillRect(
-          Math.round(col * STRIDE * scaleX),
-          Math.round(row * STRIDE * scaleY),
-          Math.round(PATCH * scaleX),
-          Math.round(PATCH * scaleY)
-        );
-      }
-    }
-    inspectorExplainUrl = outCanvas.toDataURL('image/jpeg', 0.9);
+    const { heatNorm, steps } = await computeOcclusionMap(img);
+    inspectorExplainUrl = renderOcclusionOverlay(img, heatNorm, steps);
     inspectorExplainingIdx = null;
   }
 
@@ -508,8 +474,8 @@
           {#each [
             { n: 1, label: $t('teach_machine'), active: true },
             { n: 2, label: $t('train_button'), active: isModelTrained || isTrainingModel },
-            { n: 3, label: $t('test_machine'), active: isModelTrained },
-            { n: 4, label: $t('diagnostics'), active: isModelTrained }
+            { n: 3, label: $t('test_machine'), active: !!previewUrl },
+            { n: 4, label: $t('diagnostics'), active: confusionMatrix.length > 0 && confusionMatrix.some(row => row.some(v => v > 0)) }
           ] as step, i}
             <div class="flex items-center gap-2 {step.active ? 'text-zinc-800' : 'text-zinc-400'}">
               <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 {step.active ? 'bg-indigo-600 text-white' : 'bg-zinc-200 text-zinc-400'}">{step.n}</span>
@@ -634,7 +600,8 @@
                     </div>
                 {:else if previewUrl}
                     <!-- svelte-ignore a11y-missing-attribute -->
-                    <img bind:this={previewImageElement} src={previewUrl} class="w-full h-full object-contain" />
+                    <!-- svelte-ignore a11y-missing-attribute -->
+                    <img src={previewUrl} class="w-full h-full object-contain" />
                 {:else}
                     <div class="flex flex-col items-center gap-2 text-center px-4">
                         <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-zinc-300"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
@@ -656,9 +623,6 @@
                     <input type="file" accept="image/*" on:change={(e) => { showExplanation = false; handlePreviewUpload(e); }} class="hidden" />
                 </label>
 
-                <!-- Always-present hidden img keeps previewImageElement bound stably -->
-                <!-- svelte-ignore a11y-missing-attribute -->
-                <img bind:this={previewImageElement} src={previewUrl || ''} class="{showExplanation ? 'hidden' : (previewUrl ? 'hidden' : 'hidden')} absolute" style="pointer-events:none" />
 
                 <div>
                     <h4 class="text-xs font-semibold uppercase text-zinc-400 tracking-widest mb-3">{$t("confidence")}</h4>
