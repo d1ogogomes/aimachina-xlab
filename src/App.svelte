@@ -190,14 +190,20 @@
      if (numExamples > 10) k = 3;
      if (numExamples > 20) k = 5;
 
-     const activation = net.infer(previewImgRef, "conv_preds");
-     const result = await classifier.predictClass(activation, k);
-     activation.dispose();
-     
-     classes = classes.map(c => {
-       const conf = result.confidences[c.id] || 0;
-       return { ...c, confidence: Math.round(conf * 100) };
-     });
+     let activation;
+     try {
+         activation = net.infer(previewImgRef, true);
+         const result = await classifier.predictClass(activation, k);
+         
+         classes = classes.map(c => {
+           const conf = result.confidences[c.id] || 0;
+           return { ...c, confidence: Math.round(conf * 100) };
+         });
+     } catch (e) {
+         console.error("Live prediction error:", e);
+     } finally {
+         if (activation) activation.dispose();
+     }
   }
 
   function addClass() {
@@ -391,16 +397,23 @@
                if (img.complete && img.naturalWidth > 0) resolve();
              }).catch(e => console.warn('[eval] Image skipped:', e));
              if (img.naturalWidth === 0) continue;
-             const activation = net.infer(img, "conv_preds");
-             const result = await classifier.predictClass(activation, k);
-             activation.dispose();
-             // Bug fix: result.label may not match any class id if classes were removed
-             const predClassId = Number(result.label);
-             const predIdx = classIndexMap[predClassId] ?? -1;
-             if (predIdx < 0) continue; // orphaned prediction, skip
-             const conf = Math.round((result.confidences[predClassId] || 0) * 100);
-             confusionMatrix[realIdx][predIdx]++;
-             detailedResults[realIdx][predIdx].push({ imgUrl, confidence: conf, confRow: realIdx, confCol: predIdx });
+             let activation;
+             try {
+                 activation = net.infer(img, true);
+                 const result = await classifier.predictClass(activation, k);
+                 
+                 const predClassId = Number(result.label);
+                 const predIdx = classIndexMap[predClassId] ?? -1;
+                 if (predIdx >= 0) {
+                     const conf = Math.round((result.confidences[predClassId] || 0) * 100);
+                     confusionMatrix[realIdx][predIdx]++;
+                     detailedResults[realIdx][predIdx].push({ imgUrl, confidence: conf, confRow: realIdx, confCol: predIdx });
+                 }
+             } catch(e) {
+                 console.error("Evaluation prediction error:", e);
+             } finally {
+                 if (activation) activation.dispose();
+             }
          }
      }
      confusionMatrix = [...confusionMatrix];

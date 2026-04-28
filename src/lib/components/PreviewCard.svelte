@@ -80,9 +80,11 @@
     }
 
     if (video.readyState === 4) {
+      let img;
+      let activation;
       try {
-        const img = tf.browser.fromPixels(video);
-        const activation = net.infer(img, true);
+        img = tf.browser.fromPixels(video);
+        activation = net.infer(img, "conv_preds");
         
         let k = 3; 
         const result = await classifier.predictClass(activation, k);
@@ -95,10 +97,11 @@
             confidence: Math.round(conf * 100)
           };
         });
-
-        img.dispose();
       } catch (e) {
         console.error("Live prediction error:", e);
+      } finally {
+        if (img) img.dispose();
+        if (activation) activation.dispose();
       }
     }
     
