@@ -29,8 +29,7 @@ dist-ssr
 .env.*
 !.env.example
 
-# Custom AIMachina Models
-*.json
+# Custom AIMachina Models\
 !package.json
 !package-lock.json
 !tsconfig.json
