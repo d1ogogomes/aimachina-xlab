@@ -12,6 +12,7 @@
   let net: mobilenet.MobileNet;
   let langOpen = false;
   let activeWebcamClass: number | null = null;
+  let activeTestWebcamClass: number | null = null;
 
   const languages = [
     { code: 'pt', label: 'Português', short: 'PT' },
@@ -71,6 +72,14 @@
     activeWebcamClass = null;
     isModelTrained = false;
     stepTracker.completeStep("teach_machine");
+  }
+
+  function handleTestWebcamCapture(event: CustomEvent<{ classId: number, images: string[] }>) {
+    const { classId, images } = event.detail;
+    if (!testSamples[classId]) testSamples[classId] = [];
+    testSamples[classId] = [...testSamples[classId], ...images];
+    testSamples = { ...testSamples };
+    activeTestWebcamClass = null;
   }
 
   async function handleClassUpload(event: Event, classId: number) {
@@ -719,6 +728,15 @@
     />
   {/if}
 
+  {#if activeTestWebcamClass !== null}
+    <WebcamModal 
+      classId={activeTestWebcamClass} 
+      className={"Teste - " + (classes.find(c => c.id === activeTestWebcamClass)?.name || "Class")} 
+      on:capture={handleTestWebcamCapture}
+      on:close={() => activeTestWebcamClass = null}
+    />
+  {/if}
+
   <section class="max-w-[85rem] mx-auto w-full px-8 mt-12">
     <div class="bg-white rounded-xl shadow-sm border border-zinc-200 overflow-hidden">
       
@@ -747,6 +765,9 @@
                       <div class="text-xs text-zinc-400">{(testSamples[item.id] || []).length} {$t("samples")}</div>
                     </div>
                     <div class="flex gap-2">
+                      <button on:click={() => activeTestWebcamClass = item.id} class="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 bg-zinc-100 border border-zinc-200 text-zinc-700 rounded cursor-pointer hover:border-indigo-300 hover:text-indigo-600 transition-colors" title="Webcam">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                      </button>
                       <label class="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 bg-zinc-100 border border-zinc-200 rounded cursor-pointer hover:border-indigo-300 hover:text-indigo-600 transition-colors">
                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
                         {$t("upload_photos")}
