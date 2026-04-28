@@ -154,10 +154,18 @@
                img.onerror = () => reject(new Error('Failed to load image'));
                if (img.complete && img.naturalWidth > 0) resolve();
              }).catch(e => console.warn('[train] Skipped:', e));
-             if (img.naturalWidth === 0) continue;
-             const activation = net.infer(img, true);
-             classifier.addExample(activation, c.id);
-             activation.dispose();
+             let pixels;
+             let activation;
+             try {
+                 pixels = tf.browser.fromPixels(img);
+                 activation = net.infer(pixels, true);
+                 classifier.addExample(activation, c.id);
+             } catch(e) {
+                 console.error('[train] inference error:', e);
+             } finally {
+                 if (pixels) pixels.dispose();
+                 if (activation) activation.dispose();
+             }
              processed++;
              trainingProgress = Math.round((processed / newImages) * 100);
          }
@@ -199,9 +207,11 @@
      if (numExamples > 10) k = 3;
      if (numExamples > 20) k = 5;
 
+     let pixels;
      let activation;
      try {
-         activation = net.infer(previewImgRef, true);
+         pixels = tf.browser.fromPixels(previewImgRef);
+         activation = net.infer(pixels, true);
          const result = await classifier.predictClass(activation, k);
          
          classes = classes.map(c => {
@@ -211,6 +221,7 @@
      } catch (e) {
          console.error("Live prediction error:", e);
      } finally {
+         if (pixels) pixels.dispose();
          if (activation) activation.dispose();
      }
   }
@@ -277,9 +288,16 @@
 
     // --- Baseline embedding (no occlusion) ---
     ctx.drawImage(img, 0, 0, IMG_SIZE, IMG_SIZE);
-    const baseTensor = net.infer(canvas, true) as import('@tensorflow/tfjs').Tensor;
-    const baseEmb = new Float32Array(await baseTensor.data());
-    baseTensor.dispose();
+    let baseEmb;
+    let basePixels, baseTensor;
+    try {
+        basePixels = tf.browser.fromPixels(canvas);
+        baseTensor = net.infer(basePixels, true) as import('@tensorflow/tfjs').Tensor;
+        baseEmb = new Float32Array(await baseTensor.data());
+    } finally {
+        if (basePixels) basePixels.dispose();
+        if (baseTensor) baseTensor.dispose();
+    }
 
     // --- Occlusion grid: measure L2 distance from baseline embedding ---
     const heatmap: number[][] = Array.from({ length: STEPS }, () => Array(STEPS).fill(0));
@@ -289,11 +307,18 @@
         // Use mean-grey patch (128,128,128) — neutral, avoids colour bias
         ctx.fillStyle = 'rgb(128,128,128)';
         ctx.fillRect(col * STRIDE, row * STRIDE, PATCH, PATCH);
-        const occTensor = net.infer(canvas, true) as import('@tensorflow/tfjs').Tensor;
-        const occEmb = new Float32Array(await occTensor.data());
-        occTensor.dispose();
-        // Higher L2 distance = covering this region changed the representation more = important
-        heatmap[row][col] = embL2(baseEmb, occEmb);
+        
+        let occPixels, occTensor;
+        try {
+            occPixels = tf.browser.fromPixels(canvas);
+            occTensor = net.infer(occPixels, true) as import('@tensorflow/tfjs').Tensor;
+            const occEmb = new Float32Array(await occTensor.data());
+            // Higher L2 distance = covering this region changed the representation more = important
+            heatmap[row][col] = embL2(baseEmb, occEmb);
+        } finally {
+            if (occPixels) occPixels.dispose();
+            if (occTensor) occTensor.dispose();
+        }
       }
     }
 
@@ -406,9 +431,11 @@
                if (img.complete && img.naturalWidth > 0) resolve();
              }).catch(e => console.warn('[eval] Image skipped:', e));
              if (img.naturalWidth === 0) continue;
+             let pixels;
              let activation;
              try {
-                 activation = net.infer(img, true);
+                 pixels = tf.browser.fromPixels(img);
+                 activation = net.infer(pixels, true);
                  const result = await classifier.predictClass(activation, k);
                  
                  const predClassId = Number(result.label);
@@ -421,6 +448,7 @@
              } catch(e) {
                  console.error("Evaluation prediction error:", e);
              } finally {
+                 if (pixels) pixels.dispose();
                  if (activation) activation.dispose();
              }
          }
