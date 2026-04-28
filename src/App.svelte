@@ -4,11 +4,14 @@
   import * as tf from "@tensorflow/tfjs";
   import * as mobilenet from "@tensorflow-models/mobilenet";
   import * as knnClassifier from "@tensorflow-models/knn-classifier";
+  import WebcamModal from "./lib/components/WebcamModal.svelte";
+  import PreviewCard from "./lib/components/PreviewCard.svelte";
 
   let isReady = false;
   let classifier: knnClassifier.KNNClassifier;
   let net: mobilenet.MobileNet;
   let langOpen = false;
+  let activeWebcamClass: number | null = null;
 
   const languages = [
     { code: 'pt', label: 'Português', short: 'PT' },
@@ -59,6 +62,15 @@
   // Persist class names whenever they change
   $: if (classes) {
     try { localStorage.setItem('aimachina_classes', JSON.stringify(classes.map(c => ({ id: c.id, name: c.name, confidence: 0 })))); } catch {}
+  }
+
+  function handleWebcamCapture(event: CustomEvent<{ classId: number, images: string[] }>) {
+    const { classId, images } = event.detail;
+    if (!trainingImages[classId]) trainingImages[classId] = [];
+    trainingImages[classId] = [...trainingImages[classId], ...images];
+    activeWebcamClass = null;
+    isModelTrained = false;
+    stepTracker.completeStep("teach_machine");
   }
 
   async function handleClassUpload(event: Event, classId: number) {
@@ -541,24 +553,37 @@
                         {/each}
                         </div>
                     {:else}
-                        <label class="flex flex-col items-center justify-center gap-2 h-20 cursor-pointer group/empty">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-zinc-300 group-hover/empty:text-indigo-400 transition-colors"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                            <span class="text-xs text-zinc-400 group-hover/empty:text-indigo-500 transition-colors">{$t("click_to_add")}</span>
-                            <input type="file" multiple accept="image/*" on:change={(e) => handleClassUpload(e, item.id)} class="hidden" />
-                        </label>
+                        <div class="flex flex-col items-center justify-center gap-3 py-6">
+                            <span class="text-sm font-medium text-zinc-500">Add Image Samples:</span>
+                            <div class="flex items-center gap-3 w-full max-w-xs">
+                                <button on:click={() => activeWebcamClass = item.id} class="flex-1 flex flex-col items-center justify-center gap-2 h-16 bg-blue-50/50 hover:bg-blue-100/50 text-blue-600 rounded-lg border border-blue-100 transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                                    <span class="text-xs font-semibold">Webcam</span>
+                                </button>
+                                <label class="flex-1 flex flex-col items-center justify-center gap-2 h-16 bg-blue-50/50 hover:bg-blue-100/50 text-blue-600 rounded-lg border border-blue-100 cursor-pointer transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                    <span class="text-xs font-semibold">Upload</span>
+                                    <input type="file" multiple accept="image/*" on:change={(e) => handleClassUpload(e, item.id)} class="hidden" />
+                                </label>
+                            </div>
+                        </div>
                     {/if}
                 </div>
 
-                <div class="p-5 flex justify-between items-center gap-4">
+                <div class="p-4 flex justify-between items-center gap-4 bg-zinc-50/30">
                     <div class="flex flex-col">
-                        <span class="text-2xl font-light tracking-tighter">{trainingImages[item.id] ? trainingImages[item.id].length : 0}</span>
-                        <span class="text-xs font-medium text-zinc-400 uppercase tracking-wider">{$t("samples")}</span>
+                        <span class="text-xl font-medium tracking-tight text-zinc-800">{trainingImages[item.id] ? trainingImages[item.id].length : 0}</span>
+                        <span class="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">{$t("samples")}</span>
                     </div>
-                    <label class="relative flex items-center justify-center gap-2 py-2 px-6 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-medium rounded text-sm cursor-pointer transition-colors border border-transparent hover:border-zinc-300">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                        {$t("upload_photos")}
-                        <input type="file" multiple accept="image/*" on:change={(e) => handleClassUpload(e, item.id)} class="hidden" />
-                    </label>
+                    <div class="flex items-center gap-2">
+                        <button on:click={() => activeWebcamClass = item.id} class="p-2 text-blue-600 hover:bg-blue-50 rounded-md transition-colors" title="Webcam">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                        </button>
+                        <label class="p-2 text-blue-600 hover:bg-blue-50 rounded-md cursor-pointer transition-colors" title="Upload">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                            <input type="file" multiple accept="image/*" on:change={(e) => handleClassUpload(e, item.id)} class="hidden" />
+                        </label>
+                    </div>
                 </div>
             </div>
             {/each}
@@ -610,9 +635,7 @@
 
     <aside class="lg:col-span-4 flex flex-col gap-6">
         <h2 class="text-lg font-semibold tracking-tight">{$t("test_machine")}</h2>
-        
-        <div class="bg-white rounded-xl shadow-sm border border-zinc-200 overflow-hidden flex flex-col">
-            <!-- Image / Heatmap viewer -->
+        <PreviewCard {net} {classifier} {classes} {isModelTrained}>
             <div class="bg-zinc-100 aspect-square relative flex items-center justify-center overflow-hidden border-b border-zinc-200">
                 {#if showExplanation && explanationDataUrl}
                     <!-- svelte-ignore a11y-missing-attribute -->
@@ -623,7 +646,6 @@
                         <span class="text-white text-[10px] font-medium shrink-0">{$t("heatmap_low")} → {$t("heatmap_high")}</span>
                     </div>
                 {:else if previewUrl}
-                    <!-- svelte-ignore a11y-missing-attribute -->
                     <!-- svelte-ignore a11y-missing-attribute -->
                     <img src={previewUrl} class="w-full h-full object-contain" />
                 {:else}
@@ -641,30 +663,11 @@
             </div>
             
             <div class="p-5 flex flex-col gap-4">
-                <label class="w-full flex justify-between items-center px-4 py-2.5 text-sm border border-zinc-200 rounded-lg cursor-pointer hover:bg-zinc-50 hover:border-indigo-300 transition-all">
+                <label class="w-full flex justify-between items-center px-4 py-2.5 text-sm border border-zinc-200 rounded-lg cursor-pointer hover:bg-zinc-50 hover:border-indigo-300 transition-all bg-zinc-50">
                     <span class="font-medium text-zinc-700">{$t("data_input")}</span>
                     <span class="text-indigo-600 font-semibold text-xs uppercase tracking-wide">{$t("browse")}</span>
                     <input type="file" accept="image/*" on:change={(e) => { showExplanation = false; handlePreviewUpload(e); }} class="hidden" />
                 </label>
-
-
-                <div>
-                    <h4 class="text-xs font-semibold uppercase text-zinc-400 tracking-widest mb-3">{$t("confidence")}</h4>
-                    <div class="flex flex-col gap-2.5">
-                        {#each classes as item}
-                        {@const isTop = item.confidence > 0 && item.confidence === Math.max(...classes.map(c => c.confidence))}
-                        <div class="w-full">
-                            <div class="flex justify-between text-xs mb-1.5">
-                                <span class="font-semibold {isTop ? 'text-indigo-700' : 'text-zinc-600'}">{item.name}</span>
-                                <span class="font-bold {isTop ? 'text-indigo-700' : 'text-zinc-500'}">{item.confidence}%</span>
-                            </div>
-                            <div class="w-full bg-zinc-100 h-2 rounded-full overflow-hidden">
-                                <div class="h-full rounded-full transition-all duration-500 {isTop ? 'bg-indigo-500' : 'bg-zinc-300'}" style="width: {item.confidence}%"></div>
-                            </div>
-                        </div>
-                        {/each}
-                    </div>
-                </div>
 
                 <!-- XAI Explain Button -->
                 {#if isModelTrained && previewUrl}
@@ -689,10 +692,19 @@
                 </div>
                 {/if}
             </div>
-        </div>
+        </PreviewCard>
     </aside>
 
   </main>
+
+  {#if activeWebcamClass !== null}
+    <WebcamModal 
+      classId={activeWebcamClass} 
+      className={classes.find(c => c.id === activeWebcamClass)?.name || "Class"} 
+      on:capture={handleWebcamCapture}
+      on:close={() => activeWebcamClass = null}
+    />
+  {/if}
 
   <section class="max-w-[85rem] mx-auto w-full px-8 mt-12">
     <div class="bg-white rounded-xl shadow-sm border border-zinc-200 overflow-hidden">
