@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import * as tf from "@tensorflow/tfjs";
   import type * as mobilenet from "@tensorflow-models/mobilenet";
+  import { t } from '../i18n';
 
   export let net: mobilenet.MobileNet | undefined;
   export let classifier: import('@tensorflow/tfjs').Sequential | null = null;
@@ -145,10 +146,10 @@
 <div class="bg-white rounded-xl shadow-sm border border-zinc-200 overflow-hidden flex flex-col">
   <!-- Input Selector -->
   <div class="px-5 py-3 flex items-center justify-between bg-white border-b border-zinc-100">
-    <span class="text-sm font-medium text-zinc-500">Input</span>
+    <span class="text-sm font-medium text-zinc-500">{$t("input_source")}</span>
     <select bind:value={previewMode} class="ml-auto text-sm border border-zinc-200 bg-white hover:bg-zinc-50 rounded-lg px-3 py-1.5 outline-none font-medium text-zinc-700 transition-colors cursor-pointer shadow-sm">
-      <option value="webcam">Webcam</option>
-      <option value="file">File</option>
+      <option value="webcam">{$t("webcam")}</option>
+      <option value="file">{$t("file")}</option>
     </select>
   </div>
 

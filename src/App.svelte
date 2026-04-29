@@ -5,6 +5,7 @@
   import * as mobilenet from "@tensorflow-models/mobilenet";
   import WebcamModal from "./lib/components/WebcamModal.svelte";
   import PreviewCard from "./lib/components/PreviewCard.svelte";
+  import { demoDatasets } from "./lib/demoDataset";
 
   let isReady = false;
   let customModel: tf.Sequential | null = null;
@@ -36,6 +37,8 @@
 
   // Guarda as fotos de cada classe
   let trainingImages: { [key: number]: string[] } = {};
+  let isDemoDatasetLoaded = false;
+  let selectedDemoTestClassId = 0;
 
   // Load saved class names from localStorage
   onMount(async () => {
@@ -59,8 +62,16 @@
   });
 
   // Persist class names whenever they change
-  $: if (classes) {
+  $: if (classes && !isDemoDatasetLoaded) {
     try { localStorage.setItem('aimachina_classes', JSON.stringify(classes.map(c => ({ id: c.id, name: c.name, confidence: 0 })))); } catch {}
+  }
+
+  $: if (isDemoDatasetLoaded) {
+    classes = demoDatasets.map((dataset, id) => ({
+      id,
+      name: $t(dataset.labelKey),
+      confidence: classes.find(c => c.id === id)?.confidence ?? 0
+    }));
   }
 
   function handleWebcamCapture(event: CustomEvent<{ classId: number, images: string[] }>) {
@@ -70,6 +81,7 @@
     trainingImages = { ...trainingImages };
     activeWebcamClass = null;
     isModelTrained = false;
+    isDemoDatasetLoaded = false;
   }
 
   function handleTestWebcamCapture(event: CustomEvent<{ classId: number, images: string[] }>) {
@@ -80,31 +92,97 @@
     activeTestWebcamClass = null;
   }
 
-  async function handleClassUpload(event: Event, classId: number) {
+  function addTrainingFiles(files: FileList, classId: number) {
     if (!isReady) return;
-    const target = event.target as HTMLInputElement;
-    const files = target.files;
     if (!files || files.length === 0) return;
 
     if (!trainingImages[classId]) trainingImages[classId] = [];
 
-    // Reset status se houver alterações
-    isModelTrained = false;
+    const imageFiles = Array.from(files).filter(file => file.type.startsWith("image/"));
+    if (imageFiles.length === 0) return;
 
-    for (let i = 0; i < files.length; i++) {
-      const imgUrl = URL.createObjectURL(files[i]);
+    isModelTrained = false;
+    isDemoDatasetLoaded = false;
+
+    for (const file of imageFiles) {
+      const imgUrl = URL.createObjectURL(file);
       trainingImages[classId] = [...trainingImages[classId], imgUrl];
     }
     trainingImages = { ...trainingImages };
   }
 
+  async function handleClassUpload(event: Event, classId: number) {
+    const target = event.target as HTMLInputElement;
+    if (target.files) addTrainingFiles(target.files, classId);
+    target.value = "";
+  }
+
+  function isObjectUrl(url: string) {
+    return url.startsWith("blob:");
+  }
+
+  function revokeObjectUrls(urls: string[]) {
+    urls.forEach(url => {
+      if (isObjectUrl(url)) URL.revokeObjectURL(url);
+    });
+  }
+
+  async function setPreviewImage(src: string) {
+    if (previewUrl && isObjectUrl(previewUrl)) URL.revokeObjectURL(previewUrl);
+    showExplanation = false;
+    explanationDataUrl = "";
+    previewUrl = src;
+    previewImgRef = await loadImageFromUrl(src);
+  }
+
+  async function loadDemoDataset() {
+    revokeObjectUrls(Object.values(trainingImages).flat());
+    revokeObjectUrls(Object.values(testSamples).flat());
+    if (previewUrl && isObjectUrl(previewUrl)) URL.revokeObjectURL(previewUrl);
+
+    customModel?.dispose();
+    customModel = null;
+    try { localStorage.removeItem('aimachina_classes'); } catch {}
+    classes = demoDatasets.map((dataset, id) => ({ id, name: $t(dataset.labelKey), confidence: 0 }));
+    trainingImages = Object.fromEntries(demoDatasets.map((dataset, id) => [id, dataset.training.map(sample => sample.src)]));
+    testSamples = Object.fromEntries(demoDatasets.map((dataset, id) => [id, dataset.tests.map(sample => sample.src)]));
+    classCounter = demoDatasets.length;
+    selectedDemoTestClassId = 0;
+    isDemoDatasetLoaded = true;
+    isModelTrained = false;
+    trainingError = "";
+    trainingProgress = 0;
+    confusionMatrix = [];
+    detailedResults = [];
+    inspectorCell = null;
+    inspectorExplainUrl = "";
+    inspectorExplainingIdx = null;
+    inspectorLastExplainedIdx = null;
+    activeWebcamClass = null;
+    activeTestWebcamClass = null;
+
+    try {
+      await setPreviewImage(demoDatasets[0].tests[0].src);
+    } catch (e) {
+      console.error("[demo] preview image failed:", e);
+      previewImgRef = null;
+    }
+  }
+
+  async function selectDemoTestImage(classId: number, imgUrl: string) {
+    selectedDemoTestClassId = classId;
+    await setPreviewImage(imgUrl);
+    if (isModelTrained) runPrediction();
+  }
+
   function removeImage(classId: number, index: number) {
       const url = trainingImages[classId]?.[index];
-      if (url) URL.revokeObjectURL(url);
+      if (url && isObjectUrl(url)) URL.revokeObjectURL(url);
       trainingImages[classId].splice(index, 1);
       trainingImages[classId] = [...trainingImages[classId]];
       trainingImages = { ...trainingImages };
       isModelTrained = false;
+      isDemoDatasetLoaded = false;
   }
 
   function loadImageFromUrl(src: string): Promise<HTMLImageElement> {
@@ -259,7 +337,7 @@
     const target = event.target as HTMLInputElement;
     if (target.files && target.files.length > 0) {
       const file = target.files[0];
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      if (previewUrl && isObjectUrl(previewUrl)) URL.revokeObjectURL(previewUrl);
       showExplanation = false;
       explanationDataUrl = "";
       previewUrl = URL.createObjectURL(file);
@@ -296,24 +374,61 @@
      }
   }
 
+  let showResetConfirm = false;
+
+  function resetProject() {
+      showResetConfirm = true;
+  }
+
+  function executeReset() {
+      showResetConfirm = false;
+      revokeObjectUrls(Object.values(trainingImages).flat());
+      revokeObjectUrls(Object.values(testSamples).flat());
+      if (previewUrl && isObjectUrl(previewUrl)) URL.revokeObjectURL(previewUrl);
+      
+      classes = [
+          { id: 0, name: 'Classe A', confidence: 0 },
+          { id: 1, name: 'Classe B', confidence: 0 }
+      ];
+      classCounter = 2;
+      trainingImages = {};
+      testSamples = {};
+      trainedCounts = {};
+      isModelTrained = false;
+      isTrainingModel = false;
+      trainingProgress = 0;
+      if (customModel) {
+          customModel.dispose();
+          customModel = null;
+      }
+      confusionMatrix = [];
+      detailedResults = [];
+      isEvaluating = false;
+      stepTracker.reset();
+  }
+
   function addClass() {
      const newId = classes.length > 0 ? Math.max(...classes.map(c => c.id)) + 1 : 0;
      const letter = String.fromCharCode(65 + (classCounter % 26)) + (classCounter >= 26 ? Math.floor(classCounter / 26) : '');
      classCounter++;
      classes = [...classes, { id: newId, name: `Classe ${letter}`, confidence: 0 }];
+     isDemoDatasetLoaded = false;
   }
 
   function removeClass(idToRemove: number) {
      // Revoke training image blob URLs before deletion
-     (trainingImages[idToRemove] || []).forEach(url => URL.revokeObjectURL(url));
+     (trainingImages[idToRemove] || []).forEach(url => {
+       if (isObjectUrl(url)) URL.revokeObjectURL(url);
+     });
      classes = classes.filter(c => c.id !== idToRemove);
      delete trainingImages[idToRemove];
      trainingImages = { ...trainingImages };
      // Revoke test image blob URLs
-     (testSamples[idToRemove] || []).forEach(url => URL.revokeObjectURL(url));
+     revokeObjectUrls(testSamples[idToRemove] || []);
      delete testSamples[idToRemove];
      testSamples = { ...testSamples };
      isModelTrained = false;
+     isDemoDatasetLoaded = false;
      confusionMatrix = [];
      detailedResults = [];
   }
@@ -456,6 +571,8 @@
   let inspectorLastExplainedIdx: number | null = null; // tracks which thumbnail has the heatmap
 
   function removeTestImage(classId: number, index: number) {
+    const url = testSamples[classId]?.[index];
+    if (url && isObjectUrl(url)) URL.revokeObjectURL(url);
     testSamples[classId].splice(index, 1);
     testSamples[classId] = [...testSamples[classId]];
     testSamples = { ...testSamples };
@@ -468,6 +585,7 @@
     if (!testSamples[classId]) testSamples[classId] = [];
     
     for (let i = 0; i < files.length; i++) {
+        if (!files[i].type.startsWith("image/")) continue;
         testSamples[classId] = [...testSamples[classId], URL.createObjectURL(files[i])];
     }
     testSamples = { ...testSamples };
@@ -544,6 +662,8 @@
   }
 
   $: totalTestSamples = Object.values(testSamples).reduce((acc, arr) => acc + arr.length, 0);
+  $: totalTrainingSamples = Object.values(trainingImages).reduce((acc, arr) => acc + arr.length, 0);
+  $: canTrain = totalTrainingSamples >= 3 && classes.every(c => (trainingImages[c.id]?.length || 0) > 0);
 </script>
 
 <div class="min-h-screen bg-zinc-50 flex flex-col font-sans text-zinc-900 pb-20">
@@ -613,7 +733,7 @@
           {#each [
             { n: 1, label: $t('teach_machine'), active: true },
             { n: 2, label: $t('train_button'), active: isModelTrained || isTrainingModel },
-            { n: 3, label: $t('test_machine'), active: !!previewUrl },
+            { n: 3, label: $t('test_machine'), active: isModelTrained },
             { n: 4, label: $t('diagnostics'), active: confusionMatrix.length > 0 && confusionMatrix.some(row => row.some(v => v > 0)) }
           ] as step, i}
             <div class="flex items-center gap-2 {step.active ? 'text-zinc-800' : 'text-zinc-400'}">
@@ -626,8 +746,12 @@
           {/each}
         </div>
 
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold tracking-tight">{$t("teach_machine")}</h2>
+            <button on:click={loadDemoDataset} class="text-sm font-semibold text-indigo-700 bg-white border-2 border-indigo-100 hover:border-indigo-300 hover:bg-indigo-50 px-4 py-2 rounded-lg transition-all flex items-center gap-2 shadow-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"></path></svg>
+                {$t("demo_dataset")}
+            </button>
         </div>
 
         <div class="grid grid-cols-1 gap-4">
@@ -657,15 +781,15 @@
                         </div>
                     {:else}
                         <div class="flex flex-col items-center justify-center gap-3 py-6">
-                            <span class="text-sm font-medium text-zinc-500">Add Image Samples:</span>
+                            <span class="text-sm font-medium text-zinc-500">{$t("add_image_samples")}</span>
                             <div class="flex items-center gap-3 w-full max-w-xs">
                                 <button on:click={() => activeWebcamClass = item.id} class="flex-1 flex flex-col items-center justify-center gap-2 h-16 bg-blue-50/50 hover:bg-blue-100/50 text-blue-600 rounded-lg border border-blue-100 transition-colors">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-                                    <span class="text-xs font-semibold">Webcam</span>
+                                    <span class="text-xs font-semibold">{$t("webcam")}</span>
                                 </button>
                                 <label class="flex-1 flex flex-col items-center justify-center gap-2 h-16 bg-blue-50/50 hover:bg-blue-100/50 text-blue-600 rounded-lg border border-blue-100 cursor-pointer transition-colors">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                                    <span class="text-xs font-semibold">Upload</span>
+                                    <span class="text-xs font-semibold">{$t("upload_photos")}</span>
                                     <input type="file" multiple accept="image/*" on:change={(e) => handleClassUpload(e, item.id)} class="hidden" />
                                 </label>
                             </div>
@@ -691,10 +815,16 @@
             </div>
             {/each}
 
-            <button on:click={addClass} class="bg-transparent border-2 border-dashed border-zinc-300 rounded-xl flex items-center justify-center gap-2 text-sm font-medium text-zinc-400 hover:text-indigo-600 hover:border-indigo-400 hover:bg-indigo-50/50 transition-all py-5">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                {$t("add_class")}
-            </button>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                <button on:click={addClass} class="bg-transparent border-2 border-dashed border-zinc-300 rounded-xl flex items-center justify-center gap-2 text-sm font-medium text-zinc-400 hover:text-indigo-600 hover:border-indigo-400 hover:bg-indigo-50/50 transition-all py-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    {$t("add_class")}
+                </button>
+                <button on:click={resetProject} class="bg-white border border-red-200 rounded-xl flex items-center justify-center gap-2 text-sm font-medium text-red-500 hover:border-red-400 hover:bg-red-50/60 hover:text-red-600 transition-all py-4 shadow-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                    {$t("reset_button")}
+                </button>
+            </div>
         </div>
 
         <div class="mt-4 bg-white rounded-xl shadow-sm border border-zinc-200 overflow-hidden">
@@ -720,9 +850,8 @@
                     <h3 class="text-base font-semibold mb-1">{$t("train_button")}</h3>
                     <p class="text-sm text-zinc-500 leading-relaxed">{$t("teach_desc")}</p>
                 </div>
-                <button on:click={trainModel} disabled={isTrainingModel} class="shrink-0 px-6 py-2.5 font-medium rounded-lg shadow-sm transition-all text-sm flex items-center gap-2 justify-center disabled:opacity-50 {isModelTrained && !isTrainingModel ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}">
+                <button on:click={trainModel} disabled={isTrainingModel} class="shrink-0 px-6 py-2.5 font-medium rounded-lg shadow-sm transition-all text-sm flex items-center gap-2 justify-center disabled:opacity-50 {isModelTrained && !isTrainingModel ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'} {canTrain && !isModelTrained && !isTrainingModel ? 'ring-4 ring-indigo-500/50 animate-pulse' : ''}">
                     {#if isTrainingModel}
-                        <div class="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></div>
                         {$t("evaluating")}
                     {:else if isModelTrained}
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
@@ -766,6 +895,64 @@
             </div>
             
             <div class="p-5 flex flex-col gap-4">
+                {#if isDemoDatasetLoaded}
+                <div class="border border-indigo-100 bg-indigo-50/40 rounded-lg p-3 flex flex-col gap-3">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-xs font-semibold text-indigo-700 uppercase tracking-wide">{$t("demo_test")}</span>
+                        <div class="flex rounded-md border border-indigo-200 overflow-hidden bg-white">
+                            {#each demoDatasets as dataset, demoIdx}
+                            <button
+                              on:click={() => selectDemoTestImage(demoIdx, dataset.tests[0].src)}
+                              class="px-3 py-1.5 text-xs font-semibold transition-colors {selectedDemoTestClassId === demoIdx ? 'bg-indigo-600 text-white' : 'text-indigo-600 hover:bg-indigo-50'}"
+                            >
+                              {$t(dataset.labelKey)}
+                            </button>
+                            {/each}
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-5 gap-2">
+                        {#each demoDatasets[selectedDemoTestClassId]?.tests ?? [] as demoImg, demoImgIdx}
+                        <button
+                          on:click={() => selectDemoTestImage(selectedDemoTestClassId, demoImg.src)}
+                          class="aspect-square rounded-md overflow-hidden border-2 transition-colors bg-white {previewUrl === demoImg.src ? 'border-indigo-500' : 'border-white hover:border-indigo-300'}"
+                          aria-label={`${$t("demo_image")} ${demoImgIdx + 1}: ${demoImg.title}`}
+                        >
+                          <img src={demoImg.src} alt={demoImg.title} class="w-full h-full object-cover" />
+                        </button>
+                        {/each}
+                    </div>
+                    <details class="rounded-md border border-indigo-100 bg-white/70">
+                        <summary class="cursor-pointer select-none px-3 py-2 text-xs font-semibold text-indigo-700">
+                            {$t("demo_references")}
+                        </summary>
+                        <div class="border-t border-indigo-100 px-3 py-3 max-h-56 overflow-y-auto flex flex-col gap-4">
+                            <div>
+                                <p class="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-400">{$t("demo_training_refs")}</p>
+                                <div class="flex flex-col gap-2">
+                                    {#each demoDatasets[selectedDemoTestClassId]?.training ?? [] as ref, refIdx}
+                                    <a href={ref.source} target="_blank" rel="noreferrer" class="group rounded-md border border-zinc-100 bg-white px-2.5 py-2 text-left hover:border-indigo-200 hover:bg-indigo-50/40 transition-colors">
+                                        <span class="block text-xs font-medium text-zinc-700 group-hover:text-indigo-700">{refIdx + 1}. {ref.title}</span>
+                                        <span class="block mt-0.5 text-[11px] text-zinc-500">{ref.author} · {ref.license}</span>
+                                    </a>
+                                    {/each}
+                                </div>
+                            </div>
+                            <div>
+                                <p class="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-400">{$t("demo_test_refs")}</p>
+                                <div class="flex flex-col gap-2">
+                                    {#each demoDatasets[selectedDemoTestClassId]?.tests ?? [] as ref, refIdx}
+                                    <a href={ref.source} target="_blank" rel="noreferrer" class="group rounded-md border border-zinc-100 bg-white px-2.5 py-2 text-left hover:border-indigo-200 hover:bg-indigo-50/40 transition-colors">
+                                        <span class="block text-xs font-medium text-zinc-700 group-hover:text-indigo-700">{refIdx + 1}. {ref.title}</span>
+                                        <span class="block mt-0.5 text-[11px] text-zinc-500">{ref.author} · {ref.license}</span>
+                                    </a>
+                                    {/each}
+                                </div>
+                            </div>
+                        </div>
+                    </details>
+                </div>
+                {/if}
+
                 <label class="w-full flex justify-between items-center px-4 py-2.5 text-sm border border-zinc-200 rounded-lg cursor-pointer hover:bg-zinc-50 hover:border-indigo-300 transition-all bg-zinc-50">
                     <span class="font-medium text-zinc-700">{$t("data_input")}</span>
                     <span class="text-indigo-600 font-semibold text-xs uppercase tracking-wide">{$t("browse")}</span>
@@ -797,6 +984,30 @@
             </div>
         </PreviewCard>
     </aside>
+
+    {#if showResetConfirm}
+    <div class="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm transition-opacity fade-in">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col fade-up">
+            <div class="p-6">
+                <div class="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center text-red-600 mb-4 mx-auto ring-8 ring-red-50/50">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                </div>
+                <h3 class="text-lg font-bold text-zinc-900 text-center mb-2">{$t("reset_modal_title")}</h3>
+                <p class="text-sm text-zinc-500 text-center leading-relaxed">
+                    {$t("reset_modal_desc_1")} <strong class="text-zinc-700 font-semibold">{$t("reset_modal_desc_2")}</strong>.
+                </p>
+            </div>
+            <div class="px-6 py-4 bg-zinc-50/80 border-t border-zinc-100 flex gap-3">
+                <button on:click={() => showResetConfirm = false} class="flex-1 px-4 py-2.5 text-sm font-semibold text-zinc-600 bg-white border border-zinc-200 hover:bg-zinc-50 hover:text-zinc-900 rounded-lg transition-colors">
+                    {$t("reset_modal_cancel")}
+                </button>
+                <button on:click={executeReset} class="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors shadow-sm">
+                    {$t("reset_modal_confirm")}
+                </button>
+            </div>
+        </div>
+    </div>
+    {/if}
 
   </main>
 
