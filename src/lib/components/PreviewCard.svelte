@@ -2,13 +2,14 @@
   import { onMount, onDestroy } from 'svelte';
   import * as tf from "@tensorflow/tfjs";
   import type * as mobilenet from "@tensorflow-models/mobilenet";
-  import type * as knnClassifier from "@tensorflow-models/knn-classifier";
-  import { t } from '../i18n';
 
   export let net: mobilenet.MobileNet | undefined;
-  export let classifier: knnClassifier.KNNClassifier | undefined;
+  export let classifier: import('@tensorflow/tfjs').Sequential | null = null;
   export let classes: { id: number; name: string; confidence?: number }[] = [];
   export let isModelTrained: boolean = false;
+
+  type OutputRow = { classId: number; label: string; confidence: number };
+  const FEATURE_SIZE = 1024;
 
   let previewMode: 'webcam' | 'file' = 'file';
 
@@ -17,7 +18,10 @@
   let isActive = false;
   let requestRef: number;
   
-  let predictions: { classId: number; label: string; confidence: number }[] = [];
+  let predictions: OutputRow[] = [];
+  $: outputRows = previewMode === 'webcam'
+    ? predictions
+    : classes.map(c => ({ classId: c.id, label: c.name, confidence: c.confidence || 0 }));
 
   $: if (classes) {
      if (predictions.length === 0 || predictions.length !== classes.length) {
@@ -73,6 +77,17 @@
     predictions = predictions.map(p => ({ ...p, confidence: 0 }));
   }
 
+  function normaliseEmbedding(activation: tf.Tensor): tf.Tensor2D {
+    const embedding = activation.reshape([1, activation.size]) as tf.Tensor2D;
+
+    if (embedding.shape[1] !== FEATURE_SIZE) {
+      embedding.dispose();
+      throw new Error(`Unexpected MobileNet embedding size: ${embedding.shape[1]}`);
+    }
+
+    return embedding;
+  }
+
   async function predictLoop() {
     if (!isActive || !video || !net || !classifier || !isModelTrained || previewMode !== 'webcam') {
       if (isActive) requestRef = requestAnimationFrame(predictLoop);
@@ -80,17 +95,21 @@
     }
 
     if (video.readyState === 4) {
-      let img;
-      let activation;
+      let img: tf.Tensor3D | undefined;
+      let activation: tf.Tensor | undefined;
+      let embedding: tf.Tensor2D | undefined;
       try {
         img = tf.browser.fromPixels(video);
-        activation = net.infer(img, "conv_preds");
+        activation = net.infer(img, true) as tf.Tensor;
+        embedding = normaliseEmbedding(activation);
         
-        let k = 3; 
-        const result = await classifier.predictClass(activation, k);
+        const predictionsTensor = classifier.predict(embedding) as import('@tensorflow/tfjs').Tensor;
+        const confidences = await predictionsTensor.data();
+        predictionsTensor.dispose();
         
+        const classIndexMap = Object.fromEntries(classes.map((c, i) => [c.id, i]));
         predictions = classes.map(c => {
-          const conf = result.confidences[c.id] || 0;
+          const conf = confidences[classIndexMap[c.id]] || 0;
           return {
             classId: c.id,
             label: c.name,
@@ -100,8 +119,9 @@
       } catch (e) {
         console.error("Live prediction error:", e);
       } finally {
-        if (img) img.dispose();
-        if (activation) activation.dispose();
+        img?.dispose();
+        embedding?.dispose();
+        activation?.dispose();
       }
     }
     
@@ -162,15 +182,15 @@
     <div class="text-sm font-semibold uppercase text-zinc-400 tracking-widest mb-2">Output</div>
     
     <div class="flex flex-col gap-2.5">
-      {#each previewMode === 'webcam' ? predictions : classes as pred, i}
-        {@const isTop = (pred.confidence || 0) > 0 && (pred.confidence || 0) === Math.max(...(previewMode === 'webcam' ? predictions : classes).map(c => (c.confidence || 0)))}
+      {#each outputRows as pred}
+        {@const isTop = pred.confidence > 0 && pred.confidence === Math.max(...outputRows.map(c => c.confidence))}
         <div class="w-full">
             <div class="flex justify-between text-xs mb-1.5">
-                <span class="font-semibold {isTop ? 'text-indigo-700' : 'text-zinc-600'}">{pred.name || pred.label}</span>
-                <span class="font-bold {isTop ? 'text-indigo-700' : 'text-zinc-500'}">{(pred.confidence || 0)}%</span>
+                <span class="font-semibold {isTop ? 'text-indigo-700' : 'text-zinc-600'}">{pred.label}</span>
+                <span class="font-bold {isTop ? 'text-indigo-700' : 'text-zinc-500'}">{pred.confidence}%</span>
             </div>
             <div class="w-full bg-zinc-100 h-2 rounded-full overflow-hidden">
-                <div class="h-full rounded-full transition-all duration-500 {isTop ? 'bg-indigo-500' : 'bg-zinc-300'}" style="width: {(pred.confidence || 0)}%"></div>
+                <div class="h-full rounded-full transition-all duration-500 {isTop ? 'bg-indigo-500' : 'bg-zinc-300'}" style="width: {pred.confidence}%"></div>
             </div>
         </div>
       {/each}

@@ -3,12 +3,11 @@
   import { locale, t } from "./lib/i18n";
   import * as tf from "@tensorflow/tfjs";
   import * as mobilenet from "@tensorflow-models/mobilenet";
-  import * as knnClassifier from "@tensorflow-models/knn-classifier";
   import WebcamModal from "./lib/components/WebcamModal.svelte";
   import PreviewCard from "./lib/components/PreviewCard.svelte";
 
   let isReady = false;
-  let classifier: knnClassifier.KNNClassifier;
+  let customModel: tf.Sequential | null = null;
   let net: mobilenet.MobileNet;
   let langOpen = false;
   let activeWebcamClass: number | null = null;
@@ -30,9 +29,9 @@
   let trainingError = "";
   let isLoadingModel = false;
   let trainingProgress = 0;
-  let trainedCounts: { [key: number]: number } = {};
   let classCounter = 2;
   let previewUrl = "";
+  const FEATURE_SIZE = 1024;
   // previewImgRef declared below near handlePreviewUpload
 
   // Guarda as fotos de cada classe
@@ -51,7 +50,6 @@
     try {
       isLoadingModel = true;
       net = await mobilenet.load({ version: 1, alpha: 1.0 });
-      classifier = knnClassifier.create();
       isReady = true;
     } catch (e) {
       console.error("Initialization error:", e);
@@ -69,9 +67,9 @@
     const { classId, images } = event.detail;
     if (!trainingImages[classId]) trainingImages[classId] = [];
     trainingImages[classId] = [...trainingImages[classId], ...images];
+    trainingImages = { ...trainingImages };
     activeWebcamClass = null;
     isModelTrained = false;
-    stepTracker.completeStep("teach_machine");
   }
 
   function handleTestWebcamCapture(event: CustomEvent<{ classId: number, images: string[] }>) {
@@ -106,9 +104,38 @@
       trainingImages[classId].splice(index, 1);
       trainingImages[classId] = [...trainingImages[classId]];
       trainingImages = { ...trainingImages };
-      // Image removed: must full-retrain
-      trainedCounts[classId] = 0;
       isModelTrained = false;
+  }
+
+  function loadImageFromUrl(src: string): Promise<HTMLImageElement> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error(`Failed to load image: ${src.slice(0, 80)}`));
+      img.src = src;
+      if (img.complete && img.naturalWidth > 0) resolve(img);
+    });
+  }
+
+  async function extractEmbedding(source: HTMLImageElement | HTMLVideoElement): Promise<tf.Tensor2D> {
+    let pixels: tf.Tensor3D | undefined;
+    let activation: tf.Tensor | undefined;
+
+    try {
+      pixels = tf.browser.fromPixels(source);
+      activation = net.infer(pixels, true) as tf.Tensor;
+      const embedding = activation.reshape([1, activation.size]) as tf.Tensor2D;
+
+      if (embedding.shape[1] !== FEATURE_SIZE) {
+        embedding.dispose();
+        throw new Error(`Unexpected MobileNet embedding size: ${embedding.shape[1]}`);
+      }
+
+      return embedding.clone();
+    } finally {
+      pixels?.dispose();
+      activation?.dispose();
+    }
   }
 
   const trainModel = async () => {
@@ -128,55 +155,101 @@
      isTrainingModel = true;
      trainingProgress = 0;
 
-     // Detect if any class had images removed → need full retrain
-     const needsFullRetrain = classes.some(c => (trainingImages[c.id]?.length || 0) < (trainedCounts[c.id] || 0));
-     if (needsFullRetrain || classifier.getNumClasses() === 0) {
-         classifier.dispose();
-         classifier = knnClassifier.create();
-         trainedCounts = {};
+     const xs: tf.Tensor1D[] = [];
+     const ys: number[] = [];
+     const validCounts = new Map(classes.map(c => [c.id, 0]));
+     const classIndexMap = Object.fromEntries(classes.map((c, i) => [c.id, i]));
+     let xDataset: tf.Tensor | undefined;
+     let labelTensor: tf.Tensor1D | undefined;
+     let yDataset: tf.Tensor | undefined;
+
+     try {
+       const totalImgs = total;
+       let processed = 0;
+
+       for (const c of classes) {
+           const imgs = trainingImages[c.id] || [];
+           for (const imgUrl of imgs) {
+               try {
+                   const img = await loadImageFromUrl(imgUrl);
+                   const embedding = await extractEmbedding(img);
+                   xs.push(embedding.squeeze([0]) as tf.Tensor1D);
+                   embedding.dispose();
+                   ys.push(classIndexMap[c.id]);
+                   validCounts.set(c.id, (validCounts.get(c.id) || 0) + 1);
+               } catch(e) {
+                   console.warn('[train] image skipped:', e);
+               } finally {
+                   processed++;
+                   trainingProgress = Math.round((processed / totalImgs) * 50);
+               }
+           }
+       }
+
+       const classesWithNoValidImages = classes.filter(c => (validCounts.get(c.id) || 0) === 0);
+       if (classesWithNoValidImages.length > 0 || xs.length < 3) {
+           trainingError = classesWithNoValidImages.length > 0
+             ? `Não foi possível processar imagens válidas para: ${classesWithNoValidImages.map(c => c.name).join(', ')}.`
+             : $t("error_min_samples");
+           return;
+       }
+
+       xDataset = tf.stack(xs) as tf.Tensor2D;
+       labelTensor = tf.tensor1d(ys, 'int32');
+       yDataset = tf.oneHot(labelTensor, classes.length);
+
+       customModel?.dispose();
+
+       customModel = tf.sequential({
+           layers: [
+               tf.layers.dense({
+                   units: 100,
+                   activation: 'relu',
+                   kernelInitializer: 'varianceScaling',
+                   inputShape: [FEATURE_SIZE]
+               }),
+               tf.layers.dense({
+                   units: classes.length,
+                   activation: 'softmax',
+                   kernelInitializer: 'varianceScaling'
+               })
+           ]
+       });
+
+       customModel.compile({
+           optimizer: tf.train.adam(0.0001),
+           loss: 'categoricalCrossentropy',
+           metrics: ['accuracy']
+       });
+
+       await customModel.fit(xDataset, yDataset, {
+           batchSize: Math.min(32, Math.max(1, Math.floor(xs.length * 0.1))),
+           epochs: 50,
+           callbacks: {
+               onEpochEnd: async (epoch) => {
+                   trainingProgress = 50 + Math.round(((epoch + 1) / 50) * 50);
+                   await tf.nextFrame();
+               }
+           }
+       });
+
+       isModelTrained = true;
+       trainingProgress = 100;
+
+       if (previewUrl) runPrediction();
+     } catch (e) {
+       console.error('[train] model training failed:', e);
+       trainingError = "O treino falhou. Verifique as imagens e tente novamente.";
+       customModel?.dispose();
+       customModel = null;
+       isModelTrained = false;
+     } finally {
+       xDataset?.dispose();
+       labelTensor?.dispose();
+       yDataset?.dispose();
+       xs.forEach(t => t.dispose());
+       isTrainingModel = false;
      }
-
-     // Count only NEW images to process
-     const newImages = classes.reduce((sum, c) => {
-         const trained = trainedCounts[c.id] || 0;
-         return sum + Math.max(0, (trainingImages[c.id]?.length || 0) - trained);
-     }, 0);
-     let processed = 0;
-
-     for (const c of classes) {
-         const imgs = trainingImages[c.id] || [];
-         const startFrom = trainedCounts[c.id] || 0;
-         for (let i = startFrom; i < imgs.length; i++) {
-             const img = new Image();
-             img.src = imgs[i];
-             await new Promise<void>((resolve, reject) => {
-               img.onload = () => resolve();
-               img.onerror = () => reject(new Error('Failed to load image'));
-               if (img.complete && img.naturalWidth > 0) resolve();
-             }).catch(e => console.warn('[train] Skipped:', e));
-             let pixels;
-             let activation;
-             try {
-                 pixels = tf.browser.fromPixels(img);
-                 activation = net.infer(pixels, true);
-                 classifier.addExample(activation, c.id);
-             } catch(e) {
-                 console.error('[train] inference error:', e);
-             } finally {
-                 if (pixels) pixels.dispose();
-                 if (activation) activation.dispose();
-             }
-             processed++;
-             trainingProgress = Math.round((processed / newImages) * 100);
-         }
-         trainedCounts[c.id] = imgs.length;
-     }
-
-     isModelTrained = true;
-     isTrainingModel = false;
-     trainingProgress = 100;
-
-     if (previewUrl) runPrediction();
   };
 
   // Pre-loaded reference so explain never races with DOM rendering
@@ -190,38 +263,35 @@
       showExplanation = false;
       explanationDataUrl = "";
       previewUrl = URL.createObjectURL(file);
-      // Eagerly load into a stable reference — avoids DOM race
-      const img = new Image();
-      img.src = previewUrl;
-      await new Promise(r => img.onload = r);
-      previewImgRef = img;
-      if (isModelTrained) runPrediction();
+      try {
+        previewImgRef = await loadImageFromUrl(previewUrl);
+        if (isModelTrained) runPrediction();
+      } catch (e) {
+        console.error('[preview] image load failed:', e);
+        previewImgRef = null;
+      }
     }
   }
 
   async function runPrediction() {
-     if (!isReady || !previewImgRef || !isModelTrained) return;
+     if (!isReady || !previewImgRef || !isModelTrained || !customModel) return;
      
-     const numExamples = classes.reduce((sum, c) => sum + (trainingImages[c.id] ? trainingImages[c.id].length : 0), 0);
-     let k = 1; 
-     if (numExamples > 10) k = 3;
-     if (numExamples > 20) k = 5;
-
-     let pixels;
      let activation;
      try {
-         pixels = tf.browser.fromPixels(previewImgRef);
-         activation = net.infer(pixels, true);
-         const result = await classifier.predictClass(activation, k);
+         activation = await extractEmbedding(previewImgRef);
+         const predictions = customModel.predict(activation) as tf.Tensor;
+         const confidences = await predictions.data();
+         predictions.dispose();
+         
+         const classIndexMap = Object.fromEntries(classes.map((c, i) => [c.id, i]));
          
          classes = classes.map(c => {
-           const conf = result.confidences[c.id] || 0;
+           const conf = confidences[classIndexMap[c.id]] || 0;
            return { ...c, confidence: Math.round(conf * 100) };
          });
      } catch (e) {
          console.error("Live prediction error:", e);
      } finally {
-         if (pixels) pixels.dispose();
          if (activation) activation.dispose();
      }
   }
@@ -238,7 +308,6 @@
      (trainingImages[idToRemove] || []).forEach(url => URL.revokeObjectURL(url));
      classes = classes.filter(c => c.id !== idToRemove);
      delete trainingImages[idToRemove];
-     delete trainedCounts[idToRemove]; // Bug fix: stale count would skip re-training
      trainingImages = { ...trainingImages };
      // Revoke test image blob URLs
      (testSamples[idToRemove] || []).forEach(url => URL.revokeObjectURL(url));
@@ -405,7 +474,8 @@
   }
 
   async function evaluateModel() {
-     if (!isReady || !isModelTrained) return;
+     const model = customModel;
+     if (!isReady || !isModelTrained || !model) return;
      isEvaluating = true;
      inspectorCell = null;
      inspectorExplainUrl = "";
@@ -415,40 +485,36 @@
      classes.forEach((c, i) => { classIndexMap[c.id] = i; });
      confusionMatrix = Array(size).fill(0).map(() => Array(size).fill(0));
      detailedResults = Array.from({ length: size }, () => Array.from({ length: size }, () => []));
-     const numExamples = classes.reduce((sum, c) => sum + (trainingImages[c.id] ? trainingImages[c.id].length : 0), 0);
-     // Bug fix: k must be <= total training examples, else KNN throws
-     const k = Math.min(numExamples, numExamples >= 10 ? 5 : 3);
-
      for (const realClass of classes) {
          const realIdx = classIndexMap[realClass.id];
          const samples = testSamples[realClass.id] || [];
          for (const imgUrl of samples) {
-             const img = new Image();
-             img.src = imgUrl;
-             await new Promise<void>((resolve, reject) => {
-               img.onload = () => resolve();
-               img.onerror = () => reject(new Error(`Failed to load: ${imgUrl}`));
-               if (img.complete && img.naturalWidth > 0) resolve();
-             }).catch(e => console.warn('[eval] Image skipped:', e));
-             if (img.naturalWidth === 0) continue;
-             let pixels;
              let activation;
              try {
-                 pixels = tf.browser.fromPixels(img);
-                 activation = net.infer(pixels, true);
-                 const result = await classifier.predictClass(activation, k);
+                 const img = await loadImageFromUrl(imgUrl);
+                 activation = await extractEmbedding(img);
+                 const predictions = model.predict(activation) as tf.Tensor;
+                 const confidences = await predictions.data();
+                 predictions.dispose();
                  
-                 const predClassId = Number(result.label);
-                 const predIdx = classIndexMap[predClassId] ?? -1;
+                 let bestIdx = 0;
+                 let bestConf = -1;
+                 for (let i = 0; i < classes.length; i++) {
+                     if (confidences[i] > bestConf) {
+                         bestConf = confidences[i];
+                         bestIdx = i;
+                     }
+                 }
+                 
+                 const predIdx = bestIdx;
                  if (predIdx >= 0) {
-                     const conf = Math.round((result.confidences[predClassId] || 0) * 100);
+                     const conf = Math.round(confidences[bestIdx] * 100);
                      confusionMatrix[realIdx][predIdx]++;
                      detailedResults[realIdx][predIdx].push({ imgUrl, confidence: conf, confRow: realIdx, confCol: predIdx });
                  }
              } catch(e) {
                  console.error("Evaluation prediction error:", e);
              } finally {
-                 if (pixels) pixels.dispose();
                  if (activation) activation.dispose();
              }
          }
@@ -473,21 +539,8 @@
   }
 
   function exportModel() {
-     const dataset = classifier.getClassifierDataset();
-     const datasetObj: { [key: string]: number[] } = {};
-     Object.keys(dataset).forEach((key) => {
-       const data = dataset[key].dataSync();
-       datasetObj[key] = Array.from(data);
-     });
-     
-     const jsonStr = JSON.stringify(datasetObj);
-     const blob = new Blob([jsonStr], { type: "application/json" });
-     const url = URL.createObjectURL(blob);
-     const a = document.createElement("a");
-     a.href = url;
-     a.download = "aimachina_model.json";
-     a.click();
-     URL.revokeObjectURL(url);
+      if (!customModel) return;
+      customModel.save('downloads://aimachina-model').catch(e => console.error("Export error:", e));
   }
 
   $: totalTestSamples = Object.values(testSamples).reduce((acc, arr) => acc + arr.length, 0);
@@ -595,8 +648,8 @@
                         <div class="flex flex-wrap gap-2">
                         {#each trainingImages[item.id] as imgUrl, idx}
                             <div class="relative group/img w-12 h-12 rounded overflow-hidden border border-zinc-200">
-                                <img src={imgUrl} class="w-full h-full object-cover" />
-                                <button on:click={() => removeImage(item.id, idx)} class="absolute inset-0 bg-red-500/80 text-white opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity">
+                                <img src={imgUrl} class="w-full h-full object-cover" alt="training sample" />
+                                <button on:click={() => removeImage(item.id, idx)} class="absolute inset-0 bg-red-500/80 text-white opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity" aria-label="Remove training sample">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                                 </button>
                             </div>
@@ -685,7 +738,7 @@
 
     <aside class="lg:col-span-4 flex flex-col gap-6">
         <h2 class="text-lg font-semibold tracking-tight">{$t("test_machine")}</h2>
-        <PreviewCard {net} {classifier} {classes} {isModelTrained}>
+        <PreviewCard {net} classifier={customModel} {classes} {isModelTrained}>
             <div class="bg-zinc-100 aspect-square relative flex items-center justify-center overflow-hidden border-b border-zinc-200">
                 {#if showExplanation && explanationDataUrl}
                     <!-- svelte-ignore a11y-missing-attribute -->
@@ -809,7 +862,7 @@
                     {#each testSamples[item.id] as imgUrl, idx}
                     <div class="relative group/timg w-10 h-10 rounded overflow-hidden border border-zinc-200 shrink-0">
                       <img src={imgUrl} class="w-full h-full object-cover" alt="test sample" />
-                      <button on:click={() => removeTestImage(item.id, idx)} class="absolute inset-0 bg-red-500/80 text-white opacity-0 group-hover/timg:opacity-100 flex items-center justify-center transition-opacity">
+                      <button on:click={() => removeTestImage(item.id, idx)} class="absolute inset-0 bg-red-500/80 text-white opacity-0 group-hover/timg:opacity-100 flex items-center justify-center transition-opacity" aria-label="Remove test sample">
                         <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                       </button>
                     </div>
@@ -885,7 +938,7 @@
                        </p>
                        <p class="text-xs opacity-60 mt-0.5">{cell.length} {$t('inspector_hint')}</p>
                      </div>
-                     <button on:click={() => { inspectorCell = null; inspectorExplainUrl = ""; }} class="text-zinc-400 hover:text-zinc-600 transition-colors">
+                     <button on:click={() => { inspectorCell = null; inspectorExplainUrl = ""; }} class="text-zinc-400 hover:text-zinc-600 transition-colors" aria-label="Close sample inspector">
                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                      </button>
                    </div>
@@ -893,8 +946,9 @@
                    <div class="p-4 flex gap-4 flex-wrap bg-white">
                      {#each cell as sample, sIdx}
                      <div class="flex flex-col items-center gap-1.5">
-                       <div class="relative group/s w-20 h-20 rounded-lg overflow-hidden border-2 {inspectorExplainingIdx === sIdx ? 'border-indigo-400' : 'border-zinc-200 hover:border-indigo-300'} cursor-pointer transition-colors"
-                            on:click={() => explainInspectorImage(sample.imgUrl, sIdx)}>
+                       <button type="button" class="relative group/s w-20 h-20 rounded-lg overflow-hidden border-2 {inspectorExplainingIdx === sIdx ? 'border-indigo-400' : 'border-zinc-200 hover:border-indigo-300'} cursor-pointer transition-colors"
+                            on:click={() => explainInspectorImage(sample.imgUrl, sIdx)}
+                            aria-label="Explain sample prediction">
                          {#if inspectorExplainUrl && inspectorCell && inspectorExplainingIdx === null && sIdx === inspectorLastExplainedIdx}
                            <img src={inspectorExplainUrl} class="w-full h-full object-cover" alt="heatmap" />
                          {:else}
@@ -909,7 +963,7 @@
                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                            </div>
                          {/if}
-                       </div>
+                       </button>
                        <span class="text-xs font-semibold {isCorrect ? 'text-indigo-600' : 'text-red-500'}">{sample.confidence}%</span>
                      </div>
                      {/each}

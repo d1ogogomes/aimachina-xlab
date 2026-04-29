@@ -23,7 +23,6 @@
     "vite": "^8.0.1"
   },
   "dependencies": {
-    "@tensorflow-models/knn-classifier": "^1.2.6",
     "@tensorflow-models/mobilenet": "^2.1.1",
     "@tensorflow/tfjs": "^4.22.0"
   }

@@ -123,7 +123,7 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-indigo-600"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
         <h3 class="font-semibold text-zinc-800">Webcam - {className}</h3>
       </div>
-      <button on:click={close} class="text-zinc-400 hover:text-zinc-600 p-1 rounded-md hover:bg-zinc-200 transition-colors">
+      <button on:click={close} class="text-zinc-400 hover:text-zinc-600 p-1 rounded-md hover:bg-zinc-200 transition-colors" aria-label="Close webcam modal">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
       </button>
     </div>
@@ -177,20 +177,20 @@
     {#if showSettings}
     <div class="px-5 py-4 bg-blue-50/50 border-t border-blue-100 flex flex-col gap-4 text-sm fade-up">
       <div class="flex items-center justify-between">
-        <label class="font-medium text-blue-900">FPS (Frames per second)</label>
-        <input type="number" bind:value={fps} min="1" max="60" class="w-16 px-2 py-1 border border-blue-200 rounded text-center focus:outline-none focus:ring-2 focus:ring-blue-400" />
+        <label for="webcam-fps" class="font-medium text-blue-900">FPS (Frames per second)</label>
+        <input id="webcam-fps" type="number" bind:value={fps} min="1" max="60" class="w-16 px-2 py-1 border border-blue-200 rounded text-center focus:outline-none focus:ring-2 focus:ring-blue-400" />
       </div>
       <div class="flex items-center justify-between">
-        <label class="font-medium text-blue-900">Hold to Record</label>
+        <span class="font-medium text-blue-900">Hold to Record</span>
         <label class="relative inline-flex items-center cursor-pointer">
-          <input type="checkbox" bind:checked={holdToRecord} class="sr-only peer">
+          <input type="checkbox" bind:checked={holdToRecord} class="sr-only peer" aria-label="Hold to record">
           <div class="w-9 h-5 bg-blue-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
         </label>
       </div>
       {#if !holdToRecord}
       <div class="flex items-center justify-between fade-in">
-        <label class="font-medium text-blue-900">Duration (seconds)</label>
-        <input type="number" bind:value={duration} min="1" max="60" class="w-16 px-2 py-1 border border-blue-200 rounded text-center focus:outline-none focus:ring-2 focus:ring-blue-400" />
+        <label for="webcam-duration" class="font-medium text-blue-900">Duration (seconds)</label>
+        <input id="webcam-duration" type="number" bind:value={duration} min="1" max="60" class="w-16 px-2 py-1 border border-blue-200 rounded text-center focus:outline-none focus:ring-2 focus:ring-blue-400" />
       </div>
       {/if}
     </div>
