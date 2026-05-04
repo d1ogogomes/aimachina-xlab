@@ -58,5 +58,8 @@
   "add_image_samples": "Adicionar Imagens:",
   "webcam": "Câmara",
   "input_source": "Entrada",
-  "file": "Ficheiro"
+  "file": "Ficheiro",
+  "metrics_title": "Métricas por Classe",
+  "metrics_accuracy": "Accuracy Global",
+  "metrics_class": "Classe"
 }

@@ -188,24 +188,28 @@
   function loadImageFromUrl(src: string): Promise<HTMLImageElement> {
     return new Promise((resolve, reject) => {
       const img = new Image();
+      img.crossOrigin = 'anonymous';
       img.onload = () => resolve(img);
       img.onerror = () => reject(new Error(`Failed to load image: ${src.slice(0, 80)}`));
-      img.src = src;
-      if (img.complete && img.naturalWidth > 0) resolve(img);
+      if (img.complete && img.naturalWidth > 0) {
+        resolve(img);
+      } else {
+        img.src = src;
+      }
     });
   }
 
   async function extractEmbedding(source: HTMLImageElement | HTMLVideoElement): Promise<tf.Tensor2D> {
     let pixels: tf.Tensor3D | undefined;
     let activation: tf.Tensor | undefined;
+    let embedding: tf.Tensor2D | undefined;
 
     try {
       pixels = tf.browser.fromPixels(source);
       activation = net.infer(pixels, true) as tf.Tensor;
-      const embedding = activation.reshape([1, activation.size]) as tf.Tensor2D;
+      embedding = activation.reshape([1, activation.size]) as tf.Tensor2D;
 
       if (embedding.shape[1] !== FEATURE_SIZE) {
-        embedding.dispose();
         throw new Error(`Unexpected MobileNet embedding size: ${embedding.shape[1]}`);
       }
 
@@ -213,6 +217,7 @@
     } finally {
       pixels?.dispose();
       activation?.dispose();
+      embedding?.dispose();
     }
   }
 
@@ -393,10 +398,13 @@
       classCounter = 2;
       trainingImages = {};
       testSamples = {};
-      trainedCounts = {};
       isModelTrained = false;
       isTrainingModel = false;
       trainingProgress = 0;
+      trainingError = "";
+      previewUrl = "";
+      previewImgRef = null;
+      isDemoDatasetLoaded = false;
       if (customModel) {
           customModel.dispose();
           customModel = null;
@@ -404,7 +412,15 @@
       confusionMatrix = [];
       detailedResults = [];
       isEvaluating = false;
-      stepTracker.reset();
+      // Reset XAI state
+      showExplanation = false;
+      explanationDataUrl = "";
+      isExplaining = false;
+      inspectorCell = null;
+      inspectorExplainUrl = "";
+      inspectorExplainingIdx = null;
+      inspectorLastExplainedIdx = null;
+      try { localStorage.removeItem('aimachina_classes'); } catch {}
   }
 
   function addClass() {
@@ -645,15 +661,18 @@
   async function explainInspectorImage(imgUrl: string, idx: number) {
     if (!isReady || !isModelTrained) return;
     inspectorExplainingIdx = idx;
-    inspectorLastExplainedIdx = null; // clear previous while loading
+    inspectorLastExplainedIdx = null;
     inspectorExplainUrl = "";
-    const img = new Image();
-    img.src = imgUrl;
-    await new Promise(r => img.onload = r);
-    const { heatNorm, steps } = await computeOcclusionMap(img);
-    inspectorExplainUrl = renderOcclusionOverlay(img, heatNorm, steps);
-    inspectorLastExplainedIdx = idx; // mark this thumbnail as having the heatmap
-    inspectorExplainingIdx = null;
+    try {
+      const img = await loadImageFromUrl(imgUrl);
+      const { heatNorm, steps } = await computeOcclusionMap(img);
+      inspectorExplainUrl = renderOcclusionOverlay(img, heatNorm, steps);
+      inspectorLastExplainedIdx = idx;
+    } catch (e) {
+      console.error('[XAI] Inspector explain failed:', e);
+    } finally {
+      inspectorExplainingIdx = null;
+    }
   }
 
   function exportModel() {
@@ -664,6 +683,36 @@
   $: totalTestSamples = Object.values(testSamples).reduce((acc, arr) => acc + arr.length, 0);
   $: totalTrainingSamples = Object.values(trainingImages).reduce((acc, arr) => acc + arr.length, 0);
   $: canTrain = totalTrainingSamples >= 3 && classes.every(c => (trainingImages[c.id]?.length || 0) > 0);
+
+  // ─── Per-class metrics derived from confusion matrix ─────────
+  type ClassMetrics = { precision: number; recall: number; f1: number; support: number };
+  $: classMetrics = (() => {
+      if (confusionMatrix.length === 0) return [] as ClassMetrics[];
+      const n = confusionMatrix.length;
+      return Array.from({ length: n }, (_, i) => {
+          const tp = confusionMatrix[i][i];
+          let fp = 0, fn = 0;
+          for (let j = 0; j < n; j++) {
+              if (j !== i) { fp += confusionMatrix[j][i]; fn += confusionMatrix[i][j]; }
+          }
+          const precision = tp + fp > 0 ? tp / (tp + fp) : 0;
+          const recall    = tp + fn > 0 ? tp / (tp + fn) : 0;
+          const f1        = precision + recall > 0 ? 2 * precision * recall / (precision + recall) : 0;
+          const support   = tp + fn; // total real samples for this class
+          return { precision, recall, f1, support } as ClassMetrics;
+      });
+  })();
+
+  $: globalAccuracy = (() => {
+      if (confusionMatrix.length === 0) return 0;
+      let diagonal = 0, total = 0;
+      for (let i = 0; i < confusionMatrix.length; i++)
+          for (let j = 0; j < confusionMatrix[i].length; j++) {
+              total += confusionMatrix[i][j];
+              if (i === j) diagonal += confusionMatrix[i][j];
+          }
+      return total > 0 ? diagonal / total : 0;
+  })();
 </script>
 
 <div class="min-h-screen bg-zinc-50 flex flex-col font-sans text-zinc-900 pb-20">
@@ -1135,6 +1184,65 @@
                  <p class="text-xs text-zinc-500 leading-relaxed max-w-2xl bg-zinc-50 p-3 rounded border border-zinc-100">
                     {$t("matrix_note")} <span class="font-medium text-indigo-600">{$t("click_cell_hint")}</span>
                  </p>
+
+                 <!-- Per-class Metrics Table -->
+                 {#if classMetrics.length > 0}
+                 <div class="overflow-hidden border border-zinc-200 rounded-lg">
+                     <div class="px-4 py-3 bg-zinc-50 border-b border-zinc-200 flex items-center justify-between">
+                         <h4 class="text-sm font-semibold text-zinc-700">{$t("metrics_title")}</h4>
+                         <div class="flex items-center gap-2">
+                             <span class="text-xs font-medium text-zinc-500">{$t("metrics_accuracy")}:</span>
+                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold {globalAccuracy >= 0.8 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : globalAccuracy >= 0.5 ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-red-50 text-red-600 border border-red-200'}">
+                                 {(globalAccuracy * 100).toFixed(1)}%
+                             </span>
+                         </div>
+                     </div>
+                     <table class="w-full text-sm">
+                         <thead class="bg-zinc-50/50 text-xs uppercase font-semibold text-zinc-500 border-b border-zinc-200">
+                             <tr>
+                                 <th class="px-4 py-2.5 text-left border-r border-zinc-200">{$t("metrics_class")}</th>
+                                 <th class="px-4 py-2.5 text-center border-r border-zinc-200">Precision</th>
+                                 <th class="px-4 py-2.5 text-center border-r border-zinc-200">Recall</th>
+                                 <th class="px-4 py-2.5 text-center border-r border-zinc-200">F1-Score</th>
+                                 <th class="px-4 py-2.5 text-center">Support</th>
+                             </tr>
+                         </thead>
+                         <tbody class="divide-y divide-zinc-100 bg-white">
+                             {#each classes as cls, i}
+                             {@const m = classMetrics[i]}
+                             <tr class="hover:bg-zinc-50/50 transition-colors">
+                                 <td class="px-4 py-3 font-medium text-zinc-700 border-r border-zinc-200">{cls.name}</td>
+                                 <td class="px-4 py-2.5 border-r border-zinc-200">
+                                     <div class="flex items-center gap-2 justify-center">
+                                         <div class="w-16 h-1.5 bg-zinc-100 rounded-full overflow-hidden">
+                                             <div class="h-full rounded-full transition-all {m.precision >= 0.8 ? 'bg-emerald-500' : m.precision >= 0.5 ? 'bg-amber-400' : 'bg-red-400'}" style="width: {m.precision * 100}%"></div>
+                                         </div>
+                                         <span class="text-xs font-semibold tabular-nums w-12 text-right {m.precision >= 0.8 ? 'text-emerald-700' : m.precision >= 0.5 ? 'text-amber-600' : 'text-red-500'}">{(m.precision * 100).toFixed(1)}%</span>
+                                     </div>
+                                 </td>
+                                 <td class="px-4 py-2.5 border-r border-zinc-200">
+                                     <div class="flex items-center gap-2 justify-center">
+                                         <div class="w-16 h-1.5 bg-zinc-100 rounded-full overflow-hidden">
+                                             <div class="h-full rounded-full transition-all {m.recall >= 0.8 ? 'bg-emerald-500' : m.recall >= 0.5 ? 'bg-amber-400' : 'bg-red-400'}" style="width: {m.recall * 100}%"></div>
+                                         </div>
+                                         <span class="text-xs font-semibold tabular-nums w-12 text-right {m.recall >= 0.8 ? 'text-emerald-700' : m.recall >= 0.5 ? 'text-amber-600' : 'text-red-500'}">{(m.recall * 100).toFixed(1)}%</span>
+                                     </div>
+                                 </td>
+                                 <td class="px-4 py-2.5 border-r border-zinc-200">
+                                     <div class="flex items-center gap-2 justify-center">
+                                         <div class="w-16 h-1.5 bg-zinc-100 rounded-full overflow-hidden">
+                                             <div class="h-full rounded-full transition-all {m.f1 >= 0.8 ? 'bg-emerald-500' : m.f1 >= 0.5 ? 'bg-amber-400' : 'bg-red-400'}" style="width: {m.f1 * 100}%"></div>
+                                         </div>
+                                         <span class="text-xs font-semibold tabular-nums w-12 text-right {m.f1 >= 0.8 ? 'text-emerald-700' : m.f1 >= 0.5 ? 'text-amber-600' : 'text-red-500'}">{(m.f1 * 100).toFixed(1)}%</span>
+                                     </div>
+                                 </td>
+                                 <td class="px-4 py-2.5 text-center text-xs font-medium text-zinc-500 tabular-nums">{m.support}</td>
+                             </tr>
+                             {/each}
+                         </tbody>
+                     </table>
+                 </div>
+                 {/if}
 
                  <!-- Sample Inspector -->
                  {#if inspectorCell !== null && detailedResults.length > 0}
