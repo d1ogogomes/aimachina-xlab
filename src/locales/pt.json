@@ -61,5 +61,17 @@
   "file": "Ficheiro",
   "metrics_title": "Métricas por Classe",
   "metrics_accuracy": "Accuracy Global",
-  "metrics_class": "Classe"
+  "metrics_class": "Classe",
+  "canvas": "Desenhar",
+  "clear": "Limpar",
+  "demo_class_0": "Dígito 0",
+  "demo_class_1": "Dígito 1",
+  "demo_class_2": "Dígito 2",
+  "demo_class_3": "Dígito 3",
+  "demo_class_4": "Dígito 4",
+  "demo_class_5": "Dígito 5",
+  "demo_class_6": "Dígito 6",
+  "demo_class_7": "Dígito 7",
+  "demo_class_8": "Dígito 8",
+  "demo_class_9": "Dígito 9"
 }

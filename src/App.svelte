@@ -6,9 +6,11 @@
   import WebcamModal from "./lib/components/WebcamModal.svelte";
   import PreviewCard from "./lib/components/PreviewCard.svelte";
   import { demoDatasets } from "./lib/demoDataset";
+  import { mnistDatasets } from "./lib/mnistDataset";
 
   let isReady = false;
   let customModel: tf.Sequential | null = null;
+  let activeDemoDatasetType: 'pets' | 'mnist' = 'pets';
   let net: mobilenet.MobileNet;
   let langOpen = false;
   let activeWebcamClass: number | null = null;
@@ -67,7 +69,8 @@
   }
 
   $: if (isDemoDatasetLoaded) {
-    classes = demoDatasets.map((dataset, id) => ({
+    const targetDataset = activeDemoDatasetType === 'mnist' ? mnistDatasets : demoDatasets;
+    classes = targetDataset.map((dataset, id) => ({
       id,
       name: $t(dataset.labelKey),
       confidence: classes.find(c => c.id === id)?.confidence ?? 0
@@ -82,6 +85,8 @@
     activeWebcamClass = null;
     isModelTrained = false;
     isDemoDatasetLoaded = false;
+    confusionMatrix = [];
+    detailedResults = [];
   }
 
   function handleTestWebcamCapture(event: CustomEvent<{ classId: number, images: string[] }>) {
@@ -103,6 +108,8 @@
 
     isModelTrained = false;
     isDemoDatasetLoaded = false;
+    confusionMatrix = [];
+    detailedResults = [];
 
     for (const file of imageFiles) {
       const imgUrl = URL.createObjectURL(file);
@@ -135,18 +142,21 @@
     previewImgRef = await loadImageFromUrl(src);
   }
 
-  async function loadDemoDataset() {
+  async function loadDemoDataset(type: 'pets' | 'mnist' = 'pets') {
+    activeDemoDatasetType = type;
     revokeObjectUrls(Object.values(trainingImages).flat());
     revokeObjectUrls(Object.values(testSamples).flat());
     if (previewUrl && isObjectUrl(previewUrl)) URL.revokeObjectURL(previewUrl);
 
+    const targetDataset = type === 'mnist' ? mnistDatasets : demoDatasets;
+
     customModel?.dispose();
     customModel = null;
     try { localStorage.removeItem('aimachina_classes'); } catch {}
-    classes = demoDatasets.map((dataset, id) => ({ id, name: $t(dataset.labelKey), confidence: 0 }));
-    trainingImages = Object.fromEntries(demoDatasets.map((dataset, id) => [id, dataset.training.map(sample => sample.src)]));
-    testSamples = Object.fromEntries(demoDatasets.map((dataset, id) => [id, dataset.tests.map(sample => sample.src)]));
-    classCounter = demoDatasets.length;
+    classes = targetDataset.map((dataset, id) => ({ id, name: $t(dataset.labelKey), confidence: 0 }));
+    trainingImages = Object.fromEntries(targetDataset.map((dataset, id) => [id, dataset.training.map(sample => sample.src)]));
+    testSamples = Object.fromEntries(targetDataset.map((dataset, id) => [id, dataset.tests.map(sample => sample.src)]));
+    classCounter = targetDataset.length;
     selectedDemoTestClassId = 0;
     isDemoDatasetLoaded = true;
     isModelTrained = false;
@@ -162,7 +172,7 @@
     activeTestWebcamClass = null;
 
     try {
-      await setPreviewImage(demoDatasets[0].tests[0].src);
+      await setPreviewImage(targetDataset[0].tests[0].src);
     } catch (e) {
       console.error("[demo] preview image failed:", e);
       previewImgRef = null;
@@ -183,6 +193,8 @@
       trainingImages = { ...trainingImages };
       isModelTrained = false;
       isDemoDatasetLoaded = false;
+      confusionMatrix = [];
+      detailedResults = [];
   }
 
   function loadImageFromUrl(src: string): Promise<HTMLImageElement> {
@@ -201,12 +213,15 @@
 
   async function extractEmbedding(source: HTMLImageElement | HTMLVideoElement): Promise<tf.Tensor2D> {
     let pixels: tf.Tensor3D | undefined;
+    let resized: tf.Tensor3D | undefined;
     let activation: tf.Tensor | undefined;
     let embedding: tf.Tensor2D | undefined;
 
     try {
       pixels = tf.browser.fromPixels(source);
-      activation = net.infer(pixels, true) as tf.Tensor;
+      // MobileNet was trained on 224x224. Scaling MNIST (28x28) to 224x224 is required.
+      resized = tf.image.resizeBilinear(pixels, [224, 224]);
+      activation = net.infer(resized, true) as tf.Tensor;
       embedding = activation.reshape([1, activation.size]) as tf.Tensor2D;
 
       if (embedding.shape[1] !== FEATURE_SIZE) {
@@ -216,6 +231,7 @@
       return embedding.clone();
     } finally {
       pixels?.dispose();
+      resized?.dispose();
       activation?.dispose();
       embedding?.dispose();
     }
@@ -237,6 +253,8 @@
      trainingError = "";
      isTrainingModel = true;
      trainingProgress = 0;
+     confusionMatrix = [];
+     detailedResults = [];
 
      const xs: tf.Tensor1D[] = [];
      const ys: number[] = [];
@@ -283,6 +301,7 @@
 
        customModel?.dispose();
 
+       //relu oculta, softmax saída
        customModel = tf.sequential({
            layers: [
                tf.layers.dense({
@@ -429,6 +448,9 @@
      classCounter++;
      classes = [...classes, { id: newId, name: `Classe ${letter}`, confidence: 0 }];
      isDemoDatasetLoaded = false;
+     isModelTrained = false;
+     confusionMatrix = [];
+     detailedResults = [];
   }
 
   function removeClass(idToRemove: number) {
@@ -695,9 +717,9 @@
           for (let j = 0; j < n; j++) {
               if (j !== i) { fp += confusionMatrix[j][i]; fn += confusionMatrix[i][j]; }
           }
-          const precision = tp + fp > 0 ? tp / (tp + fp) : 0;
-          const recall    = tp + fn > 0 ? tp / (tp + fn) : 0;
-          const f1        = precision + recall > 0 ? 2 * precision * recall / (precision + recall) : 0;
+          const precision = tp + fp > 0 ? tp / (tp + fp) : 0; 
+          const recall    = tp + fn > 0 ? tp / (tp + fn) : 0; 
+          const f1        = precision + recall > 0 ? 2 * precision * recall / (precision + recall) : 0; // 2 * (precision * recall) / (precision + recall)
           const support   = tp + fn; // total real samples for this class
           return { precision, recall, f1, support } as ClassMetrics;
       });
@@ -797,10 +819,16 @@
 
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold tracking-tight">{$t("teach_machine")}</h2>
-            <button on:click={loadDemoDataset} class="text-sm font-semibold text-indigo-700 bg-white border-2 border-indigo-100 hover:border-indigo-300 hover:bg-indigo-50 px-4 py-2 rounded-lg transition-all flex items-center gap-2 shadow-sm">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"></path></svg>
-                {$t("demo_dataset")}
-            </button>
+            <div class="flex items-center gap-2">
+                <button on:click={() => loadDemoDataset('pets')} class="text-sm font-semibold text-indigo-700 bg-white border border-indigo-100 hover:border-indigo-300 hover:bg-indigo-50 px-3 py-1.5 rounded-lg transition-all flex items-center gap-2 shadow-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"></path></svg>
+                    Demo (Animais)
+                </button>
+                <button on:click={() => loadDemoDataset('mnist')} class="text-sm font-semibold text-teal-700 bg-white border border-teal-100 hover:border-teal-300 hover:bg-teal-50 px-3 py-1.5 rounded-lg transition-all flex items-center gap-2 shadow-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                    Demo (MNIST)
+                </button>
+            </div>
         </div>
 
         <div class="grid grid-cols-1 gap-4">
@@ -945,28 +973,29 @@
             
             <div class="p-5 flex flex-col gap-4">
                 {#if isDemoDatasetLoaded}
+                {@const currentDemoDatasets = activeDemoDatasetType === 'mnist' ? mnistDatasets : demoDatasets}
                 <div class="border border-indigo-100 bg-indigo-50/40 rounded-lg p-3 flex flex-col gap-3">
-                    <div class="flex items-center justify-between gap-2">
+                    <div class="flex flex-col gap-2.5">
                         <span class="text-xs font-semibold text-indigo-700 uppercase tracking-wide">{$t("demo_test")}</span>
-                        <div class="flex rounded-md border border-indigo-200 overflow-hidden bg-white">
-                            {#each demoDatasets as dataset, demoIdx}
+                        <div class="flex flex-wrap gap-1.5">
+                            {#each currentDemoDatasets as dataset, demoIdx}
                             <button
                               on:click={() => selectDemoTestImage(demoIdx, dataset.tests[0].src)}
-                              class="px-3 py-1.5 text-xs font-semibold transition-colors {selectedDemoTestClassId === demoIdx ? 'bg-indigo-600 text-white' : 'text-indigo-600 hover:bg-indigo-50'}"
+                              class="px-3 py-1.5 text-xs font-semibold rounded-md border transition-colors {selectedDemoTestClassId === demoIdx ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white text-indigo-600 border-indigo-200 hover:border-indigo-400 hover:bg-indigo-50'}"
                             >
-                              {$t(dataset.labelKey)}
+                              {$t(dataset.labelKey).replace('Dígito ', '')}
                             </button>
                             {/each}
                         </div>
                     </div>
                     <div class="grid grid-cols-5 gap-2">
-                        {#each demoDatasets[selectedDemoTestClassId]?.tests ?? [] as demoImg, demoImgIdx}
+                        {#each currentDemoDatasets[selectedDemoTestClassId]?.tests ?? [] as demoImg, demoImgIdx}
                         <button
                           on:click={() => selectDemoTestImage(selectedDemoTestClassId, demoImg.src)}
                           class="aspect-square rounded-md overflow-hidden border-2 transition-colors bg-white {previewUrl === demoImg.src ? 'border-indigo-500' : 'border-white hover:border-indigo-300'}"
                           aria-label={`${$t("demo_image")} ${demoImgIdx + 1}: ${demoImg.title}`}
                         >
-                          <img src={demoImg.src} alt={demoImg.title} class="w-full h-full object-cover" />
+                          <img src={demoImg.src} alt={demoImg.title} class="w-full h-full object-cover {activeDemoDatasetType === 'mnist' ? 'filter invert' : ''}" />
                         </button>
                         {/each}
                     </div>
@@ -975,28 +1004,35 @@
                             {$t("demo_references")}
                         </summary>
                         <div class="border-t border-indigo-100 px-3 py-3 max-h-56 overflow-y-auto flex flex-col gap-4">
-                            <div>
-                                <p class="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-400">{$t("demo_training_refs")}</p>
-                                <div class="flex flex-col gap-2">
-                                    {#each demoDatasets[selectedDemoTestClassId]?.training ?? [] as ref, refIdx}
-                                    <a href={ref.source} target="_blank" rel="noreferrer" class="group rounded-md border border-zinc-100 bg-white px-2.5 py-2 text-left hover:border-indigo-200 hover:bg-indigo-50/40 transition-colors">
-                                        <span class="block text-xs font-medium text-zinc-700 group-hover:text-indigo-700">{refIdx + 1}. {ref.title}</span>
-                                        <span class="block mt-0.5 text-[11px] text-zinc-500">{ref.author} · {ref.license}</span>
-                                    </a>
-                                    {/each}
+                            {#if activeDemoDatasetType === 'mnist'}
+                                <a href="https://www.kaggle.com/datasets/alexanderyyy/mnist-png" target="_blank" rel="noreferrer" class="group rounded-md border border-zinc-100 bg-white px-2.5 py-2 text-left hover:border-indigo-200 hover:bg-indigo-50/40 transition-colors break-all">
+                                    <span class="block text-xs font-medium text-zinc-700 group-hover:text-indigo-700">MNIST Dataset (Kaggle)</span>
+                                    <span class="block mt-0.5 text-[11px] text-zinc-500">https://www.kaggle.com/datasets/alexanderyyy/mnist-png</span>
+                                </a>
+                            {:else}
+                                <div>
+                                    <p class="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-400">{$t("demo_training_refs")}</p>
+                                    <div class="flex flex-col gap-2">
+                                        {#each currentDemoDatasets[selectedDemoTestClassId]?.training ?? [] as ref, refIdx}
+                                        <a href={ref.source} target="_blank" rel="noreferrer" class="group rounded-md border border-zinc-100 bg-white px-2.5 py-2 text-left hover:border-indigo-200 hover:bg-indigo-50/40 transition-colors">
+                                            <span class="block text-xs font-medium text-zinc-700 group-hover:text-indigo-700">{refIdx + 1}. {ref.title}</span>
+                                            <span class="block mt-0.5 text-[11px] text-zinc-500">{ref.author} · {ref.license}</span>
+                                        </a>
+                                        {/each}
+                                    </div>
                                 </div>
-                            </div>
-                            <div>
-                                <p class="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-400">{$t("demo_test_refs")}</p>
-                                <div class="flex flex-col gap-2">
-                                    {#each demoDatasets[selectedDemoTestClassId]?.tests ?? [] as ref, refIdx}
-                                    <a href={ref.source} target="_blank" rel="noreferrer" class="group rounded-md border border-zinc-100 bg-white px-2.5 py-2 text-left hover:border-indigo-200 hover:bg-indigo-50/40 transition-colors">
-                                        <span class="block text-xs font-medium text-zinc-700 group-hover:text-indigo-700">{refIdx + 1}. {ref.title}</span>
-                                        <span class="block mt-0.5 text-[11px] text-zinc-500">{ref.author} · {ref.license}</span>
-                                    </a>
-                                    {/each}
+                                <div>
+                                    <p class="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-400">{$t("demo_test_refs")}</p>
+                                    <div class="flex flex-col gap-2">
+                                        {#each currentDemoDatasets[selectedDemoTestClassId]?.tests ?? [] as ref, refIdx}
+                                        <a href={ref.source} target="_blank" rel="noreferrer" class="group rounded-md border border-zinc-100 bg-white px-2.5 py-2 text-left hover:border-indigo-200 hover:bg-indigo-50/40 transition-colors">
+                                            <span class="block text-xs font-medium text-zinc-700 group-hover:text-indigo-700">{refIdx + 1}. {ref.title}</span>
+                                            <span class="block mt-0.5 text-[11px] text-zinc-500">{ref.author} · {ref.license}</span>
+                                        </a>
+                                        {/each}
+                                    </div>
                                 </div>
-                            </div>
+                            {/if}
                         </div>
                     </details>
                 </div>

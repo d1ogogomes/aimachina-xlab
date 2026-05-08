@@ -61,5 +61,17 @@
   "file": "File",
   "metrics_title": "Per-Class Metrics",
   "metrics_accuracy": "Global Accuracy",
-  "metrics_class": "Class"
+  "metrics_class": "Class",
+  "canvas": "Draw",
+  "clear": "Clear",
+  "demo_class_0": "Digit 0",
+  "demo_class_1": "Digit 1",
+  "demo_class_2": "Digit 2",
+  "demo_class_3": "Digit 3",
+  "demo_class_4": "Digit 4",
+  "demo_class_5": "Digit 5",
+  "demo_class_6": "Digit 6",
+  "demo_class_7": "Digit 7",
+  "demo_class_8": "Digit 8",
+  "demo_class_9": "Digit 9"
 }
