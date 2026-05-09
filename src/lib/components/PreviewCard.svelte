@@ -1,77 +1,129 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import * as tf from "@tensorflow/tfjs";
   import type * as mobilenet from "@tensorflow-models/mobilenet";
   import { t } from '../i18n';
+  import { predictConfidences, type PixelSource } from '../ml/tfjs';
 
   export let net: mobilenet.MobileNet | undefined;
   export let classifier: import('@tensorflow/tfjs').Sequential | null = null;
   export let classes: { id: number; name: string; confidence?: number }[] = [];
   export let isModelTrained: boolean = false;
+  /**
+   * Optional preprocess hook applied to the canvas BEFORE inference.
+   * Used by MNIST mode to replicate the training distribution
+   * (bbox-crop → 20×20 fit → COM-center → 28×28). Other modes pass
+   * through untouched.
+   */
+  export let preprocess: ((canvas: HTMLCanvasElement) => HTMLCanvasElement) | null = null;
+  /**
+   * Pen thickness on the draw canvas. MNIST digits occupy ~10-15% of
+   * the bounding-box short side in their training set; when drawing
+   * free-form in a 224×224 canvas we need a thicker pen than the
+   * on-screen aesthetic would suggest so that after `preprocess`
+   * rescales the bbox to 20×20, the on-canvas stroke lands at ~2-3 px,
+   * matching the training distribution.
+   */
+  export let strokeWidth: number = 12;
 
   type OutputRow = { classId: number; label: string; confidence: number };
-  const FEATURE_SIZE = 1024;
 
-  let previewMode: 'webcam' | 'file' | 'canvas' = 'file';
+  type PreviewMode = 'webcam' | 'file' | 'canvas';
+  let previewMode: PreviewMode = 'file';
 
   let video: HTMLVideoElement;
   let stream: MediaStream | null = null;
   let isActive = false;
   let requestRef: number;
-  
+
+  let loopGen = 0;
+  let destroyed = false;
+
   let predictions: OutputRow[] = [];
   $: outputRows = previewMode === 'webcam' || previewMode === 'canvas'
     ? predictions
     : classes.map(c => ({ classId: c.id, label: c.name, confidence: c.confidence || 0 }));
 
+  // Keep the predictions array aligned with `classes` without losing running confidences.
   $: if (classes) {
-     if (predictions.length === 0 || predictions.length !== classes.length) {
-         predictions = classes.map(c => ({ classId: c.id, label: c.name, confidence: 0 }));
-     } else {
-         predictions = predictions.map(p => {
-             const c = classes.find(cl => cl.id === p.classId);
-             return { ...p, label: c ? c.name : p.label };
-         });
-     }
+    if (predictions.length !== classes.length) {
+      predictions = classes.map(c => ({ classId: c.id, label: c.name, confidence: 0 }));
+    } else {
+      predictions = predictions.map(p => {
+        const c = classes.find(cl => cl.id === p.classId);
+        return c ? { ...p, label: c.name } : p;
+      });
+    }
   }
 
+  // ─── Lifecycle: mode + training transitions ───────────
+  // Single reactive block that ONLY reads previewMode, isModelTrained,
+  // lastMode, wasTrained. It deliberately does not read `isActive` or
+  // `isPredictingCanvas` — those are owned by the imperative reconciler
+  // below. If we read them here Svelte would re-run this block on every
+  // camera state change and cancel the predict loop mid-flight.
+  let lastMode: PreviewMode = previewMode;
   let wasTrained = false;
-  $: if (isModelTrained !== wasTrained) {
-      if (isModelTrained && video && previewMode === 'webcam') {
-          startCamera();
-      } else if (!isModelTrained || previewMode === 'file') {
-          stopCamera();
-      }
-      wasTrained = isModelTrained;
+  $: {
+    const modeChanged = previewMode !== lastMode;
+    const trainedChanged = isModelTrained !== wasTrained;
+    if (modeChanged) {
+      loopGen++;
+      if (requestRef) cancelAnimationFrame(requestRef);
+      // `ctx` holds a reference to the canvas's 2D context. When the
+      // canvas unmounts (leaving 'canvas' mode), that reference becomes
+      // detached; keeping it would send drawing strokes into the void
+      // on the next 'canvas' mount. Drop it so init re-runs.
+      if (lastMode === 'canvas') ctx = null;
+      lastMode = previewMode;
+    }
+    if (trainedChanged) wasTrained = isModelTrained;
+    if (modeChanged || trainedChanged) reconcileMode();
   }
 
-  // Handle mode switch
-  $: if (previewMode === 'file') {
+  function reconcileMode() {
+    if (previewMode === 'file') {
       stopCamera();
       isPredictingCanvas = false;
-  } else if (previewMode === 'canvas') {
+      return;
+    }
+
+    if (previewMode === 'canvas') {
       stopCamera();
-      if (isModelTrained && !isPredictingCanvas) {
-          isPredictingCanvas = true;
-          predictLoop();
+      if (!isModelTrained) {
+        isPredictingCanvas = false;
+        return;
       }
-  } else if (previewMode === 'webcam') {
-      isPredictingCanvas = false;
-      if (isModelTrained && !isActive) {
-          // Small timeout to allow video element to render
-          setTimeout(startCamera, 50);
+      if (!isPredictingCanvas) {
+        isPredictingCanvas = true;
+        startPredictLoop();
       }
+      return;
+    }
+
+    // webcam
+    isPredictingCanvas = false;
+    if (!isModelTrained) return;
+    if (!isActive) {
+      setTimeout(startCamera, 50);
+    } else {
+      // Camera already running (e.g., user loaded a demo dataset while
+      // the webcam was open, then retrained). The loop exited on its
+      // !isModelTrained guard and needs to be re-kicked now that
+      // training is complete. loopGen was bumped by the caller or
+      // bump it here to drop any straggler RAF.
+      startPredictLoop();
+    }
   }
 
   async function startCamera() {
     if (isActive) return;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-      if (video) {
+      if (video && !destroyed) {
         video.srcObject = stream;
         video.play();
         isActive = true;
-        predictLoop();
+        startPredictLoop();
       }
     } catch (err) {
       console.error("Error accessing webcam: ", err);
@@ -92,88 +144,67 @@
     }
   }
 
-  function normaliseEmbedding(activation: tf.Tensor): tf.Tensor2D {
-    const embedding = activation.reshape([1, activation.size]) as tf.Tensor2D;
+  /**
+   * Single prediction step. Captures (gen, classes, classifier, net) up-front
+   * so all three race conditions below are impossible to commit wrong data:
+   *   - gen mismatch (preview mode changed / component destroyed)
+   *   - classes mutated during await
+   *   - classifier disposed during await
+   */
+  async function predictFromSource(source: PixelSource, gen: number) {
+    const currentNet = net;
+    const currentClassifier = classifier;
+    const classesSnapshot = classes;
+    if (!currentNet || !currentClassifier) return;
 
-    if (embedding.shape[1] !== FEATURE_SIZE) {
-      embedding.dispose();
-      throw new Error(`Unexpected MobileNet embedding size: ${embedding.shape[1]}`);
+    let confidences: Float32Array;
+    try {
+      confidences = await predictConfidences(currentNet, currentClassifier, source);
+    } catch (e) {
+      // Most common cause: the classifier was disposed by the parent
+      // (retrain, reset). Silently drop — the next loop iteration will
+      // pick up the new classifier (or stop).
+      if (!destroyed) console.debug('[preview] predict skipped:', e);
+      return;
     }
 
-    return embedding;
+    // If any of these changed while we were awaiting, the result is stale.
+    if (gen !== loopGen || destroyed) return;
+    if (classes !== classesSnapshot) return;
+
+    const classIndexMap = Object.fromEntries(classesSnapshot.map((c, i) => [c.id, i]));
+    predictions = classesSnapshot.map(c => ({
+      classId: c.id,
+      label: c.name,
+      confidence: Math.round((confidences[classIndexMap[c.id]] || 0) * 100),
+    }));
   }
 
-  async function predictLoop() {
+  /** Entry point that captures the current generation for the loop.
+   *  Always bumps loopGen so any in-flight predict from a previous
+   *  loop (e.g. scheduled before retrain) is invalidated. */
+  function startPredictLoop() {
+    loopGen++;
+    if (requestRef) cancelAnimationFrame(requestRef);
+    const gen = loopGen;
+    predictLoop(gen);
+  }
+
+  async function predictLoop(gen: number) {
+    if (gen !== loopGen || destroyed) return;
     if (!net || !classifier || !isModelTrained) return;
 
     if (previewMode === 'webcam' && isActive && video && video.readyState === 4) {
-      let img: tf.Tensor3D | undefined;
-      let resized: tf.Tensor3D | undefined;
-      let activation: tf.Tensor | undefined;
-      let embedding: tf.Tensor2D | undefined;
-      try {
-        img = tf.browser.fromPixels(video);
-        resized = tf.image.resizeBilinear(img, [224, 224]);
-        activation = net.infer(resized, true) as tf.Tensor;
-        embedding = normaliseEmbedding(activation);
-        
-        const predictionsTensor = classifier.predict(embedding) as import('@tensorflow/tfjs').Tensor;
-        const confidences = await predictionsTensor.data();
-        predictionsTensor.dispose();
-        
-        const classIndexMap = Object.fromEntries(classes.map((c, i) => [c.id, i]));
-        predictions = classes.map(c => {
-          const conf = confidences[classIndexMap[c.id]] || 0;
-          return {
-            classId: c.id,
-            label: c.name,
-            confidence: Math.round(conf * 100)
-          };
-        });
-      } catch (e) {
-        console.error("Live prediction error:", e);
-      } finally {
-        img?.dispose();
-        resized?.dispose();
-        embedding?.dispose();
-        activation?.dispose();
-      }
+      await predictFromSource(video, gen);
     } else if (previewMode === 'canvas' && isPredictingCanvas && drawCanvas) {
-      let img: tf.Tensor3D | undefined;
-      let resized: tf.Tensor3D | undefined;
-      let activation: tf.Tensor | undefined;
-      let embedding: tf.Tensor2D | undefined;
-      try {
-        img = tf.browser.fromPixels(drawCanvas);
-        resized = tf.image.resizeBilinear(img, [224, 224]);
-        activation = net.infer(resized, true) as tf.Tensor;
-        embedding = normaliseEmbedding(activation);
-        
-        const predictionsTensor = classifier.predict(embedding) as import('@tensorflow/tfjs').Tensor;
-        const confidences = await predictionsTensor.data();
-        predictionsTensor.dispose();
-        
-        const classIndexMap = Object.fromEntries(classes.map((c, i) => [c.id, i]));
-        predictions = classes.map(c => {
-          const conf = confidences[classIndexMap[c.id]] || 0;
-          return {
-            classId: c.id,
-            label: c.name,
-            confidence: Math.round(conf * 100)
-          };
-        });
-      } catch (e) {
-        console.error("Live prediction error:", e);
-      } finally {
-        img?.dispose();
-        resized?.dispose();
-        embedding?.dispose();
-        activation?.dispose();
-      }
+      const source = preprocess ? preprocess(drawCanvas) : drawCanvas;
+      await predictFromSource(source, gen);
     }
-    
+
+    // Re-check after await: only the current generation re-schedules.
+    if (gen !== loopGen || destroyed) return;
     if ((isActive && previewMode === 'webcam') || (isPredictingCanvas && previewMode === 'canvas')) {
-      requestRef = requestAnimationFrame(predictLoop);
+      requestRef = requestAnimationFrame(() => predictLoop(gen));
     }
   }
 
@@ -182,76 +213,77 @@
       if (previewMode === 'webcam') startCamera();
       if (previewMode === 'canvas') {
         isPredictingCanvas = true;
-        predictLoop();
+        startPredictLoop();
       }
     }
   });
 
   onDestroy(() => {
+    destroyed = true;
+    loopGen++;
     stopCamera();
     isPredictingCanvas = false;
   });
 
-  // Canvas drawing logic
+  // ─── Canvas drawing ──────────────────────────────────────────
   let drawCanvas: HTMLCanvasElement;
   let ctx: CanvasRenderingContext2D | null = null;
   let isDrawing = false;
 
   $: if (drawCanvas && previewMode === 'canvas' && !ctx) {
-      ctx = drawCanvas.getContext('2d', { willReadFrequently: true });
-      clearCanvas();
+    ctx = drawCanvas.getContext('2d', { willReadFrequently: true });
+    clearCanvas();
   }
 
   function startDrawing(e: MouseEvent | TouchEvent) {
-      isDrawing = true;
-      draw(e);
+    isDrawing = true;
+    draw(e);
   }
 
   function stopDrawing() {
-      isDrawing = false;
-      if (ctx) ctx.beginPath();
+    isDrawing = false;
+    if (ctx) ctx.beginPath();
   }
 
   function draw(e: MouseEvent | TouchEvent) {
-      if (!isDrawing || !ctx || !drawCanvas) return;
-      e.preventDefault(); // Prevent scrolling on touch
-      
-      const rect = drawCanvas.getBoundingClientRect();
-      let clientX, clientY;
-      
-      if (e instanceof MouseEvent) {
-          clientX = e.clientX;
-          clientY = e.clientY;
-      } else if (e.touches && e.touches.length > 0) {
-          clientX = e.touches[0].clientX;
-          clientY = e.touches[0].clientY;
-      } else {
-          return;
-      }
-      
-      // Calculate coordinates respecting the internal canvas resolution
-      const scaleX = drawCanvas.width / rect.width;
-      const scaleY = drawCanvas.height / rect.height;
-      const x = (clientX - rect.left) * scaleX;
-      const y = (clientY - rect.top) * scaleY;
-      
-      ctx.lineWidth = 12; // Thicker line, but not too thick
-      ctx.lineCap = 'round';
-      ctx.strokeStyle = '#ffffff'; // Draw in white on black background
-      
-      ctx.lineTo(x, y);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(x, y);
+    if (!isDrawing || !ctx || !drawCanvas) return;
+    e.preventDefault();
+
+    const rect = drawCanvas.getBoundingClientRect();
+    let clientX: number, clientY: number;
+
+    if (e instanceof MouseEvent) {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    } else if (e.touches && e.touches.length > 0) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      return;
+    }
+
+    const scaleX = drawCanvas.width / rect.width;
+    const scaleY = drawCanvas.height / rect.height;
+    const x = (clientX - rect.left) * scaleX;
+    const y = (clientY - rect.top) * scaleY;
+
+    ctx.lineWidth = strokeWidth;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#ffffff';
+
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x, y);
   }
 
   function clearCanvas() {
-      if (ctx && drawCanvas) {
-          ctx.fillStyle = '#000000';
-          ctx.fillRect(0, 0, drawCanvas.width, drawCanvas.height);
-      }
+    if (ctx && drawCanvas) {
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, drawCanvas.width, drawCanvas.height);
+    }
   }
-
 </script>
 
 <div class="bg-white rounded-xl shadow-sm border border-zinc-200 overflow-hidden flex flex-col">
@@ -287,9 +319,9 @@
   </div>
   {:else if previewMode === 'canvas'}
   <div class="bg-zinc-100 aspect-square relative flex items-center justify-center border-b border-zinc-200">
-    <canvas 
-      bind:this={drawCanvas} 
-      width="224" 
+    <canvas
+      bind:this={drawCanvas}
+      width="224"
       height="224"
       class="w-full h-full bg-black touch-none cursor-crosshair"
       on:mousedown={startDrawing}
@@ -301,13 +333,13 @@
       on:touchend={stopDrawing}
       on:touchcancel={stopDrawing}
     ></canvas>
-    
-    <button 
+
+    <button
       on:click={clearCanvas}
       class="absolute top-3 right-3 bg-white/90 hover:bg-white text-zinc-600 text-xs font-semibold px-3 py-1.5 rounded-lg shadow-sm border border-zinc-200 transition-all z-10">
       {$t("clear") || "Limpar"}
     </button>
-    
+
     {#if !isModelTrained}
       <div class="absolute inset-0 bg-white/80 backdrop-blur-[2px] flex flex-col items-center justify-center gap-3 z-20">
         <div class="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400">
@@ -325,7 +357,7 @@
   <div class="px-6 py-5 bg-white flex flex-col gap-3">
 
     <div class="text-sm font-semibold uppercase text-zinc-400 tracking-widest mb-2">Output</div>
-    
+
     <div class="flex flex-col gap-2.5">
       {#each outputRows as pred}
         {@const isTop = pred.confidence > 0 && pred.confidence === Math.max(...outputRows.map(c => c.confidence))}

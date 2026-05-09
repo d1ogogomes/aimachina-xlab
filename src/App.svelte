@@ -7,6 +7,16 @@
   import PreviewCard from "./lib/components/PreviewCard.svelte";
   import { demoDatasets } from "./lib/demoDataset";
   import { mnistDatasets } from "./lib/mnistDataset";
+  import {
+    FEATURE_SIZE,
+    loadBackbone,
+    loadImageFromUrl,
+    embedPixels,
+    buildClassifier,
+    computeOcclusionMap,
+    renderOcclusionOverlay,
+  } from "./lib/ml/tfjs";
+  import { preprocessMnistCanvas } from "./lib/ml/preprocess";
 
   let isReady = false;
   let customModel: tf.Sequential | null = null;
@@ -34,7 +44,7 @@
   let trainingProgress = 0;
   let classCounter = 2;
   let previewUrl = "";
-  const FEATURE_SIZE = 1024;
+  // FEATURE_SIZE imported from lib/ml/tfjs
   // previewImgRef declared below near handlePreviewUpload
 
   // Guarda as fotos de cada classe
@@ -54,7 +64,7 @@
     } catch {}
     try {
       isLoadingModel = true;
-      net = await mobilenet.load({ version: 1, alpha: 1.0 });
+      net = await loadBackbone();
       isReady = true;
     } catch (e) {
       console.error("Initialization error:", e);
@@ -63,9 +73,23 @@
     }
   });
 
-  // Persist class names whenever they change
+  // Persist class names whenever the identity-bearing fields change.
+  // Previously this reactive block fired on every live prediction (which
+  // reassigns `classes` with fresh confidences), causing a JSON.stringify +
+  // setItem storm per frame. Tracking a shallow signature of (id, name)
+  // avoids the redundant writes.
+  let lastPersistedSignature = "";
   $: if (classes && !isDemoDatasetLoaded) {
-    try { localStorage.setItem('aimachina_classes', JSON.stringify(classes.map(c => ({ id: c.id, name: c.name, confidence: 0 })))); } catch {}
+    const signature = JSON.stringify(classes.map(c => [c.id, c.name]));
+    if (signature !== lastPersistedSignature) {
+      try {
+        localStorage.setItem(
+          'aimachina_classes',
+          JSON.stringify(classes.map(c => ({ id: c.id, name: c.name, confidence: 0 }))),
+        );
+        lastPersistedSignature = signature;
+      } catch {}
+    }
   }
 
   $: if (isDemoDatasetLoaded) {
@@ -83,10 +107,7 @@
     trainingImages[classId] = [...trainingImages[classId], ...images];
     trainingImages = { ...trainingImages };
     activeWebcamClass = null;
-    isModelTrained = false;
-    isDemoDatasetLoaded = false;
-    confusionMatrix = [];
-    detailedResults = [];
+    invalidateTraining();
   }
 
   function handleTestWebcamCapture(event: CustomEvent<{ classId: number, images: string[] }>) {
@@ -95,6 +116,18 @@
     testSamples[classId] = [...testSamples[classId], ...images];
     testSamples = { ...testSamples };
     activeTestWebcamClass = null;
+  }
+
+  /**
+   * Any mutation to the training set invalidates the trained model
+   * and the last evaluation run. Centralized to avoid six hand-copies
+   * that had already drifted apart.
+   */
+  function invalidateTraining() {
+    isModelTrained = false;
+    isDemoDatasetLoaded = false;
+    confusionMatrix = [];
+    detailedResults = [];
   }
 
   function addTrainingFiles(files: FileList, classId: number) {
@@ -106,10 +139,7 @@
     const imageFiles = Array.from(files).filter(file => file.type.startsWith("image/"));
     if (imageFiles.length === 0) return;
 
-    isModelTrained = false;
-    isDemoDatasetLoaded = false;
-    confusionMatrix = [];
-    detailedResults = [];
+    invalidateTraining();
 
     for (const file of imageFiles) {
       const imgUrl = URL.createObjectURL(file);
@@ -134,12 +164,20 @@
     });
   }
 
+  // Monotonic token so rapid clicks between demo images can't commit
+  // a stale HTMLImageElement. Each setPreviewImage captures the token
+  // before awaiting and only assigns `previewImgRef` if it's still current.
+  let previewToken = 0;
+
   async function setPreviewImage(src: string) {
+    const token = ++previewToken;
     if (previewUrl && isObjectUrl(previewUrl)) URL.revokeObjectURL(previewUrl);
     showExplanation = false;
     explanationDataUrl = "";
     previewUrl = src;
-    previewImgRef = await loadImageFromUrl(src);
+    const img = await loadImageFromUrl(src);
+    if (token !== previewToken) return; // superseded by a later click
+    previewImgRef = img;
   }
 
   async function loadDemoDataset(type: 'pets' | 'mnist' = 'pets') {
@@ -191,53 +229,20 @@
       trainingImages[classId].splice(index, 1);
       trainingImages[classId] = [...trainingImages[classId]];
       trainingImages = { ...trainingImages };
-      isModelTrained = false;
-      isDemoDatasetLoaded = false;
-      confusionMatrix = [];
-      detailedResults = [];
-  }
-
-  function loadImageFromUrl(src: string): Promise<HTMLImageElement> {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error(`Failed to load image: ${src.slice(0, 80)}`));
-      if (img.complete && img.naturalWidth > 0) {
-        resolve(img);
-      } else {
-        img.src = src;
-      }
-    });
+      invalidateTraining();
   }
 
   async function extractEmbedding(source: HTMLImageElement | HTMLVideoElement): Promise<tf.Tensor2D> {
-    let pixels: tf.Tensor3D | undefined;
-    let resized: tf.Tensor3D | undefined;
-    let activation: tf.Tensor | undefined;
-    let embedding: tf.Tensor2D | undefined;
-
-    try {
-      pixels = tf.browser.fromPixels(source);
-      // MobileNet was trained on 224x224. Scaling MNIST (28x28) to 224x224 is required.
-      resized = tf.image.resizeBilinear(pixels, [224, 224]);
-      activation = net.infer(resized, true) as tf.Tensor;
-      embedding = activation.reshape([1, activation.size]) as tf.Tensor2D;
-
-      if (embedding.shape[1] !== FEATURE_SIZE) {
-        throw new Error(`Unexpected MobileNet embedding size: ${embedding.shape[1]}`);
-      }
-
-      return embedding.clone();
-    } finally {
-      pixels?.dispose();
-      resized?.dispose();
-      activation?.dispose();
-      embedding?.dispose();
-    }
+    return embedPixels(net, source);
   }
 
   const trainModel = async () => {
+     // Re-entrancy guard: rapid double-click on the Train button can queue
+     // two invocations before Svelte flips `disabled` on the DOM. Without
+     // this check, two concurrent trainings build duplicate tensor graphs
+     // and race on `customModel?.dispose()` in the catch branch.
+     if (isTrainingModel) return;
+
      // Validate: at least 1 image per class
      const classesWithNoImages = classes.filter(c => !(trainingImages[c.id]?.length > 0));
      if (classesWithNoImages.length > 0) {
@@ -300,29 +305,7 @@
        yDataset = tf.oneHot(labelTensor, classes.length);
 
        customModel?.dispose();
-
-       //relu oculta, softmax saída
-       customModel = tf.sequential({
-           layers: [
-               tf.layers.dense({
-                   units: 100,
-                   activation: 'relu',
-                   kernelInitializer: 'varianceScaling',
-                   inputShape: [FEATURE_SIZE]
-               }),
-               tf.layers.dense({
-                   units: classes.length,
-                   activation: 'softmax',
-                   kernelInitializer: 'varianceScaling'
-               })
-           ]
-       });
-
-       customModel.compile({
-           optimizer: tf.train.adam(0.0001),
-           loss: 'categoricalCrossentropy',
-           metrics: ['accuracy']
-       });
+       customModel = buildClassifier(classes.length);
 
        await customModel.fit(xDataset, yDataset, {
            batchSize: Math.min(32, Math.max(1, Math.floor(xs.length * 0.1))),
@@ -447,10 +430,7 @@
      const letter = String.fromCharCode(65 + (classCounter % 26)) + (classCounter >= 26 ? Math.floor(classCounter / 26) : '');
      classCounter++;
      classes = [...classes, { id: newId, name: `Classe ${letter}`, confidence: 0 }];
-     isDemoDatasetLoaded = false;
-     isModelTrained = false;
-     confusionMatrix = [];
-     detailedResults = [];
+     invalidateTraining();
   }
 
   function removeClass(idToRemove: number) {
@@ -465,10 +445,7 @@
      revokeObjectUrls(testSamples[idToRemove] || []);
      delete testSamples[idToRemove];
      testSamples = { ...testSamples };
-     isModelTrained = false;
-     isDemoDatasetLoaded = false;
-     confusionMatrix = [];
-     detailedResults = [];
+     invalidateTraining();
   }
 
   // ─── XAI state ────────────────────────────────────────
@@ -476,124 +453,24 @@
   let explanationDataUrl = "";
   let showExplanation = false;
 
-  // ─── XAI helpers ──────────────────────────────────────
-  // L2 distance between two Float32Array embeddings
-  function embL2(a: Float32Array, b: Float32Array): number {
-    let s = 0;
-    for (let i = 0; i < a.length; i++) s += (a[i] - b[i]) ** 2;
-    return Math.sqrt(s);
-  }
-
-  // Percentile-robust normalise: squashes outliers, ensures contrast
-  function robustNorm(vals: number[]): number[] {
-    const sorted = [...vals].sort((a, b) => a - b);
-    const n = sorted.length;
-    const lo = sorted[Math.floor(n * 0.05)];
-    const hi = sorted[Math.floor(n * 0.95)];
-    const range = hi - lo + 1e-8;
-    return vals.map(v => Math.max(0, Math.min(1, (v - lo) / range)));
-  }
-
-  // Core occlusion engine shared by both explain functions
-  async function computeOcclusionMap(
-    img: HTMLImageElement,
-    IMG_SIZE = 224,
-    PATCH = 80,  // larger patch = stronger signal through GAP layer
-    STRIDE = 24  // 7x7 grid: floor((224-80)/24)+1 = 7
-  ): Promise<{ heatNorm: number[][], steps: number }> {
-    const STEPS = Math.floor((IMG_SIZE - PATCH) / STRIDE) + 1;
-
-    const canvas = document.createElement('canvas');
-    canvas.width = IMG_SIZE;
-    canvas.height = IMG_SIZE;
-    const ctx = canvas.getContext('2d')!;
-
-    // --- Baseline embedding (no occlusion) ---
-    ctx.drawImage(img, 0, 0, IMG_SIZE, IMG_SIZE);
-    let baseEmb;
-    let basePixels, baseTensor;
-    try {
-        basePixels = tf.browser.fromPixels(canvas);
-        baseTensor = net.infer(basePixels, true) as import('@tensorflow/tfjs').Tensor;
-        baseEmb = new Float32Array(await baseTensor.data());
-    } finally {
-        if (basePixels) basePixels.dispose();
-        if (baseTensor) baseTensor.dispose();
-    }
-
-    // --- Occlusion grid: measure L2 distance from baseline embedding ---
-    const heatmap: number[][] = Array.from({ length: STEPS }, () => Array(STEPS).fill(0));
-    for (let row = 0; row < STEPS; row++) {
-      for (let col = 0; col < STEPS; col++) {
-        ctx.drawImage(img, 0, 0, IMG_SIZE, IMG_SIZE);
-        // Use mean-grey patch (128,128,128) — neutral, avoids colour bias
-        ctx.fillStyle = 'rgb(128,128,128)';
-        ctx.fillRect(col * STRIDE, row * STRIDE, PATCH, PATCH);
-        
-        let occPixels, occTensor;
-        try {
-            occPixels = tf.browser.fromPixels(canvas);
-            occTensor = net.infer(occPixels, true) as import('@tensorflow/tfjs').Tensor;
-            const occEmb = new Float32Array(await occTensor.data());
-            // Higher L2 distance = covering this region changed the representation more = important
-            heatmap[row][col] = embL2(baseEmb, occEmb);
-        } finally {
-            if (occPixels) occPixels.dispose();
-            if (occTensor) occTensor.dispose();
-        }
-      }
-    }
-
-    const flat = heatmap.flat();
-    const normFlat = robustNorm(flat);
-    const heatNorm: number[][] = Array.from({ length: STEPS }, (_, r) =>
-      Array.from({ length: STEPS }, (__, c) => normFlat[r * STEPS + c])
-    );
-    return { heatNorm, steps: STEPS };
-  }
-
-  function renderOcclusionOverlay(
-    img: HTMLImageElement,
-    heatNorm: number[][],
-    STEPS: number,
-    IMG_SIZE = 224,
-    PATCH = 80,
-    STRIDE = 24
-  ): string {
-    const origW = img.naturalWidth  || img.width  || IMG_SIZE;
-    const origH = img.naturalHeight || img.height || IMG_SIZE;
-    const out = document.createElement('canvas');
-    out.width  = origW;
-    out.height = origH;
-    const outCtx = out.getContext('2d')!;
-    outCtx.drawImage(img, 0, 0, origW, origH);
-    const sx = origW / IMG_SIZE;
-    const sy = origH / IMG_SIZE;
-    for (let row = 0; row < STEPS; row++) {
-      for (let col = 0; col < STEPS; col++) {
-        const n = heatNorm[row][col];
-        // green(irrelevant) → yellow → red(important) with fixed alpha
-        const r = Math.round(255 * Math.min(1, n * 2));
-        const g = Math.round(255 * Math.max(0, 1 - n * 2));
-        outCtx.fillStyle = `rgba(${r},${g},0,0.50)`;
-        outCtx.fillRect(
-          Math.round(col * STRIDE * sx), Math.round(row * STRIDE * sy),
-          Math.round(PATCH * sx),        Math.round(PATCH * sy)
-        );
-      }
-    }
-    return out.toDataURL('image/jpeg', 0.92);
-  }
+  // XAI helpers (occlusion map + overlay rendering) live in lib/ml/tfjs.
+  // They batch all occlusion inferences into a single forward pass,
+  // which is ~1 order of magnitude faster than the previous serial loop.
 
   async function explainPrediction() {
     if (!isReady || !previewImgRef || !isModelTrained) return;
     isExplaining = true;
     showExplanation = false;
     explanationDataUrl = "";
-    const { heatNorm, steps } = await computeOcclusionMap(previewImgRef);
-    explanationDataUrl = renderOcclusionOverlay(previewImgRef, heatNorm, steps);
-    showExplanation = true;
-    isExplaining = false;
+    try {
+      const result = await computeOcclusionMap(net, previewImgRef);
+      explanationDataUrl = renderOcclusionOverlay(previewImgRef, result);
+      showExplanation = true;
+    } catch (e) {
+      console.error('[XAI] explain failed:', e);
+    } finally {
+      isExplaining = false;
+    }
   }
 
   let testSamples: { [key: number]: string[] } = {};
@@ -687,8 +564,8 @@
     inspectorExplainUrl = "";
     try {
       const img = await loadImageFromUrl(imgUrl);
-      const { heatNorm, steps } = await computeOcclusionMap(img);
-      inspectorExplainUrl = renderOcclusionOverlay(img, heatNorm, steps);
+      const result = await computeOcclusionMap(net, img);
+      inspectorExplainUrl = renderOcclusionOverlay(img, result);
       inspectorLastExplainedIdx = idx;
     } catch (e) {
       console.error('[XAI] Inspector explain failed:', e);
@@ -944,7 +821,14 @@
 
     <aside class="lg:col-span-4 flex flex-col gap-6">
         <h2 class="text-lg font-semibold tracking-tight">{$t("test_machine")}</h2>
-        <PreviewCard {net} classifier={customModel} {classes} {isModelTrained}>
+        <PreviewCard
+            {net}
+            classifier={customModel}
+            {classes}
+            {isModelTrained}
+            preprocess={isDemoDatasetLoaded && activeDemoDatasetType === 'mnist' ? preprocessMnistCanvas : null}
+            strokeWidth={isDemoDatasetLoaded && activeDemoDatasetType === 'mnist' ? 20 : 12}
+        >
             <div class="bg-zinc-100 aspect-square relative flex items-center justify-center overflow-hidden border-b border-zinc-200">
                 {#if showExplanation && explanationDataUrl}
                     <!-- svelte-ignore a11y-missing-attribute -->
