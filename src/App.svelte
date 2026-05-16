@@ -4,6 +4,7 @@
   import * as tf from "@tensorflow/tfjs";
   import * as mobilenet from "@tensorflow-models/mobilenet";
   import WebcamModal from "./lib/components/WebcamModal.svelte";
+  import DrawModal from "./lib/components/DrawModal.svelte";
   import PreviewCard from "./lib/components/PreviewCard.svelte";
   import { demoDatasets } from "./lib/demoDataset";
   import { mnistDatasets } from "./lib/mnistDataset";
@@ -24,6 +25,7 @@
   let net: mobilenet.MobileNet;
   let langOpen = false;
   let activeWebcamClass: number | null = null;
+  let activeDrawClass: number | null = null;
   let activeTestWebcamClass: number | null = null;
 
   const languages = [
@@ -107,6 +109,15 @@
     trainingImages[classId] = [...trainingImages[classId], ...images];
     trainingImages = { ...trainingImages };
     activeWebcamClass = null;
+    invalidateTraining();
+  }
+
+  function handleDrawCapture(event: CustomEvent<{ classId: number, images: string[] }>) {
+    const { classId, images } = event.detail;
+    if (!trainingImages[classId]) trainingImages[classId] = [];
+    trainingImages[classId] = [...trainingImages[classId], ...images];
+    trainingImages = { ...trainingImages };
+    activeDrawClass = null;
     invalidateTraining();
   }
 
@@ -736,10 +747,14 @@
                     {:else}
                         <div class="flex flex-col items-center justify-center gap-3 py-6">
                             <span class="text-sm font-medium text-zinc-500">{$t("add_image_samples")}</span>
-                            <div class="flex items-center gap-3 w-full max-w-xs">
+                            <div class="flex items-center gap-3 w-full max-w-sm">
                                 <button on:click={() => activeWebcamClass = item.id} class="flex-1 flex flex-col items-center justify-center gap-2 h-16 bg-blue-50/50 hover:bg-blue-100/50 text-blue-600 rounded-lg border border-blue-100 transition-colors">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
                                     <span class="text-xs font-semibold">{$t("webcam")}</span>
+                                </button>
+                                <button on:click={() => activeDrawClass = item.id} class="flex-1 flex flex-col items-center justify-center gap-2 h-16 bg-purple-50/50 hover:bg-purple-100/50 text-purple-600 rounded-lg border border-purple-100 transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                                    <span class="text-xs font-semibold">{$t("canvas")}</span>
                                 </button>
                                 <label class="flex-1 flex flex-col items-center justify-center gap-2 h-16 bg-blue-50/50 hover:bg-blue-100/50 text-blue-600 rounded-lg border border-blue-100 cursor-pointer transition-colors">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
@@ -759,6 +774,9 @@
                     <div class="flex items-center gap-2">
                         <button on:click={() => activeWebcamClass = item.id} class="p-2 text-blue-600 hover:bg-blue-50 rounded-md transition-colors" title="Webcam">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                        </button>
+                        <button on:click={() => activeDrawClass = item.id} class="p-2 text-purple-600 hover:bg-purple-50 rounded-md transition-colors" title={$t("canvas")}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                         </button>
                         <label class="p-2 text-blue-600 hover:bg-blue-50 rounded-md cursor-pointer transition-colors" title="Upload">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
@@ -986,6 +1004,15 @@
       className={classes.find(c => c.id === activeWebcamClass)?.name || "Class"} 
       on:capture={handleWebcamCapture}
       on:close={() => activeWebcamClass = null}
+    />
+  {/if}
+
+  {#if activeDrawClass !== null}
+    <DrawModal
+      classId={activeDrawClass}
+      className={classes.find(c => c.id === activeDrawClass)?.name || "Class"}
+      on:capture={handleDrawCapture}
+      on:close={() => activeDrawClass = null}
     />
   {/if}
 

@@ -73,5 +73,9 @@
   "demo_class_6": "Dígito 6",
   "demo_class_7": "Dígito 7",
   "demo_class_8": "Dígito 8",
-  "demo_class_9": "Dígito 9"
+  "demo_class_9": "Dígito 9",
+  "draw": "Desenhar",
+  "draw_save_and_next": "Guardar & Desenhar Outro",
+  "draw_saved_drawings": "Desenhos guardados",
+  "draw_add_samples": "Adicionar Amostras"
 }

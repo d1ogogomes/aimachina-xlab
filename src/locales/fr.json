@@ -73,5 +73,9 @@
   "demo_class_6": "Chiffre 6",
   "demo_class_7": "Chiffre 7",
   "demo_class_8": "Chiffre 8",
-  "demo_class_9": "Chiffre 9"
+  "demo_class_9": "Chiffre 9",
+  "draw": "Dessiner",
+  "draw_save_and_next": "Enregistrer & Dessiner",
+  "draw_saved_drawings": "Dessins enregistrés",
+  "draw_add_samples": "Ajouter Échantillons"
 }
