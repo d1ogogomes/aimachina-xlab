@@ -77,5 +77,12 @@
   "draw": "Desenhar",
   "draw_save_and_next": "Guardar & Desenhar Outro",
   "draw_saved_drawings": "Desenhos guardados",
-  "draw_add_samples": "Adicionar Amostras"
+  "draw_add_samples": "Adicionar Amostras",
+  "create_dataset": "Criar Dataset",
+  "save_dataset_title": "Guardar Dataset",
+  "save_dataset_desc": "Guarde a configuração atual (classes e imagens) como um dataset reutilizável durante esta sessão.",
+  "save_dataset_placeholder": "Nome do dataset...",
+  "save_dataset_confirm": "Guardar",
+  "save_dataset_error_empty": "Adicione pelo menos 2 classes e 1 imagem antes de guardar.",
+  "save_dataset_error_name": "Introduza um nome para o dataset."
 }

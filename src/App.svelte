@@ -21,12 +21,24 @@
 
   let isReady = false;
   let customModel: tf.Sequential | null = null;
-  let activeDemoDatasetType: 'pets' | 'mnist' = 'pets';
+  let activeDemoDatasetType: 'pets' | 'mnist' | 'custom' = 'pets';
   let net: mobilenet.MobileNet;
   let langOpen = false;
   let activeWebcamClass: number | null = null;
   let activeDrawClass: number | null = null;
   let activeTestWebcamClass: number | null = null;
+
+  // ─── Custom Datasets (session-only) ────────────────────────
+  type CustomDatasetEntry = {
+    name: string;
+    classes: { id: number; name: string }[];
+    trainingImages: { [key: number]: string[] };
+    testSamples: { [key: number]: string[] };
+  };
+  let savedCustomDatasets: CustomDatasetEntry[] = [];
+  let showSaveDatasetModal = false;
+  let saveDatasetName = '';
+  let saveDatasetError = '';
 
   const languages = [
     { code: 'pt', label: 'Português', short: 'PT' },
@@ -226,6 +238,105 @@
       console.error("[demo] preview image failed:", e);
       previewImgRef = null;
     }
+  }
+
+  // ─── Custom Dataset: Save & Load ──────────────────────────
+
+  /** Convert a blob: URL to a data: URL so it survives revocation. */
+  function blobToDataUrl(url: string): Promise<string> {
+    if (!url.startsWith('blob:')) return Promise.resolve(url);
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth;
+        c.height = img.naturalHeight;
+        c.getContext('2d')!.drawImage(img, 0, 0);
+        resolve(c.toDataURL('image/jpeg', 0.85));
+      };
+      img.onerror = () => reject(new Error('blob→dataUrl failed'));
+      img.src = url;
+    });
+  }
+
+  function openSaveDatasetModal() {
+    const totalImages = Object.values(trainingImages).reduce((s, a) => s + a.length, 0);
+    if (classes.length < 2 || totalImages < 1) {
+      saveDatasetError = $t('save_dataset_error_empty');
+      showSaveDatasetModal = true;
+      saveDatasetName = '';
+      return;
+    }
+    saveDatasetError = '';
+    saveDatasetName = '';
+    showSaveDatasetModal = true;
+  }
+
+  async function confirmSaveDataset() {
+    const name = saveDatasetName.trim();
+    if (!name) { saveDatasetError = $t('save_dataset_error_name'); return; }
+
+    // Convert all blob URLs to data URLs so the snapshot is self-contained
+    const snapTraining: { [key: number]: string[] } = {};
+    const snapTest: { [key: number]: string[] } = {};
+    for (const c of classes) {
+      snapTraining[c.id] = await Promise.all((trainingImages[c.id] || []).map(blobToDataUrl));
+      snapTest[c.id] = await Promise.all((testSamples[c.id] || []).map(blobToDataUrl));
+    }
+
+    savedCustomDatasets = [...savedCustomDatasets, {
+      name,
+      classes: classes.map(c => ({ id: c.id, name: c.name })),
+      trainingImages: snapTraining,
+      testSamples: snapTest,
+    }];
+    showSaveDatasetModal = false;
+  }
+
+  async function loadCustomDataset(index: number) {
+    const ds = savedCustomDatasets[index];
+    if (!ds) return;
+
+    activeDemoDatasetType = 'custom';
+    revokeObjectUrls(Object.values(trainingImages).flat());
+    revokeObjectUrls(Object.values(testSamples).flat());
+    if (previewUrl && isObjectUrl(previewUrl)) URL.revokeObjectURL(previewUrl);
+
+    customModel?.dispose();
+    customModel = null;
+    try { localStorage.removeItem('aimachina_classes'); } catch {}
+
+    classes = ds.classes.map(c => ({ ...c, confidence: 0 }));
+    trainingImages = Object.fromEntries(ds.classes.map(c => [c.id, [...(ds.trainingImages[c.id] || [])]]));
+    testSamples = Object.fromEntries(ds.classes.map(c => [c.id, [...(ds.testSamples[c.id] || [])]]));
+    classCounter = ds.classes.length;
+    selectedDemoTestClassId = 0;
+    isDemoDatasetLoaded = false; // custom datasets are not "demo" datasets
+    isModelTrained = false;
+    trainingError = '';
+    trainingProgress = 0;
+    confusionMatrix = [];
+    detailedResults = [];
+    inspectorCell = null;
+    inspectorExplainUrl = '';
+    inspectorExplainingIdx = null;
+    inspectorLastExplainedIdx = null;
+    activeWebcamClass = null;
+    activeTestWebcamClass = null;
+
+    // Pick the first training image as preview if available
+    const firstImgs = ds.trainingImages[ds.classes[0]?.id];
+    if (firstImgs?.length) {
+      try { await setPreviewImage(firstImgs[0]); } catch { previewImgRef = null; }
+    } else {
+      previewUrl = '';
+      previewImgRef = null;
+    }
+  }
+
+  function deleteCustomDataset(index: number) {
+    savedCustomDatasets = savedCustomDatasets.filter((_, i) => i !== index);
   }
 
   async function selectDemoTestImage(classId: number, imgUrl: string) {
@@ -707,7 +818,7 @@
 
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold tracking-tight">{$t("teach_machine")}</h2>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 flex-wrap">
                 <button on:click={() => loadDemoDataset('pets')} class="text-sm font-semibold text-indigo-700 bg-white border border-indigo-100 hover:border-indigo-300 hover:bg-indigo-50 px-3 py-1.5 rounded-lg transition-all flex items-center gap-2 shadow-sm">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"></path></svg>
                     Demo (Animais)
@@ -715,6 +826,21 @@
                 <button on:click={() => loadDemoDataset('mnist')} class="text-sm font-semibold text-teal-700 bg-white border border-teal-100 hover:border-teal-300 hover:bg-teal-50 px-3 py-1.5 rounded-lg transition-all flex items-center gap-2 shadow-sm">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
                     Demo (MNIST)
+                </button>
+                {#each savedCustomDatasets as cds, cdsIdx}
+                <div class="relative group/cds">
+                    <button on:click={() => loadCustomDataset(cdsIdx)} class="text-sm font-semibold text-amber-700 bg-white border border-amber-100 hover:border-amber-300 hover:bg-amber-50 px-3 py-1.5 rounded-lg transition-all flex items-center gap-2 shadow-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                        {cds.name}
+                    </button>
+                    <button on:click={() => deleteCustomDataset(cdsIdx)} class="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover/cds:opacity-100 transition-opacity shadow-sm hover:bg-red-600" aria-label="Delete dataset">
+                        ×
+                    </button>
+                </div>
+                {/each}
+                <button on:click={openSaveDatasetModal} class="text-sm font-semibold text-zinc-500 bg-white border border-dashed border-zinc-300 hover:border-zinc-400 hover:text-zinc-700 hover:bg-zinc-50 px-3 py-1.5 rounded-lg transition-all flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    {$t("create_dataset")}
                 </button>
             </div>
         </div>
@@ -752,7 +878,7 @@
                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
                                     <span class="text-xs font-semibold">{$t("webcam")}</span>
                                 </button>
-                                <button on:click={() => activeDrawClass = item.id} class="flex-1 flex flex-col items-center justify-center gap-2 h-16 bg-purple-50/50 hover:bg-purple-100/50 text-purple-600 rounded-lg border border-purple-100 transition-colors">
+                                <button on:click={() => activeDrawClass = item.id} class="flex-1 flex flex-col items-center justify-center gap-2 h-16 bg-blue-50/50 hover:bg-blue-100/50 text-blue-600 rounded-lg border border-blue-100 transition-colors">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                                     <span class="text-xs font-semibold">{$t("canvas")}</span>
                                 </button>
@@ -775,7 +901,7 @@
                         <button on:click={() => activeWebcamClass = item.id} class="p-2 text-blue-600 hover:bg-blue-50 rounded-md transition-colors" title="Webcam">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
                         </button>
-                        <button on:click={() => activeDrawClass = item.id} class="p-2 text-purple-600 hover:bg-purple-50 rounded-md transition-colors" title={$t("canvas")}>
+                        <button on:click={() => activeDrawClass = item.id} class="p-2 text-blue-600 hover:bg-blue-50 rounded-md transition-colors" title={$t("canvas")}>
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                         </button>
                         <label class="p-2 text-blue-600 hover:bg-blue-50 rounded-md cursor-pointer transition-colors" title="Upload">
@@ -990,6 +1116,40 @@
                 </button>
                 <button on:click={executeReset} class="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors shadow-sm">
                     {$t("reset_modal_confirm")}
+                </button>
+            </div>
+        </div>
+    </div>
+    {/if}
+
+    {#if showSaveDatasetModal}
+    <div class="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm transition-opacity fade-in">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col fade-up">
+            <div class="p-6">
+                <div class="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 mb-4 mx-auto ring-8 ring-amber-50/50">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                </div>
+                <h3 class="text-lg font-bold text-zinc-900 text-center mb-2">{$t("save_dataset_title")}</h3>
+                <p class="text-sm text-zinc-500 text-center leading-relaxed mb-4">{$t("save_dataset_desc")}</p>
+                {#if saveDatasetError}
+                <div class="mb-3 px-3 py-2 bg-red-50 border border-red-100 rounded-lg text-sm text-red-700 font-medium text-center">
+                    {saveDatasetError}
+                </div>
+                {/if}
+                <input
+                    type="text"
+                    bind:value={saveDatasetName}
+                    placeholder={$t("save_dataset_placeholder")}
+                    class="w-full px-4 py-2.5 text-sm border border-zinc-200 rounded-lg outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100 transition-all"
+                    on:keydown={(e) => { if (e.key === 'Enter') confirmSaveDataset(); }}
+                />
+            </div>
+            <div class="px-6 py-4 bg-zinc-50/80 border-t border-zinc-100 flex gap-3">
+                <button on:click={() => showSaveDatasetModal = false} class="flex-1 px-4 py-2.5 text-sm font-semibold text-zinc-600 bg-white border border-zinc-200 hover:bg-zinc-50 hover:text-zinc-900 rounded-lg transition-colors">
+                    {$t("reset_modal_cancel")}
+                </button>
+                <button on:click={confirmSaveDataset} disabled={!saveDatasetName.trim()} class="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-amber-600 hover:bg-amber-700 disabled:bg-amber-300 rounded-lg transition-colors shadow-sm">
+                    {$t("save_dataset_confirm")}
                 </button>
             </div>
         </div>
