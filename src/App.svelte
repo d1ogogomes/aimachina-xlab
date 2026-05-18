@@ -18,6 +18,8 @@
     renderOcclusionOverlay,
   } from "./lib/ml/tfjs";
   import { preprocessMnistCanvas } from "./lib/ml/preprocess";
+  import { buildDecisionTree, type TreeNode as DTNode } from "./lib/ml/decisionTree";
+  import DecisionTreeViz from "./lib/components/DecisionTreeViz.svelte";
 
   let isReady = false;
   let customModel: tf.Sequential | null = null;
@@ -65,6 +67,10 @@
   let trainingImages: { [key: number]: string[] } = {};
   let isDemoDatasetLoaded = false;
   let selectedDemoTestClassId = 0;
+  let decisionTree: DTNode | null = null;
+  let savedEmbeddings: number[][] = [];
+  let savedLabels: number[] = [];
+  let isBuildingTree = false;
 
   // Load saved class names from localStorage
   onMount(async () => {
@@ -151,6 +157,9 @@
     isDemoDatasetLoaded = false;
     confusionMatrix = [];
     detailedResults = [];
+    decisionTree = null;
+    savedEmbeddings = [];
+    savedLabels = [];
   }
 
   function addTrainingFiles(files: FileList, classId: number) {
@@ -443,6 +452,19 @@
        isModelTrained = true;
        trainingProgress = 100;
 
+       // Save raw embeddings for decision tree (built on demand)
+       try {
+         savedEmbeddings = [];
+         for (const tensor of xs) {
+           savedEmbeddings.push(Array.from(await tensor.data()));
+         }
+         savedLabels = [...ys];
+       } catch (e) {
+         console.warn('[train] failed to save embeddings:', e);
+         savedEmbeddings = [];
+         savedLabels = [];
+       }
+
        if (previewUrl) runPrediction();
      } catch (e) {
        console.error('[train] model training failed:', e);
@@ -535,6 +557,10 @@
       }
       confusionMatrix = [];
       detailedResults = [];
+      decisionTree = null;
+      savedEmbeddings = [];
+      savedLabels = [];
+      isBuildingTree = false;
       isEvaluating = false;
       // Reset XAI state
       showExplanation = false;
@@ -677,6 +703,19 @@
      confusionMatrix = [...confusionMatrix];
      detailedResults = [...detailedResults];
      isEvaluating = false;
+  }
+
+  async function buildTreeDiagnostic() {
+    if (!isModelTrained || savedEmbeddings.length === 0) return;
+    isBuildingTree = true;
+    await new Promise(r => setTimeout(r, 50)); // let UI update
+    try {
+      decisionTree = buildDecisionTree(savedEmbeddings, savedLabels, classes.length, 3, 1);
+    } catch (e) {
+      console.error('[dtree] build failed:', e);
+      decisionTree = null;
+    }
+    isBuildingTree = false;
   }
 
   async function explainInspectorImage(imgUrl: string, idx: number) {
@@ -1292,6 +1331,8 @@
                     {$t("matrix_note")} <span class="font-medium text-indigo-600">{$t("click_cell_hint")}</span>
                  </p>
 
+
+
                  <!-- Per-class Metrics Table -->
                  {#if classMetrics.length > 0}
                  <div class="overflow-hidden border border-zinc-200 rounded-lg">
@@ -1420,5 +1461,46 @@
     </div>
   </section>
 
+  <!-- ── Decision Tree Section ───────────────────────────── -->
+  <section class="max-w-[85rem] mx-auto w-full px-8 mt-12">
+    <div class="bg-white rounded-xl shadow-sm border border-zinc-200 overflow-hidden">
+
+      <div class="bg-zinc-900 px-6 py-5 flex items-center justify-between">
+         <div>
+           <h2 class="text-base font-semibold tracking-tight text-white">{$t("dtree_title")}</h2>
+           <p class="text-xs text-zinc-400 mt-0.5">{$t("dtree_subtitle")}</p>
+         </div>
+         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-zinc-500"><circle cx="12" cy="5" r="3"/><line x1="12" y1="8" x2="12" y2="14"/><line x1="12" y1="14" x2="6" y2="20"/><line x1="12" y1="14" x2="18" y2="20"/></svg>
+      </div>
+
+      <div class="p-6 grid grid-cols-1 xl:grid-cols-12 gap-8">
+         <!-- Left: Description + Run button -->
+         <div class="xl:col-span-4 flex flex-col gap-4">
+            <div>
+              <h3 class="text-sm font-semibold text-zinc-700">{$t("dtree_title")}</h3>
+              <p class="text-xs text-zinc-500 leading-relaxed mt-1">{$t("dtree_note")}</p>
+            </div>
+
+            <button on:click={buildTreeDiagnostic} disabled={!isModelTrained || savedEmbeddings.length === 0 || isBuildingTree} class="w-full py-2.5 text-sm font-medium bg-zinc-800 hover:bg-zinc-900 text-white rounded-lg transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
+                {#if isBuildingTree}
+                  <div class="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></div>
+                {/if}
+                {isBuildingTree ? $t("evaluating") : $t("run_diag")}
+            </button>
+         </div>
+
+         <!-- Right: Tree visualization -->
+         <div class="xl:col-span-8 flex flex-col gap-4">
+             {#if decisionTree}
+                 <DecisionTreeViz tree={decisionTree} classNames={classes.map(c => c.name)} />
+             {:else}
+                 <div class="h-44 bg-zinc-50/50 rounded-lg border border-dashed border-zinc-300 flex items-center justify-center text-sm font-medium text-zinc-400">
+                     {$t("dtree_awaiting")}
+                 </div>
+             {/if}
+         </div>
+      </div>
+    </div>
+  </section>
 
 </div>

@@ -84,5 +84,9 @@
   "save_dataset_placeholder": "Dataset name...",
   "save_dataset_confirm": "Save",
   "save_dataset_error_empty": "Add at least 2 classes and 1 image before saving.",
-  "save_dataset_error_name": "Please enter a name for the dataset."
+  "save_dataset_error_name": "Please enter a name for the dataset.",
+  "dtree_title": "Decision Tree",
+  "dtree_subtitle": "Interpretable model from training data",
+  "dtree_note": "The decision tree is a simplified model built from the same MobileNet embeddings as the neural classifier. Each internal node splits samples by a feature threshold. Leaves show the predicted class and confidence.",
+  "dtree_awaiting": "Click 'Run Diagnostics' to generate the decision tree."
 }

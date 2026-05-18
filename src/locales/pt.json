@@ -84,5 +84,9 @@
   "save_dataset_placeholder": "Nome do dataset...",
   "save_dataset_confirm": "Guardar",
   "save_dataset_error_empty": "Adicione pelo menos 2 classes e 1 imagem antes de guardar.",
-  "save_dataset_error_name": "Introduza um nome para o dataset."
+  "save_dataset_error_name": "Introduza um nome para o dataset.",
+  "dtree_title": "Árvore de Decisão",
+  "dtree_subtitle": "Modelo interpretável baseado no treino",
+  "dtree_note": "A árvore de decisão é um modelo simplificado construído a partir dos mesmos embeddings usados pelo classificador neural. Cada nó interno divide as amostras com base num limiar de uma feature do MobileNet. As folhas mostram a classe prevista e a sua confiança.",
+  "dtree_awaiting": "Clique em 'Correr Diagnóstico' para gerar a árvore de decisão."
 }
