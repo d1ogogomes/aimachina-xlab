@@ -68,6 +68,17 @@
   let isDemoDatasetLoaded = false;
   let selectedDemoTestClassId = 0;
   let decisionTree: DTNode | null = null;
+
+  // Stable class names reference — only updates when a name actually changes,
+  // NOT on every confidence update. Prevents DecisionTreeViz from re-rendering
+  // during the 60fps prediction loop.
+  let _treeClassNames: string[] = classes.map(c => c.name);
+  $: {
+    const next = classes.map(c => c.name);
+    if (next.length !== _treeClassNames.length || next.some((n, i) => n !== _treeClassNames[i])) {
+      _treeClassNames = next;
+    }
+  }
   let savedEmbeddings: number[][] = [];
   let savedLabels: number[] = [];
   let isBuildingTree = false;
@@ -78,8 +89,11 @@
       const saved = localStorage.getItem('aimachina_classes');
       if (saved) {
         const parsed = JSON.parse(saved);
+        if (!Array.isArray(parsed)) throw new Error('invalid shape');
         classes = parsed;
-        classCounter = Math.max(...parsed.map((c: any) => c.id)) + 1;
+        classCounter = parsed.length > 0
+          ? Math.max(...parsed.map((c: any) => c.id)) + 1
+          : 0;
       }
     } catch {}
     try {
@@ -843,13 +857,14 @@
             { n: 1, label: $t('teach_machine'), active: true },
             { n: 2, label: $t('train_button'), active: isModelTrained || isTrainingModel },
             { n: 3, label: $t('test_machine'), active: isModelTrained },
-            { n: 4, label: $t('diagnostics'), active: confusionMatrix.length > 0 && confusionMatrix.some(row => row.some(v => v > 0)) }
+            { n: 4, label: $t('diagnostics'), active: confusionMatrix.length > 0 && confusionMatrix.some(row => row.some(v => v > 0)) },
+            { n: 5, label: $t('dtree_title'), active: decisionTree !== null }
           ] as step, i}
             <div class="flex items-center gap-2 {step.active ? 'text-zinc-800' : 'text-zinc-400'}">
               <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 {step.active ? 'bg-indigo-600 text-white' : 'bg-zinc-200 text-zinc-400'}">{step.n}</span>
               <span class="text-xs font-medium hidden sm:block">{step.label}</span>
             </div>
-            {#if i < 3}
+            {#if i < 4}
             <div class="flex-1 max-w-8 h-px mx-2 {step.active ? 'bg-indigo-300' : 'bg-zinc-200'} shrink-0"></div>
             {/if}
           {/each}
@@ -1227,12 +1242,9 @@
   <section class="max-w-[85rem] mx-auto w-full px-8 mt-12">
     <div class="bg-white rounded-xl shadow-sm border border-zinc-200 overflow-hidden">
       
-      <div class="bg-zinc-900 px-6 py-5 flex items-center justify-between">
-         <div>
-           <h2 class="text-base font-semibold tracking-tight text-white">{$t("diagnostics")}</h2>
-           <p class="text-xs text-zinc-400 mt-0.5">{$t("diag_desc")}</p>
-         </div>
-         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-zinc-500"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+      <div class="bg-zinc-900 px-6 py-5">
+        <h2 class="text-base font-semibold tracking-tight text-white">{$t("diagnostics")}</h2>
+        <p class="text-xs text-zinc-400 mt-0.5">{$t("diag_desc")}</p>
       </div>
 
       <div class="p-6 grid grid-cols-1 xl:grid-cols-12 gap-8">
@@ -1465,12 +1477,9 @@
   <section class="max-w-[85rem] mx-auto w-full px-8 mt-12">
     <div class="bg-white rounded-xl shadow-sm border border-zinc-200 overflow-hidden">
 
-      <div class="bg-zinc-900 px-6 py-5 flex items-center justify-between">
-         <div>
-           <h2 class="text-base font-semibold tracking-tight text-white">{$t("dtree_title")}</h2>
-           <p class="text-xs text-zinc-400 mt-0.5">{$t("dtree_subtitle")}</p>
-         </div>
-         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-zinc-500"><circle cx="12" cy="5" r="3"/><line x1="12" y1="8" x2="12" y2="14"/><line x1="12" y1="14" x2="6" y2="20"/><line x1="12" y1="14" x2="18" y2="20"/></svg>
+      <div class="bg-zinc-900 px-6 py-5">
+        <h2 class="text-base font-semibold tracking-tight text-white">{$t("dtree_title")}</h2>
+        <p class="text-xs text-zinc-400 mt-0.5">{$t("dtree_subtitle")}</p>
       </div>
 
       <div class="p-6 grid grid-cols-1 xl:grid-cols-12 gap-8">
@@ -1492,7 +1501,7 @@
          <!-- Right: Tree visualization -->
          <div class="xl:col-span-8 flex flex-col gap-4">
              {#if decisionTree}
-                 <DecisionTreeViz tree={decisionTree} classNames={classes.map(c => c.name)} />
+                 <DecisionTreeViz tree={decisionTree} classNames={_treeClassNames} />
              {:else}
                  <div class="h-44 bg-zinc-50/50 rounded-lg border border-dashed border-zinc-300 flex items-center justify-center text-sm font-medium text-zinc-400">
                      {$t("dtree_awaiting")}

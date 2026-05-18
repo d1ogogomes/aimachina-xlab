@@ -52,6 +52,7 @@ function classCounts(labels: number[], numClasses: number): number[] {
 }
 
 function majorityClass(counts: number[]): number {
+  if (counts.length === 0) return -1;
   let best = 0;
   for (let i = 1; i < counts.length; i++) {
     if (counts[i] > counts[best]) best = i;
@@ -205,10 +206,10 @@ export type LayoutEntry = {
   isLeftChild?: boolean;
 };
 
-const NODE_W = 160;
-const NODE_H = 72;
-const H_GAP = 24;
-const V_GAP = 56;
+const NODE_W = 176;
+const NODE_H = 80;
+const H_GAP = 16;
+const V_GAP = 64;
 
 /**
  * Compute (x, y) positions for every node.
@@ -248,8 +249,8 @@ export function layoutTree(root: TreeNode): { entries: LayoutEntry[]; width: num
 
   walk(root);
 
-  const maxX = Math.max(...entries.map(e => e.x));
-  const maxY = Math.max(...entries.map(e => e.y));
+  const maxX = entries.length > 0 ? Math.max(...entries.map(e => e.x)) : 0;
+  const maxY = entries.length > 0 ? Math.max(...entries.map(e => e.y)) : 0;
 
   return {
     entries,

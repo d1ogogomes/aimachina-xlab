@@ -142,7 +142,7 @@ function robustNorm(vals: number[]): number[] {
   const n = sorted.length;
   const lo = sorted[Math.floor(n * 0.05)];
   const hi = sorted[Math.floor(n * 0.95)];
-  const range = hi - lo + 1e-8;
+  const range = Math.max(hi - lo, 1e-8);
   return vals.map((v) => Math.max(0, Math.min(1, (v - lo) / range)));
 }
 
