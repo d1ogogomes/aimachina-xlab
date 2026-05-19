@@ -20,7 +20,10 @@
   import { preprocessMnistCanvas } from "./lib/ml/preprocess";
   import { buildDecisionTree, type TreeNode as DTNode } from "./lib/ml/decisionTree";
   import DecisionTreeViz from "./lib/components/DecisionTreeViz.svelte";
+  import LlmPlayground from "./lib/components/LlmPlayground.svelte";
+  import HomePortal from "./lib/components/HomePortal.svelte";
 
+  let activeTab: 'home' | 'cv' | 'llm' = 'home';
   let isReady = false;
   let customModel: tf.Sequential | null = null;
   let activeDemoDatasetType: 'pets' | 'mnist' | 'custom' = 'pets';
@@ -800,7 +803,9 @@
   {/if}
 
   <header class="bg-white border-b border-zinc-200 px-8 py-4 flex items-center justify-between sticky top-0 z-50 shadow-sm">
-    <div class="flex items-center gap-3">
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <!-- svelte-ignore a11y-no-static-element-interactions -->
+    <div class="flex items-center gap-3 cursor-pointer select-none" on:click={() => activeTab = 'home'}>
         <h1 class="text-xl font-bold tracking-tight text-zinc-900">AIMachina <span class="text-indigo-600">XLab</span></h1>
         {#if isModelTrained}
         <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -841,13 +846,33 @@
           </div>
           {/if}
         </div>
+        {#if activeTab === 'cv'}
         <button on:click={exportModel} disabled={!isModelTrained} class="flex items-center gap-2 px-4 py-2 text-sm font-medium border border-zinc-200 rounded-md hover:bg-zinc-50 transition-colors disabled:opacity-40">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
             {$t("export_model")}
         </button>
+        {/if}
     </div>
   </header>
 
+  {#if activeTab !== 'home'}
+  <div class="border-b border-zinc-200 bg-white/80 backdrop-blur-md px-8 py-2 sticky top-[73px] z-40 flex gap-4">
+    <button
+      on:click={() => activeTab = 'cv'}
+      class="px-4 py-2 text-sm font-bold border-b-2 transition-all {activeTab === 'cv' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 hover:border-zinc-300'}"
+    >
+      {$t('tab_cv')}
+    </button>
+    <button
+      on:click={() => activeTab = 'llm'}
+      class="px-4 py-2 text-sm font-bold border-b-2 transition-all {activeTab === 'llm' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 hover:border-zinc-300'}"
+    >
+      {$t('tab_llm')}
+    </button>
+  </div>
+  {/if}
+
+  {#if activeTab === 'cv'}
   <main class="max-w-[85rem] mx-auto w-full px-8 mt-10 grid grid-cols-1 lg:grid-cols-12 gap-8">
     
     <section class="lg:col-span-8 flex flex-col gap-6">
@@ -1511,5 +1536,16 @@
       </div>
     </div>
   </section>
+  {/if}
+
+  {#if activeTab === 'home'}
+    <HomePortal on:selectTab={(e) => activeTab = e.detail} />
+  {/if}
+
+  {#if activeTab === 'llm'}
+    <main class="max-w-[85rem] mx-auto w-full px-8 mt-10 animate-fade-in">
+      <LlmPlayground />
+    </main>
+  {/if}
 
 </div>
