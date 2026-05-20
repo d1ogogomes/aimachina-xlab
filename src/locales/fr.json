@@ -111,6 +111,7 @@
   "tok_stats_tokens": "Total de Tokens",
   "tok_stats_cost": "Coût Estimé (GPT-4o Input)",
   "tok_stats_cost_intuition": "≈ 1 centime pour 4 000 tokens",
+  "tok_g_legend": "Le préfixe <strong>Ġ</strong> que tu peux voir est la manière dont BPE marque un espace devant le mot. Il indique au modèle que <code class=\"font-mono bg-zinc-100 px-1 rounded text-zinc-700\">Ġchat</code> signifie \" chat\" (avec l'espace), pas juste \"chat\".",
   "dec_title": "2. Prédiction et Décodage",
   "dec_desc": "Un LLM ne \"sait\" pas le mot suivant. Il calcule une probabilité pour des milliers de mots possibles et en choisit un. Deux boutons contrôlent ce choix : <strong>Température</strong> (à quel point il ose) et <strong>Top-P</strong> (à quel point il filtre).",
   "dec_prompt_label": "Choisis une amorce de texte :",

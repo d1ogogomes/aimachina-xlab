@@ -1025,6 +1025,11 @@
               </span>
             {/each}
           </div>
+          <!-- BPE-only legend: the "Ġ" prefix is jarring without context.
+               Only show it in subword mode where it actually appears. -->
+          {#if tokenizerMode === 'subword'}
+            <p class="text-[11px] text-zinc-500 leading-relaxed -mt-3">{@html $t('tok_g_legend')}</p>
+          {/if}
         {:else}
           <div class="h-28 rounded-xl border border-dashed border-zinc-200 flex items-center justify-center text-sm text-zinc-400 italic bg-white">
             {$t('tok_input_placeholder')}

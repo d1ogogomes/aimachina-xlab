@@ -111,6 +111,7 @@
   "tok_stats_tokens": "Total de Tokens",
   "tok_stats_cost": "Custo Estimado (GPT-4o Input)",
   "tok_stats_cost_intuition": "≈ 1 cêntimo por cada 4 000 tokens",
+  "tok_g_legend": "O prefixo <strong>Ġ</strong> que podes ver é como o BPE marca um espaço antes da palavra. Diz ao modelo que <code class=\"font-mono bg-zinc-100 px-1 rounded text-zinc-700\">Ġgato</code> significa \" gato\" (com o espaço), e não apenas \"gato\".",
   "dec_title": "2. Previsão e Descodificação",
   "dec_desc": "Um LLM não \"sabe\" qual a próxima palavra. Calcula uma probabilidade para milhares de palavras possíveis e escolhe uma. Dois botões controlam como escolhe: <strong>Temperatura</strong> (quão ousada) e <strong>Top-P</strong> (quão restrita).",
   "dec_prompt_label": "Escolhe um prompt inicial:",
