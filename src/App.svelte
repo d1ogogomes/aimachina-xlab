@@ -22,6 +22,7 @@
   import DecisionTreeViz from "./lib/components/DecisionTreeViz.svelte";
   import LlmPlayground from "./lib/components/LlmPlayground.svelte";
   import HomePortal from "./lib/components/HomePortal.svelte";
+  import ReactPortal from "./lib/components/ReactPortal.svelte";
 
   let activeTab: 'home' | 'cv' | 'llm' = 'home';
   let isReady = false;
@@ -792,7 +793,15 @@
   })();
 </script>
 
-<div class="min-h-screen bg-zinc-50 flex flex-col font-sans text-zinc-900 pb-20">
+<div class="min-h-screen bg-[#FAF9FC] relative overflow-hidden flex flex-col font-sans text-zinc-900 pb-20 selection:bg-indigo-500 selection:text-white">
+
+  <!-- Ambient background glow elements, completely matching the landing page colors -->
+  <div class="absolute top-[-200px] left-[10%] w-[600px] h-[600px] bg-indigo-200/25 rounded-full blur-[130px] pointer-events-none z-0"></div>
+  <div class="absolute top-[300px] right-[5%] w-[500px] h-[500px] bg-purple-200/20 rounded-full blur-[120px] pointer-events-none z-0"></div>
+  <div class="absolute bottom-[-100px] left-[20%] w-[700px] h-[700px] bg-indigo-100/20 rounded-full blur-[140px] pointer-events-none z-0"></div>
+
+  <!-- Subtle Halftone grid matching the main landing page feel -->
+  <div class="absolute inset-0 bg-[radial-gradient(#e4e4e7_1.2px,transparent_1.2px)] [background-size:24px_24px] opacity-[0.45] pointer-events-none z-0"></div>
 
   <!-- Loading overlay while MobileNet initialises -->
   {#if isLoadingModel}
@@ -802,78 +811,100 @@
   </div>
   {/if}
 
-  <header class="bg-white border-b border-zinc-200 px-8 py-4 flex items-center justify-between sticky top-0 z-50 shadow-sm">
-    <!-- svelte-ignore a11y-click-events-have-key-events -->
-    <!-- svelte-ignore a11y-no-static-element-interactions -->
-    <div class="flex items-center gap-3 cursor-pointer select-none" on:click={() => activeTab = 'home'}>
-        <h1 class="text-xl font-bold tracking-tight text-zinc-900">AIMachina <span class="text-indigo-600">XLab</span></h1>
-        {#if isModelTrained}
-        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-          {$t("trained_button")}
-        </span>
-        {/if}
-    </div>
-    <div class="flex gap-3 items-center">
-        <!-- Custom language picker -->
+  {#if activeTab !== 'home'}
+  <div class="w-full max-w-[85rem] mx-auto px-8 pt-6 sticky top-0 z-50">
+    <header class="bg-white/80 backdrop-blur-md rounded-full p-2 grid grid-cols-3 items-center shadow-[0_10px_30px_rgba(79,70,229,0.06)] border border-white/50">
+      
+      <!-- Left: Home Logo and Title -->
+      <!-- svelte-ignore a11y-click-events-have-key-events -->
+      <!-- svelte-ignore a11y-no-static-element-interactions -->
+      <div 
+        on:click={() => activeTab = 'home'}
+        class="flex items-center gap-3 cursor-pointer select-none text-left bg-transparent border-0 outline-none p-0 group ml-1 justify-start"
+      >
+        <div class="w-10 h-10 bg-gradient-to-tr from-indigo-600 to-purple-600 rounded-full flex items-center justify-center text-white text-[11px] font-black tracking-tight group-hover:scale-105 transition-all shadow-[0_4px_12px_rgba(79,70,229,0.15)]">
+          AI
+        </div>
+        <div class="hidden sm:flex flex-col">
+          <span class="text-sm font-black tracking-tight text-zinc-900 leading-tight">AIMachina <span class="text-indigo-600 font-extrabold">XLab</span></span>
+          {#if isModelTrained && activeTab === 'cv'}
+          <span class="text-[9px] font-bold text-emerald-600 flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            {$t("trained_button")}
+          </span>
+          {/if}
+        </div>
+      </div>
+ 
+      <!-- Center: Tab Switcher (beautifully animated glass pill) -->
+      <div class="flex items-center justify-center">
+        <div class="flex items-center gap-1 bg-zinc-100/70 p-1 rounded-full border border-zinc-200/50">
+          <button 
+            on:click={() => activeTab = 'cv'} 
+            class="px-4 py-1.5 text-xs font-bold rounded-full transition-all duration-300 cursor-pointer {activeTab === 'cv' ? 'bg-indigo-600 text-white shadow-md scale-[1.02]' : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200/50'}"
+          >
+            {$t('tab_cv')}
+          </button>
+          <button 
+            on:click={() => activeTab = 'llm'} 
+            class="px-4 py-1.5 text-xs font-bold rounded-full transition-all duration-300 cursor-pointer {activeTab === 'llm' ? 'bg-purple-600 text-white shadow-md scale-[1.02]' : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200/50'}"
+          >
+            {$t('tab_llm')}
+          </button>
+        </div>
+      </div>
+ 
+      <!-- Right: Actions (Language & Export Model) -->
+      <div class="flex items-center justify-end gap-2 mr-1">
+        <!-- Language Picker -->
         <div class="relative">
           <button
             on:click={() => langOpen = !langOpen}
-            class="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-zinc-600 bg-zinc-100 border border-zinc-200 rounded-lg hover:bg-zinc-200 transition-colors"
+            class="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-zinc-600 bg-zinc-100/70 border border-zinc-200/40 rounded-full hover:bg-zinc-200/80 transition-colors cursor-pointer"
           >
-            <!-- Globe icon -->
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
             <span>{languages.find(l => l.code === $locale)?.short ?? $locale.toUpperCase()}</span>
-            <!-- Chevron -->
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="{langOpen ? '18 15 12 9 6 15' : '6 9 12 15 18 9'}"></polyline></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="{langOpen ? '18 15 12 9 6 15' : '6 9 12 15 18 9'}"></polyline></svg>
           </button>
-
+ 
           {#if langOpen}
           <!-- svelte-ignore a11y-no-static-element-interactions -->
-          <div class="absolute right-0 mt-1.5 w-40 bg-white border border-zinc-200 rounded-xl shadow-lg z-50 overflow-hidden py-1" on:mouseleave={() => langOpen = false}>
+          <div class="absolute right-0 mt-2 w-36 bg-white/95 backdrop-blur-md border border-zinc-200/80 rounded-2xl shadow-xl z-[60] overflow-hidden py-1" on:mouseleave={() => langOpen = false}>
             {#each languages as lang}
             <button
               on:click={() => { $locale = lang.code; langOpen = false; }}
-              class="w-full flex items-center gap-3 px-3 py-2 text-sm hover:bg-zinc-50 transition-colors {$locale === lang.code ? 'font-semibold text-indigo-600' : 'text-zinc-700'}"
+              class="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-zinc-50 transition-colors cursor-pointer {$locale === lang.code ? 'font-bold text-indigo-600 bg-indigo-50/50' : 'text-zinc-700'}"
             >
-              <span class="font-mono text-xs w-6 text-center bg-zinc-100 rounded px-1 py-0.5">{lang.short}</span>
+              <span class="font-mono text-[10px] w-5 text-center bg-zinc-100 rounded px-1 py-0.5">{lang.short}</span>
               <span>{lang.label}</span>
               {#if $locale === lang.code}
-              <svg class="ml-auto" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <svg class="ml-auto text-indigo-600" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
               {/if}
             </button>
             {/each}
           </div>
           {/if}
         </div>
+ 
+        <!-- Export Model (CV Lab only) -->
         {#if activeTab === 'cv'}
-        <button on:click={exportModel} disabled={!isModelTrained} class="flex items-center gap-2 px-4 py-2 text-sm font-medium border border-zinc-200 rounded-md hover:bg-zinc-50 transition-colors disabled:opacity-40">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-            {$t("export_model")}
+        <button 
+          on:click={exportModel} 
+          disabled={!isModelTrained} 
+          class="flex items-center gap-1.5 px-4 py-2 text-xs font-bold border border-zinc-200/50 rounded-full hover:bg-zinc-50 transition-all shadow-sm bg-white/80 disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          <span class="hidden md:inline">{$t("export_model")}</span>
         </button>
         {/if}
-    </div>
-  </header>
-
-  {#if activeTab !== 'home'}
-  <div class="border-b border-zinc-200 bg-white/80 backdrop-blur-md px-8 py-2 sticky top-[73px] z-40 flex gap-4">
-    <button
-      on:click={() => activeTab = 'cv'}
-      class="px-4 py-2 text-sm font-bold border-b-2 transition-all {activeTab === 'cv' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 hover:border-zinc-300'}"
-    >
-      {$t('tab_cv')}
-    </button>
-    <button
-      on:click={() => activeTab = 'llm'}
-      class="px-4 py-2 text-sm font-bold border-b-2 transition-all {activeTab === 'llm' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-zinc-500 hover:text-zinc-800 hover:border-zinc-300'}"
-    >
-      {$t('tab_llm')}
-    </button>
+      </div>
+ 
+    </header>
   </div>
   {/if}
 
   {#if activeTab === 'cv'}
-  <main class="max-w-[85rem] mx-auto w-full px-8 mt-10 grid grid-cols-1 lg:grid-cols-12 gap-8">
+  <main class="max-w-[85rem] mx-auto w-full px-8 mt-10 grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10">
     
     <section class="lg:col-span-8 flex flex-col gap-6">
         <!-- Step indicator -->
@@ -926,7 +957,7 @@
 
         <div class="grid grid-cols-1 gap-4">
             {#each classes as item}
-            <div class="bg-white rounded-xl shadow-sm border border-zinc-200 overflow-hidden group hover:border-indigo-300 transition-colors">
+            <div class="bg-white/70 backdrop-blur-md rounded-2xl border border-white/60 shadow-[0_8px_30px_rgba(0,0,0,0.02)] overflow-hidden group hover:border-indigo-300/80 transition-all duration-300">
                 <div class="p-4 border-b border-zinc-100 flex items-center justify-between bg-zinc-50/50 gap-3">
                     <input type="text" bind:value={item.name} class="font-medium text-zinc-700 bg-transparent outline-none w-full border-b border-transparent focus:border-indigo-400 transition-colors" />
                     {#if classes.length > 2}
@@ -1004,7 +1035,7 @@
             </div>
         </div>
 
-        <div class="mt-4 bg-white rounded-xl shadow-sm border border-zinc-200 overflow-hidden">
+        <div class="mt-4 bg-white/70 backdrop-blur-md rounded-2xl border border-white/60 shadow-[0_8px_30px_rgba(0,0,0,0.02)] overflow-hidden hover:border-indigo-300/80 transition-all duration-300">
             {#if trainingError}
             <div class="px-6 py-3 bg-red-50 border-b border-red-100 flex items-center gap-2 text-sm text-red-700 font-medium">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
@@ -1264,8 +1295,8 @@
     />
   {/if}
 
-  <section class="max-w-[85rem] mx-auto w-full px-8 mt-12">
-    <div class="bg-white rounded-xl shadow-sm border border-zinc-200 overflow-hidden">
+  <section class="max-w-[85rem] mx-auto w-full px-8 mt-12 relative z-10">
+    <div class="bg-white/70 backdrop-blur-md rounded-2xl border border-white/60 shadow-[0_8px_30px_rgba(0,0,0,0.02)] overflow-hidden hover:border-indigo-300/80 transition-all duration-300">
       
       <div class="bg-zinc-900 px-6 py-5">
         <h2 class="text-base font-semibold tracking-tight text-white">{$t("diagnostics")}</h2>
@@ -1499,8 +1530,8 @@
   </section>
 
   <!-- ── Decision Tree Section ───────────────────────────── -->
-  <section class="max-w-[85rem] mx-auto w-full px-8 mt-12">
-    <div class="bg-white rounded-xl shadow-sm border border-zinc-200 overflow-hidden">
+  <section class="max-w-[85rem] mx-auto w-full px-8 mt-12 relative z-10">
+    <div class="bg-white/70 backdrop-blur-md rounded-2xl border border-white/60 shadow-[0_8px_30px_rgba(0,0,0,0.02)] overflow-hidden hover:border-indigo-300/80 transition-all duration-300">
 
       <div class="bg-zinc-900 px-6 py-5">
         <h2 class="text-base font-semibold tracking-tight text-white">{$t("dtree_title")}</h2>
@@ -1539,11 +1570,11 @@
   {/if}
 
   {#if activeTab === 'home'}
-    <HomePortal on:selectTab={(e) => activeTab = e.detail} />
+    <ReactPortal on:selectTab={(e) => activeTab = e.detail} />
   {/if}
 
   {#if activeTab === 'llm'}
-    <main class="max-w-[85rem] mx-auto w-full px-8 mt-10 animate-fade-in">
+    <main class="max-w-[85rem] mx-auto w-full px-8 mt-10 animate-fade-in relative z-10">
       <LlmPlayground />
     </main>
   {/if}

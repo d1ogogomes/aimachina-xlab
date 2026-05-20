@@ -172,5 +172,9 @@
   "feature_token": "BPE Tokenization",
   "feature_sampling": "Temp/Top-P Control",
   "feature_attention": "Attention Maps",
-  "feature_cost": "Cost Estimator"
+  "feature_cost": "Cost Estimator",
+  "home_hero_subtitle_xlab": "Bold ideas that start with vision and intelligence.",
+  "home_hero_desc_xlab": "An interactive artificial intelligence laboratory. Train computer vision models directly in your browser and uncover the inner workings of large language models (LLMs).",
+  "home_cv_btn_xlab": "Open Computer Vision Lab",
+  "home_llm_btn_xlab": "Open LLM Playground"
 }

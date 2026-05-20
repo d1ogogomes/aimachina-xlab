@@ -172,5 +172,9 @@
   "feature_token": "Tokenisation BPE",
   "feature_sampling": "Contrôle Temp/Top-P",
   "feature_attention": "Cartes d'Attention",
-  "feature_cost": "Estimateur de Coût"
+  "feature_cost": "Estimateur de Coût",
+  "home_hero_subtitle_xlab": "Des idées fortes qui commencent par la vision et l'intelligence.",
+  "home_hero_desc_xlab": "Un laboratoire d'intelligence artificielle interactif. Entraînez des modèles de vision par ordinateur directement dans votre navigateur et découvrez les rouages internes des modèles de langage (LLM).",
+  "home_cv_btn_xlab": "Ouvrir le Lab de Vision",
+  "home_llm_btn_xlab": "Ouvrir le Playground de LLM"
 }

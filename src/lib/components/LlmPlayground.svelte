@@ -5,6 +5,8 @@
   // Sub-tabs within the LLM Playground
   let activeSubTab: 'tokenizer' | 'decoding' | 'attention' = 'tokenizer';
 
+  $: currentLangCode = $locale || 'pt';
+
   // ─── PART 1: TOKENIZER STATE ──────────────────────────────
   const DEFAULT_TOKEN_INPUTS: Record<string, string> = {
     en: "Over hill, over dale, Thorough bush, thorough brier, Over park, over pale, Thorough flood, thorough fire!",
@@ -836,10 +838,10 @@
   let isAutoCompleting = false;
   let autoTimer: any = null;
 
-  $: filteredPresets = PROMPT_PRESETS.filter(p => p.lang === $locale);
+  $: filteredPresets = PROMPT_PRESETS.filter(p => p.lang === currentLangCode);
 
   $: {
-    if ($locale) {
+    if (currentLangCode) {
       selectedPresetIdx = 0;
       activePrompt = filteredPresets[0]?.text || "";
       stopAutoComplete();
@@ -922,7 +924,7 @@
 
     // Default: if transition map ends or no match, generate random but realistic placeholder next-tokens
     // so the generator doesn't break and can build text infinitely!
-    return FALLBACK_CANDIDATES[$locale] || FALLBACK_CANDIDATES.en;
+    return FALLBACK_CANDIDATES[currentLangCode] || FALLBACK_CANDIDATES.en;
   })();
 
   type ProcessedCandidate = {
@@ -1198,12 +1200,12 @@
     }
   }
 
-  $: filteredAttentionPresets = ATTENTION_PRESETS.filter(p => p.lang === $locale);
+  $: filteredAttentionPresets = ATTENTION_PRESETS.filter(p => p.lang === currentLangCode);
 
   $: {
-    if ($locale) {
+    if (currentLangCode) {
       selectedAttentionIdx = 0;
-      hoveredWordIdx = getDefaultHoveredIdx(0, $locale || 'en');
+      hoveredWordIdx = getDefaultHoveredIdx(0, currentLangCode);
     }
   }
 
@@ -1597,7 +1599,7 @@
             <div class="flex flex-wrap gap-2">
               {#each filteredAttentionPresets as preset, idx}
                 <button
-                  on:click={() => { selectedAttentionIdx = idx; hoveredWordIdx = getDefaultHoveredIdx(idx, $locale || 'en'); }}
+                  on:click={() => { selectedAttentionIdx = idx; hoveredWordIdx = getDefaultHoveredIdx(idx, currentLangCode); }}
                   class="px-3.5 py-2 text-xs font-bold rounded-lg border transition-all
                          {selectedAttentionIdx === idx ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white text-indigo-600 border-zinc-200 hover:border-indigo-300 hover:bg-indigo-50/50'}"
                 >
@@ -1675,7 +1677,7 @@
                   <div class="mt-2 flex flex-col gap-2.5">
                     <span class="text-xs font-semibold text-zinc-400 uppercase tracking-widest">{$t('att_explanation_label')}</span>
                     <p class="text-xs text-zinc-600 leading-relaxed font-normal bg-zinc-50/50 border border-zinc-100 rounded-lg p-3.5 shadow-inner">
-                      {selectedWord.explanation[$t('locale') as 'pt' | 'en' | 'fr'] || selectedWord.explanation['en']}
+                      {selectedWord.explanation[currentLangCode as 'pt' | 'en' | 'fr'] || selectedWord.explanation['en']}
                     </p>
                   </div>
 
