@@ -188,9 +188,7 @@
     }
   })();
 
-  $: totalChars = tokenInput.length;
   $: totalTokens = tokens.length;
-  $: avgCharsPerToken = totalTokens > 0 ? (totalChars / totalTokens).toFixed(1) : "0.0";
   $: estimatedCost = totalTokens > 0 ? ((totalTokens / 1000000) * 2.50).toFixed(6) : "0.000000";
 
   type PromptPreset = {
@@ -942,10 +940,6 @@
   // the math.
   $: topCandidate = computedCandidates.find(c => !c.filtered) ?? null;
 
-  // Math accordion: collapsed by default. Beginners read the chart;
-  // curious users click to see the formulas.
-  let showMath = false;
-
   // Select Preset Prompt
   function handlePresetChange(idx: number) {
     selectedPresetIdx = idx;
@@ -980,347 +974,190 @@
   <div class="p-6 md:p-8 flex-1 min-h-[500px]">
     <!-- ─── SUB-TAB 1: TOKENIZER PLAYGROUND ────────────────────── -->
     {#if activeSubTab === 'tokenizer'}
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-fade-in">
-        <!-- Input section -->
-        <div class="lg:col-span-7 flex flex-col gap-6">
-          <div class="flex flex-col gap-2">
-            <label for="tokInput" class="text-xs font-bold uppercase tracking-wider text-zinc-400">{$t('tok_title')} Playground</label>
-            <p class="text-sm text-zinc-600 leading-relaxed font-normal">{@html $t('tok_desc')}</p>
-            <!-- Beginner intuition: surface a concrete "try this" so people
-                 know what to play with rather than staring at a blank box. -->
-            <div class="flex items-start gap-2 mt-1 px-3 py-2 bg-amber-50/60 border border-amber-100 rounded-lg">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-amber-600 mt-0.5 shrink-0"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.6 1 1.4 1 2.3v1h6v-1c0-.9.4-1.7 1-2.3A7 7 0 0 0 12 2z"/></svg>
-              <p class="text-[12px] text-amber-900 leading-relaxed">{@html $t('tok_try_hint')}</p>
-            </div>
-          </div>
-
-          <div class="flex items-center gap-2 bg-zinc-100 p-1 rounded-xl self-start border border-zinc-200/40">
-            <button
-              on:click={() => tokenizerMode = 'word'}
-              class="px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all {tokenizerMode === 'word' ? 'bg-white text-indigo-600 shadow-xs' : 'text-zinc-500 hover:text-zinc-800'}"
-            >
-              {$t('tok_mode_word')}
-            </button>
-            <button
-              on:click={() => tokenizerMode = 'subword'}
-              class="px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all {tokenizerMode === 'subword' ? 'bg-white text-teal-600 shadow-xs' : 'text-zinc-500 hover:text-zinc-800'}"
-            >
-              {$t('tok_mode_subword')}
-            </button>
-          </div>
-
-          <textarea
-            id="tokInput"
-            bind:value={tokenInput}
-            placeholder={$t('tok_input_placeholder')}
-            rows="4"
-            class="w-full p-4 text-sm border border-zinc-200 rounded-xl outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100/50 transition-all font-sans bg-white shadow-xs resize-none"
-          ></textarea>
-
-          <!-- Color Tokens Container -->
-          <div class="bg-white border border-zinc-200 rounded-xl p-5 shadow-xs flex flex-col gap-4">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-bold uppercase tracking-wider text-zinc-400">{$t('tok_visualizer_label')}</span>
-              {#if hoveredTokenIdx !== null}
-                <span class="text-xs font-semibold text-indigo-600 animate-pulse">{$t('tok_token')} #{hoveredTokenIdx + 1} ID: {tokens[hoveredTokenIdx]?.id}</span>
-              {/if}
-            </div>
-
-            {#if tokens.length > 0}
-              <div class="flex flex-wrap gap-x-1.5 gap-y-2 border border-zinc-100 p-4 rounded-lg bg-zinc-50/50">
-                {#each tokens as tok, idx}
-                  <!-- svelte-ignore a11y-mouse-events-have-key-events -->
-                  <!-- svelte-ignore a11y-no-static-element-interactions -->
-                  <span
-                    on:mouseover={() => hoveredTokenIdx = idx}
-                    on:mouseleave={() => hoveredTokenIdx = null}
-                    class="px-2 py-1 text-sm font-semibold font-mono rounded border transition-all cursor-default shrink-0 select-none
-                           {getTokenBgClass(tok.text)}
-                           {hoveredTokenIdx === idx ? 'ring-2 ring-indigo-500 scale-105 shadow-xs' : ''}"
-                  >
-                    {tok.text}
-                  </span>
-                {/each}
-              </div>
-              <p class="text-[11px] text-zinc-400 italic">{$t('tok_hover_hint')}</p>
-            {:else}
-              <div class="h-28 rounded-lg border border-dashed border-zinc-200 flex items-center justify-center text-xs text-zinc-400 italic bg-zinc-50">
-                {$t('tok_input_placeholder')}
-              </div>
-            {/if}
-          </div>
+      <div class="flex flex-col gap-6 animate-fade-in max-w-3xl mx-auto">
+        <!-- Lead: one paragraph, no callouts. The toggle below the input
+             is itself the lesson — we let the user discover the difference
+             between modes by clicking, not by reading three boxes of copy. -->
+        <div class="flex flex-col gap-2">
+          <p class="text-base text-zinc-700 leading-relaxed">{@html $t('tok_desc')}</p>
         </div>
 
-        <!-- Right Side: Stats and IDs Table -->
-        <div class="lg:col-span-5 flex flex-col gap-6">
-          <div class="grid grid-cols-2 gap-4">
-            <div class="bg-white border border-zinc-200 rounded-xl p-4 shadow-xs flex flex-col">
-              <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-400">{$t('tok_stats_chars')}</span>
-              <span class="text-2xl font-extrabold tracking-tight text-zinc-900 mt-1 tabular-nums">{totalChars}</span>
-            </div>
-            <div class="bg-white border border-zinc-200 rounded-xl p-4 shadow-xs flex flex-col">
-              <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-400">{$t('tok_stats_tokens')}</span>
-              <span class="text-2xl font-extrabold tracking-tight text-zinc-900 mt-1 tabular-nums">{totalTokens}</span>
-            </div>
-            <div class="bg-white border border-zinc-200 rounded-xl p-4 shadow-xs flex flex-col">
-              <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-400">{$t('tok_stats_avg')}</span>
-              <span class="text-2xl font-extrabold tracking-tight text-zinc-900 mt-1 tabular-nums">{avgCharsPerToken}</span>
-            </div>
-            <div class="bg-white border border-zinc-200 rounded-xl p-4 shadow-xs flex flex-col group relative cursor-help">
-              <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-400">{$t('tok_stats_cost')}</span>
-              <span class="text-2xl font-extrabold tracking-tight text-emerald-600 mt-1 tabular-nums">${estimatedCost}</span>
-              <span class="text-[10px] text-zinc-400 mt-0.5 leading-tight">{$t('tok_stats_cost_intuition')}</span>
-              <!-- Tooltip explain -->
-              <div class="absolute bottom-full left-0 mb-2 w-56 bg-zinc-900 text-white text-[10px] rounded p-2 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity shadow-lg leading-relaxed z-50">
-                {$t('tok_stats_cost_tooltip')}
-              </div>
-            </div>
-          </div>
+        <!-- Mode toggle: Simple vs BPE. The single most pedagogically
+             important interaction on this page. -->
+        <div class="flex items-center gap-2 bg-zinc-100 p-1 rounded-xl self-start border border-zinc-200/40">
+          <button
+            on:click={() => tokenizerMode = 'word'}
+            class="px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all {tokenizerMode === 'word' ? 'bg-white text-indigo-600 shadow-xs' : 'text-zinc-500 hover:text-zinc-800'}"
+          >
+            {$t('tok_mode_word')}
+          </button>
+          <button
+            on:click={() => tokenizerMode = 'subword'}
+            class="px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all {tokenizerMode === 'subword' ? 'bg-white text-teal-600 shadow-xs' : 'text-zinc-500 hover:text-zinc-800'}"
+          >
+            {$t('tok_mode_subword')}
+          </button>
+        </div>
 
-          <!-- Token ID Table -->
-          <div class="bg-white border border-zinc-200 rounded-xl shadow-xs overflow-hidden flex-1 flex flex-col">
-            <div class="px-4 py-3 bg-zinc-50 border-b border-zinc-200 flex items-center justify-between">
-              <span class="text-xs font-bold uppercase tracking-wider text-zinc-500">{$t('tok_table_title')}</span>
-              {#if tokenizerMode === 'subword'}
-                <div class="relative group cursor-help">
-                  <span class="inline-flex items-center gap-1 text-[10px] font-bold text-teal-600 hover:text-teal-700 bg-teal-50 border border-teal-200/50 rounded-full px-2 py-0.5 shadow-xs transition-colors">
-                    <span>{$t('tok_what_is_g')}</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-                  </span>
-                  <div class="absolute right-0 top-full mt-2 w-72 bg-zinc-950 text-white text-[11px] rounded-lg p-3 opacity-0 group-hover:opacity-100 pointer-events-none transition-all shadow-lg leading-relaxed z-50 transform translate-y-1 group-hover:translate-y-0 duration-200">
-                    <p class="font-bold text-teal-400 mb-1">{$t('tok_what_is_g')}</p>
-                    <p class="text-zinc-300 font-sans font-normal leading-relaxed">{@html $t('tok_g_explanation')}</p>
-                  </div>
-                </div>
-              {/if}
-            </div>
-            
-            <div class="flex-1 overflow-y-auto max-h-[280px]">
-              {#if tokens.length > 0}
-                <table class="w-full text-xs text-left border-collapse">
-                  <thead class="bg-zinc-50/50 sticky top-0 border-b border-zinc-100 font-semibold text-zinc-400">
-                    <tr>
-                      <th class="px-4 py-2 border-r border-zinc-100">{$t('tok_table_index')}</th>
-                      <th class="px-4 py-2 border-r border-zinc-100">{$t('tok_id_table_token')}</th>
-                      <th class="px-4 py-2 border-r border-zinc-100">{$t('tok_id_table_id')}</th>
-                      <th class="px-4 py-2">{$t('tok_id_table_bytes')}</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-zinc-100 bg-white">
-                    {#each tokens as tok, idx}
-                      <tr class="hover:bg-zinc-50 transition-colors {hoveredTokenIdx === idx ? 'bg-indigo-50/50' : ''}">
-                        <td class="px-4 py-2.5 font-mono text-zinc-400 border-r border-zinc-100 tabular-nums">#{idx + 1}</td>
-                        <td class="px-4 py-2.5 font-bold font-mono border-r border-zinc-100">{tok.text}</td>
-                        <td class="px-4 py-2.5 font-semibold font-mono text-indigo-600 border-r border-zinc-100 tabular-nums">{tok.id}</td>
-                        <td class="px-4 py-2.5 text-zinc-500 text-[11px]">
-                          {#if tok.spaceBefore}
-                            <span class="text-zinc-400 bg-zinc-100 font-mono px-1 rounded">{$t('tok_space')}</span> + "{tok.text.replace('Ġ','')}"
-                          {:else}
-                            "{tok.text}"
-                          {/if}
-                        </td>
-                      </tr>
-                    {/each}
-                  </tbody>
-                </table>
-              {:else}
-                <div class="h-44 flex items-center justify-center text-xs text-zinc-400 italic">{$t('tok_table_empty')}</div>
-              {/if}
-            </div>
+        <textarea
+          id="tokInput"
+          bind:value={tokenInput}
+          placeholder={$t('tok_input_placeholder')}
+          rows="3"
+          class="w-full p-4 text-sm border border-zinc-200 rounded-xl outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100/50 transition-all font-sans bg-white shadow-xs resize-none"
+        ></textarea>
+
+        <!-- Visualizer: the centerpiece. Token chips, no header, no hint
+             text. The interaction is self-evident. -->
+        {#if tokens.length > 0}
+          <div class="flex flex-wrap gap-x-1.5 gap-y-2 p-5 rounded-xl bg-white border border-zinc-200 shadow-xs">
+            {#each tokens as tok, idx}
+              <!-- svelte-ignore a11y-mouse-events-have-key-events -->
+              <!-- svelte-ignore a11y-no-static-element-interactions -->
+              <span
+                on:mouseover={() => hoveredTokenIdx = idx}
+                on:mouseleave={() => hoveredTokenIdx = null}
+                class="px-2 py-1 text-sm font-semibold font-mono rounded border transition-all cursor-default shrink-0 select-none
+                       {getTokenBgClass(tok.text)}
+                       {hoveredTokenIdx === idx ? 'ring-2 ring-indigo-500 scale-105 shadow-xs' : ''}"
+              >
+                {tok.text}
+              </span>
+            {/each}
+          </div>
+        {:else}
+          <div class="h-28 rounded-xl border border-dashed border-zinc-200 flex items-center justify-center text-sm text-zinc-400 italic bg-white">
+            {$t('tok_input_placeholder')}
+          </div>
+        {/if}
+
+        <!-- Two stats only: count and cost. Characters and chars/token are
+             technical noise for a first-time reader. The cost intuition
+             ("≈ 1 cent per 4 000 tokens") lives inline next to the dollar
+             figure so the number stops being abstract. -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="bg-white border border-zinc-200 rounded-xl px-5 py-4 shadow-xs">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-400">{$t('tok_stats_tokens')}</span>
+            <div class="text-3xl font-extrabold tracking-tight text-zinc-900 mt-1 tabular-nums">{totalTokens}</div>
+          </div>
+          <div class="bg-white border border-zinc-200 rounded-xl px-5 py-4 shadow-xs">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-400">{$t('tok_stats_cost')}</span>
+            <div class="text-3xl font-extrabold tracking-tight text-emerald-600 mt-1 tabular-nums">${estimatedCost}</div>
+            <div class="text-[11px] text-zinc-400 mt-1">{$t('tok_stats_cost_intuition')}</div>
           </div>
         </div>
-      </div>
-
-      <!-- Honesty footer: surface what is real vs simulated so a careful
-           reader (or evaluator) doesn't have to read the source to know. -->
-      <div class="mt-6 px-4 py-3 bg-zinc-50 border border-zinc-200/70 rounded-lg flex items-start gap-2.5">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-zinc-400 mt-0.5 shrink-0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        <p class="text-[11px] text-zinc-500 leading-relaxed">{@html $t('tok_honesty_note')}</p>
       </div>
     {/if}
 
     <!-- ─── SUB-TAB 2: DECODING PLAYGROUND ────────────────────── -->
     {#if activeSubTab === 'decoding'}
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-fade-in">
-        <!-- Decoding Controls & Prompt -->
-        <div class="lg:col-span-6 flex flex-col gap-6">
-          <div class="flex flex-col gap-1.5">
-            <span class="text-xs font-bold uppercase tracking-wider text-zinc-400">{$t('dec_title')}</span>
-            <p class="text-sm text-zinc-600 leading-relaxed font-normal">{@html $t('dec_desc')}</p>
-            <!-- Beginner intuition: a concrete experiment to run with the
-                 sliders, so the user doesn't just stare at a chart. -->
-            <div class="flex items-start gap-2 mt-1 px-3 py-2 bg-amber-50/60 border border-amber-100 rounded-lg">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-amber-600 mt-0.5 shrink-0"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.6 1 1.4 1 2.3v1h6v-1c0-.9.4-1.7 1-2.3A7 7 0 0 0 12 2z"/></svg>
-              <p class="text-[12px] text-amber-900 leading-relaxed">{@html $t('dec_try_hint')}</p>
-            </div>
-          </div>
-
-          <!-- Prompt Preset selection -->
-          <div class="flex flex-col gap-2">
-            <span class="text-xs font-bold text-zinc-700">{$t('dec_prompt_label')}</span>
-            <div class="flex flex-wrap gap-2">
-              {#each filteredPresets as preset, idx}
-                <button
-                  on:click={() => handlePresetChange(idx)}
-                  class="px-3.5 py-2 text-xs font-bold rounded-lg border transition-all
-                         {selectedPresetIdx === idx ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white text-indigo-600 border-zinc-200 hover:border-indigo-300 hover:bg-indigo-50/50'}"
-                >
-                  {preset.title}
-                </button>
-              {/each}
-            </div>
-          </div>
-
-          <!-- Parameter Sliders -->
-          <div class="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs flex flex-col gap-6">
-            <div class="flex flex-col gap-2">
-              <div class="flex justify-between items-center">
-                <span class="text-xs font-bold text-zinc-800">{$t('dec_temp_label')}</span>
-                <span class="px-2 py-0.5 text-xs font-mono font-bold bg-indigo-50 border border-indigo-100 text-indigo-700 rounded tabular-nums">T = {temperature.toFixed(2)}</span>
-              </div>
-              <input
-                type="range"
-                bind:value={temperature}
-                min="0.1"
-                max="2.0"
-                step="0.05"
-                class="w-full accent-indigo-600 h-1.5 bg-zinc-100 rounded-lg cursor-pointer"
-              />
-              <!-- Plain-language anchors for the slider extremes. -->
-              <div class="flex justify-between text-[10px] font-semibold text-zinc-400 uppercase tracking-wider px-0.5">
-                <span>← {$t('dec_temp_anchor_low')}</span>
-                <span>{$t('dec_temp_anchor_high')} →</span>
-              </div>
-              <p class="text-[11px] text-zinc-500 leading-normal">{$t('dec_temp_desc')}</p>
-            </div>
-
-            <div class="flex flex-col gap-2">
-              <div class="flex justify-between items-center">
-                <span class="text-xs font-bold text-zinc-800">{$t('dec_topp_label')}</span>
-                <span class="px-2 py-0.5 text-xs font-mono font-bold bg-teal-50 border border-teal-100 text-teal-700 rounded tabular-nums">P = {topP.toFixed(2)}</span>
-              </div>
-              <input
-                type="range"
-                bind:value={topP}
-                min="0.1"
-                max="1.0"
-                step="0.05"
-                class="w-full accent-teal-600 h-1.5 bg-zinc-100 rounded-lg cursor-pointer"
-              />
-              <div class="flex justify-between text-[10px] font-semibold text-zinc-400 uppercase tracking-wider px-0.5">
-                <span>← {$t('dec_topp_anchor_low')}</span>
-                <span>{$t('dec_topp_anchor_high')} →</span>
-              </div>
-              <p class="text-[11px] text-zinc-500 leading-normal">{$t('dec_topp_desc')}</p>
-            </div>
-          </div>
+      <div class="flex flex-col gap-6 animate-fade-in max-w-3xl mx-auto">
+        <!-- Lead. -->
+        <div class="flex flex-col gap-2">
+          <p class="text-base text-zinc-700 leading-relaxed">{@html $t('dec_desc')}</p>
         </div>
 
-        <!-- Probability Distribution Output Chart -->
-        <div class="lg:col-span-6 flex flex-col gap-4">
-          <div class="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs flex-1 flex flex-col gap-4">
-            <!-- Winner card: surfaces the most-likely word in plain English
-                 above the chart so beginners get the answer first, then
-                 explore the math afterwards. -->
-            {#if topCandidate}
-              <div class="bg-gradient-to-br from-indigo-50 to-indigo-50/40 border border-indigo-100 rounded-xl px-4 py-3 flex items-center gap-3">
-                <div class="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white shrink-0">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="text-[10px] font-bold uppercase tracking-widest text-indigo-500">{$t('dec_winner_label')}</div>
-                  <div class="text-base font-bold text-indigo-900 truncate font-mono">"{topCandidate.word}" <span class="text-xs font-semibold text-indigo-400 tabular-nums">· {Math.round(topCandidate.normProb * 100)}%</span></div>
-                </div>
-              </div>
-            {/if}
-
-            <div class="flex items-center justify-between border-b border-zinc-100 pb-3">
-              <span class="text-xs font-bold uppercase tracking-wider text-zinc-500">{$t('dec_probs_chart_title')}</span>
-              <div class="flex items-center gap-3">
-                <div class="flex items-center gap-1">
-                  <span class="w-2.5 h-2.5 bg-indigo-500 rounded-sm"></span>
-                  <span class="text-[10px] text-zinc-500">{$t('dec_prob_legend')}</span>
-                </div>
-                <div class="flex items-center gap-1">
-                  <span class="w-2.5 h-2.5 bg-zinc-200 rounded-sm"></span>
-                  <span class="text-[10px] text-zinc-500">{$t('dec_legend_filtered')}</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Bar Chart Component -->
-            <div class="flex-1 flex flex-col gap-3 justify-center min-h-[300px]">
-              {#each computedCandidates as cand}
-                <div class="flex items-center gap-3 w-full">
-                  <!-- Word tag -->
-                  <div class="w-36 shrink-0 text-right">
-                    <span class="text-sm font-semibold font-mono {cand.filtered ? 'text-zinc-400 line-through' : 'text-zinc-800'}">
-                      "{cand.word}"
-                    </span>
-                  </div>
-
-                  <!-- Progress container -->
-                  <div class="flex-1 h-6 bg-zinc-100 rounded-md overflow-hidden relative border border-zinc-200/40">
-                    <!-- Progress bar -->
-                    <div
-                      class="h-full rounded-l-md transition-all duration-300
-                             {cand.filtered ? 'bg-zinc-200 border-r border-zinc-300' : 'bg-gradient-to-r from-indigo-500 to-indigo-600'}"
-                      style="width: {cand.normProb * 100}%"
-                    ></div>
-
-                    <!-- Percent float text -->
-                    <span class="absolute inset-y-0 right-3 flex items-center text-[10px] font-mono font-bold tabular-nums {cand.filtered ? 'text-zinc-400' : 'text-indigo-900'}">
-                      {#if cand.filtered}
-                        {$t('dec_legend_filtered')} ({Math.round(cand.rawProb * 100)}%)
-                      {:else}
-                        {Math.round(cand.normProb * 100)}%
-                      {/if}
-                    </span>
-                  </div>
-
-                  <!-- Logit score -->
-                  <div class="w-14 shrink-0 font-mono text-[10px] text-zinc-400 text-left tabular-nums">
-                    ({cand.logit >= 0 ? '+' : ''}{cand.logit.toFixed(1)})
-                  </div>
-                </div>
-              {/each}
-            </div>
-
-            <!-- Collapsible math: hidden by default so beginners aren't
-                 scared off; one click for the curious. -->
-            <div class="border-t border-zinc-100 pt-3">
+        <!-- Prompt presets. -->
+        <div class="flex flex-col gap-2">
+          <span class="text-xs font-bold text-zinc-700">{$t('dec_prompt_label')}</span>
+          <div class="flex flex-wrap gap-2">
+            {#each filteredPresets as preset, idx}
               <button
-                on:click={() => showMath = !showMath}
-                class="flex items-center justify-between w-full text-left text-[11px] font-bold uppercase tracking-widest text-zinc-500 hover:text-zinc-800 transition-colors cursor-pointer"
+                on:click={() => handlePresetChange(idx)}
+                class="px-3.5 py-2 text-xs font-bold rounded-lg border transition-all
+                       {selectedPresetIdx === idx ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white text-indigo-600 border-zinc-200 hover:border-indigo-300 hover:bg-indigo-50/50'}"
               >
-                <span>{$t('dec_math_title')}</span>
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="transition-transform {showMath ? 'rotate-180' : ''}"><polyline points="6 9 12 15 18 9"/></svg>
+                {preset.title}
               </button>
-              {#if showMath}
-                <div class="mt-3 bg-zinc-50 rounded-xl p-3 border border-zinc-200/50 flex flex-col gap-2 animate-fade-in">
-                  <div class="flex items-center justify-between text-xs text-zinc-600 gap-4 flex-wrap leading-relaxed">
-                    <div>
-                      <code class="bg-white border border-zinc-200 px-1.5 py-0.5 rounded font-mono text-zinc-700">logit_new = logit / T</code>
-                    </div>
-                    <div class="font-mono text-zinc-400">→</div>
-                    <div>
-                      <code class="bg-white border border-zinc-200 px-1.5 py-0.5 rounded font-mono text-zinc-700">prob_i = exp(logit_i) / Σ exp(logit_j)</code>
-                    </div>
-                  </div>
-                  <p class="text-[11px] text-zinc-500 leading-normal mt-1">
-                    {@html $t('dec_note')}
-                  </p>
-                </div>
-              {/if}
-            </div>
+            {/each}
           </div>
         </div>
-      </div>
 
-      <!-- Honesty footer mirroring the tokenizer one. -->
-      <div class="mt-6 px-4 py-3 bg-zinc-50 border border-zinc-200/70 rounded-lg flex items-start gap-2.5">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-zinc-400 mt-0.5 shrink-0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        <p class="text-[11px] text-zinc-500 leading-relaxed">{@html $t('dec_honesty_note')}</p>
+        <!-- Sliders: kept compact. End-anchors give intuition; the small
+             one-line description below each slider is enough for context. -->
+        <div class="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs flex flex-col gap-6">
+          <div class="flex flex-col gap-2">
+            <div class="flex justify-between items-center">
+              <span class="text-xs font-bold text-zinc-800">{$t('dec_temp_label')}</span>
+              <span class="px-2 py-0.5 text-xs font-mono font-bold bg-indigo-50 border border-indigo-100 text-indigo-700 rounded tabular-nums">T = {temperature.toFixed(2)}</span>
+            </div>
+            <input
+              type="range"
+              bind:value={temperature}
+              min="0.1"
+              max="2.0"
+              step="0.05"
+              class="w-full accent-indigo-600 h-1.5 bg-zinc-100 rounded-lg cursor-pointer"
+            />
+            <div class="flex justify-between text-[10px] font-semibold text-zinc-400 uppercase tracking-wider px-0.5">
+              <span>← {$t('dec_temp_anchor_low')}</span>
+              <span>{$t('dec_temp_anchor_high')} →</span>
+            </div>
+            <p class="text-[11px] text-zinc-500 leading-normal">{$t('dec_temp_desc')}</p>
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <div class="flex justify-between items-center">
+              <span class="text-xs font-bold text-zinc-800">{$t('dec_topp_label')}</span>
+              <span class="px-2 py-0.5 text-xs font-mono font-bold bg-teal-50 border border-teal-100 text-teal-700 rounded tabular-nums">P = {topP.toFixed(2)}</span>
+            </div>
+            <input
+              type="range"
+              bind:value={topP}
+              min="0.1"
+              max="1.0"
+              step="0.05"
+              class="w-full accent-teal-600 h-1.5 bg-zinc-100 rounded-lg cursor-pointer"
+            />
+            <div class="flex justify-between text-[10px] font-semibold text-zinc-400 uppercase tracking-wider px-0.5">
+              <span>← {$t('dec_topp_anchor_low')}</span>
+              <span>{$t('dec_topp_anchor_high')} →</span>
+            </div>
+            <p class="text-[11px] text-zinc-500 leading-normal">{$t('dec_topp_desc')}</p>
+          </div>
+        </div>
+
+        <!-- Result card: surface the most-likely word in plain text. The
+             chart that follows it is supporting evidence, not the headline. -->
+        {#if topCandidate}
+          <div class="bg-gradient-to-br from-indigo-50 to-indigo-50/40 border border-indigo-100 rounded-xl px-5 py-4 flex items-center gap-3">
+            <div class="w-9 h-9 rounded-full bg-indigo-600 flex items-center justify-center text-white shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="text-[10px] font-bold uppercase tracking-widest text-indigo-500">{$t('dec_winner_label')}</div>
+              <div class="text-lg font-bold text-indigo-900 truncate font-mono mt-0.5">
+                "{topCandidate.word}"
+                <span class="text-sm font-semibold text-indigo-400 tabular-nums">· {Math.round(topCandidate.normProb * 100)}%</span>
+              </div>
+            </div>
+          </div>
+        {/if}
+
+        <!-- Probability bars: simplified. No raw logits, no math toggle.
+             Filtered (Top-P excluded) bars are visibly muted so the user
+             still sees the cut. -->
+        <div class="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs flex flex-col gap-3">
+          {#each computedCandidates as cand}
+            <div class="flex items-center gap-3 w-full">
+              <div class="w-32 shrink-0 text-right">
+                <span class="text-sm font-semibold font-mono {cand.filtered ? 'text-zinc-400 line-through' : 'text-zinc-800'}">
+                  "{cand.word}"
+                </span>
+              </div>
+              <div class="flex-1 h-6 bg-zinc-100 rounded-md overflow-hidden relative border border-zinc-200/40">
+                <div
+                  class="h-full rounded-l-md transition-all duration-300
+                         {cand.filtered ? 'bg-zinc-200' : 'bg-gradient-to-r from-indigo-500 to-indigo-600'}"
+                  style="width: {(cand.filtered ? cand.rawProb : cand.normProb) * 100}%"
+                ></div>
+                <span class="absolute inset-y-0 right-3 flex items-center text-[10px] font-mono font-bold tabular-nums {cand.filtered ? 'text-zinc-400' : 'text-indigo-900'}">
+                  {Math.round((cand.filtered ? cand.rawProb : cand.normProb) * 100)}%
+                </span>
+              </div>
+            </div>
+          {/each}
+        </div>
       </div>
     {/if}
   </div>
