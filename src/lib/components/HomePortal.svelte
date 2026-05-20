@@ -17,8 +17,8 @@
   
   <!-- Sleek Radial Gradients for Premium Ambient Lighting with Drifting Floating Animations -->
   <div class="absolute -top-40 -left-40 w-[35rem] h-[35rem] bg-indigo-300/20 rounded-full blur-[120px] pointer-events-none z-0 animate-float-1"></div>
-  <div class="absolute top-[25rem] -right-40 w-[40rem] h-[40rem] bg-purple-300/15 rounded-full blur-[130px] pointer-events-none z-0 animate-float-2"></div>
-  <div class="absolute -bottom-40 left-1/3 w-[30rem] h-[30rem] bg-teal-200/10 rounded-full blur-[120px] pointer-events-none z-0 animate-float-3"></div>
+  <div class="absolute top-[25rem] -right-40 w-[40rem] h-[40rem] bg-teal-300/15 rounded-full blur-[130px] pointer-events-none z-0 animate-float-2"></div>
+  <div class="absolute -bottom-40 left-1/3 w-[30rem] h-[30rem] bg-amber-200/15 rounded-full blur-[120px] pointer-events-none z-0 animate-float-3"></div>
 
   <!-- Hero Container -->
   <section class="relative z-10 max-w-[85rem] w-full px-6 pt-24 md:pt-32 pb-4 flex flex-col items-center text-center">
@@ -39,7 +39,7 @@
     <h2 class="text-[10px] font-black tracking-[0.2em] text-zinc-400 uppercase mb-3">
       {$t('home_trusted_by')}
     </h2>
-    <div class="w-12 h-[3px] bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full mx-auto shadow-sm"></div>
+    <div class="w-12 h-[3px] bg-gradient-to-r from-indigo-500 to-teal-500 rounded-full mx-auto shadow-sm"></div>
   </div>
 
   <!-- Interactive Lab Portal Cards Grid -->
@@ -98,20 +98,20 @@
     <!-- svelte-ignore a11y-no-static-element-interactions -->
     <div 
       on:click={() => triggerTab('llm')}
-      class="group relative flex flex-col justify-between p-8 rounded-2xl border border-zinc-200/80 bg-white/70 backdrop-blur-xl hover:-translate-y-1.5 hover:scale-[1.01] hover:border-purple-300 hover:shadow-[0_20px_50px_rgba(147,51,234,0.08)] transition-all duration-300 cursor-pointer overflow-hidden"
+      class="group relative flex flex-col justify-between p-8 rounded-2xl border border-zinc-200/80 bg-white/70 backdrop-blur-xl hover:-translate-y-1.5 hover:scale-[1.01] hover:border-teal-300 hover:shadow-[0_20px_50px_rgba(13,148,136,0.08)] transition-all duration-300 cursor-pointer overflow-hidden"
     >
       <!-- Background SVG chat shapes for subtle natural-language feel -->
-      <svg class="absolute top-0 right-0 h-40 w-40 text-zinc-100 opacity-20 pointer-events-none group-hover:text-purple-100/40 transition-colors duration-500" width="160" height="160" fill="none" viewBox="0 0 160 160">
+      <svg class="absolute top-0 right-0 h-40 w-40 text-zinc-100 opacity-20 pointer-events-none group-hover:text-teal-100/40 transition-colors duration-500" width="160" height="160" fill="none" viewBox="0 0 160 160">
         <rect x="20" y="30" width="80" height="50" rx="10" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3"/>
         <rect x="60" y="90" width="80" height="40" rx="10" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3"/>
       </svg>
 
       <!-- Elegant Accent Gradient Glow Border (Hover) -->
-      <div class="absolute inset-0 bg-gradient-to-br from-purple-500/0 via-purple-500/0 to-purple-500/4 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
+      <div class="absolute inset-0 bg-gradient-to-br from-teal-500/0 via-teal-500/0 to-teal-500/4 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
 
       <div>
         <!-- Icon Chat/Brain Container -->
-        <div class="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-all duration-300 mb-6 shadow-sm">
+        <div class="w-12 h-12 rounded-xl bg-teal-50 flex items-center justify-center text-teal-600 group-hover:bg-teal-600 group-hover:text-white transition-all duration-300 mb-6 shadow-sm">
           <!-- Animated Chat SVG -->
           <svg class="w-6 h-6 transform group-hover:scale-110 transition-transform duration-300" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
@@ -121,7 +121,7 @@
           </svg>
         </div>
 
-        <h3 class="text-xl font-bold text-zinc-900 group-hover:text-purple-600 transition-colors mb-3">
+        <h3 class="text-xl font-bold text-zinc-900 group-hover:text-teal-600 transition-colors mb-3">
           {$t('home_llm_card_title')}
         </h3>
         
@@ -131,7 +131,7 @@
       </div>
 
       <div>
-        <button class="inline-flex items-center gap-2 text-sm font-bold text-purple-600 group-hover:text-purple-800 transition-colors cursor-pointer">
+        <button class="inline-flex items-center gap-2 text-sm font-bold text-teal-600 group-hover:text-teal-800 transition-colors cursor-pointer">
           <span>{$t('home_llm_card_btn')}</span>
           <svg class="w-4 h-4 transform group-hover:translate-x-1.5 transition-transform duration-300" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
             <line x1="5" y1="12" x2="19" y2="12"></line>

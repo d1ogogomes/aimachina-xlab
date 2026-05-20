@@ -569,6 +569,21 @@
       previewUrl = "";
       previewImgRef = null;
       isDemoDatasetLoaded = false;
+      // Reset demo-dataset selection state so the dataset chips, the test
+      // class selector and the dataset-aware preprocess hook (MNIST vs pets)
+      // all return to the initial values rather than referencing classes
+      // that no longer exist.
+      activeDemoDatasetType = 'pets';
+      selectedDemoTestClassId = 0;
+      // Force the persistence reactive block to write a fresh signature on
+      // the next class change rather than skipping it because the previous
+      // signature still happens to match the freshly-reset classes.
+      lastPersistedSignature = "";
+      // Close any open capture modals/dropdowns left open from before reset.
+      activeWebcamClass = null;
+      activeDrawClass = null;
+      activeTestWebcamClass = null;
+      langOpen = false;
       if (customModel) {
           customModel.dispose();
           customModel = null;
@@ -797,7 +812,7 @@
 
   <!-- Ambient background glow elements, completely matching the landing page colors -->
   <div class="absolute top-[-200px] left-[10%] w-[600px] h-[600px] bg-indigo-200/25 rounded-full blur-[130px] pointer-events-none z-0"></div>
-  <div class="absolute top-[300px] right-[5%] w-[500px] h-[500px] bg-purple-200/20 rounded-full blur-[120px] pointer-events-none z-0"></div>
+  <div class="absolute top-[300px] right-[5%] w-[500px] h-[500px] bg-teal-200/20 rounded-full blur-[120px] pointer-events-none z-0"></div>
   <div class="absolute bottom-[-100px] left-[20%] w-[700px] h-[700px] bg-indigo-100/20 rounded-full blur-[140px] pointer-events-none z-0"></div>
 
   <!-- Subtle Halftone grid matching the main landing page feel -->
@@ -822,7 +837,7 @@
         on:click={() => activeTab = 'home'}
         class="flex items-center gap-3 cursor-pointer select-none text-left bg-transparent border-0 outline-none p-0 group ml-1 justify-start"
       >
-        <div class="w-10 h-10 bg-gradient-to-tr from-indigo-600 to-purple-600 rounded-full flex items-center justify-center text-white text-[11px] font-black tracking-tight group-hover:scale-105 transition-all shadow-[0_4px_12px_rgba(79,70,229,0.15)]">
+        <div class="w-10 h-10 bg-gradient-to-tr from-indigo-600 to-teal-600 rounded-full flex items-center justify-center text-white text-[11px] font-black tracking-tight group-hover:scale-105 transition-all shadow-[0_4px_12px_rgba(79,70,229,0.15)]">
           AI
         </div>
         <div class="hidden sm:flex flex-col">
@@ -847,7 +862,7 @@
           </button>
           <button 
             on:click={() => activeTab = 'llm'} 
-            class="px-4 py-1.5 text-xs font-bold rounded-full transition-all duration-300 cursor-pointer {activeTab === 'llm' ? 'bg-purple-600 text-white shadow-md scale-[1.02]' : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200/50'}"
+            class="px-4 py-1.5 text-xs font-bold rounded-full transition-all duration-300 cursor-pointer {activeTab === 'llm' ? 'bg-teal-600 text-white shadow-md scale-[1.02]' : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200/50'}"
           >
             {$t('tab_llm')}
           </button>
@@ -1208,65 +1223,73 @@
         </PreviewCard>
     </aside>
 
-    {#if showResetConfirm}
-    <div class="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm transition-opacity fade-in">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col fade-up">
-            <div class="p-6">
-                <div class="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center text-red-600 mb-4 mx-auto ring-8 ring-red-50/50">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
-                </div>
-                <h3 class="text-lg font-bold text-zinc-900 text-center mb-2">{$t("reset_modal_title")}</h3>
-                <p class="text-sm text-zinc-500 text-center leading-relaxed">
-                    {$t("reset_modal_desc_1")} <strong class="text-zinc-700 font-semibold">{$t("reset_modal_desc_2")}</strong>.
-                </p>
-            </div>
-            <div class="px-6 py-4 bg-zinc-50/80 border-t border-zinc-100 flex gap-3">
-                <button on:click={() => showResetConfirm = false} class="flex-1 px-4 py-2.5 text-sm font-semibold text-zinc-600 bg-white border border-zinc-200 hover:bg-zinc-50 hover:text-zinc-900 rounded-lg transition-colors">
-                    {$t("reset_modal_cancel")}
-                </button>
-                <button on:click={executeReset} class="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors shadow-sm">
-                    {$t("reset_modal_confirm")}
-                </button>
-            </div>
-        </div>
-    </div>
-    {/if}
-
-    {#if showSaveDatasetModal}
-    <div class="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm transition-opacity fade-in">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col fade-up">
-            <div class="p-6">
-                <div class="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 mb-4 mx-auto ring-8 ring-amber-50/50">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                </div>
-                <h3 class="text-lg font-bold text-zinc-900 text-center mb-2">{$t("save_dataset_title")}</h3>
-                <p class="text-sm text-zinc-500 text-center leading-relaxed mb-4">{$t("save_dataset_desc")}</p>
-                {#if saveDatasetError}
-                <div class="mb-3 px-3 py-2 bg-red-50 border border-red-100 rounded-lg text-sm text-red-700 font-medium text-center">
-                    {saveDatasetError}
-                </div>
-                {/if}
-                <input
-                    type="text"
-                    bind:value={saveDatasetName}
-                    placeholder={$t("save_dataset_placeholder")}
-                    class="w-full px-4 py-2.5 text-sm border border-zinc-200 rounded-lg outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100 transition-all"
-                    on:keydown={(e) => { if (e.key === 'Enter') confirmSaveDataset(); }}
-                />
-            </div>
-            <div class="px-6 py-4 bg-zinc-50/80 border-t border-zinc-100 flex gap-3">
-                <button on:click={() => showSaveDatasetModal = false} class="flex-1 px-4 py-2.5 text-sm font-semibold text-zinc-600 bg-white border border-zinc-200 hover:bg-zinc-50 hover:text-zinc-900 rounded-lg transition-colors">
-                    {$t("reset_modal_cancel")}
-                </button>
-                <button on:click={confirmSaveDataset} disabled={!saveDatasetName.trim()} class="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-amber-600 hover:bg-amber-700 disabled:bg-amber-300 rounded-lg transition-colors shadow-sm">
-                    {$t("save_dataset_confirm")}
-                </button>
-            </div>
-        </div>
-    </div>
-    {/if}
-
   </main>
+
+  <!-- Reset / save-dataset modals are deliberately rendered OUTSIDE <main>.
+       Some ancestors of the CV layout use `backdrop-filter` (cards) and
+       Tailwind's transform utilities (button hover scales) which create
+       new containing blocks for `position: fixed` per CSS spec. When the
+       modal sits inside that subtree, `inset-0` clips to the ancestor
+       instead of the viewport — leaving the header and the sections below
+       <main> un-blurred. Hoisting the modals to root sibling level is
+       the standard portal-equivalent fix. -->
+  {#if showResetConfirm}
+  <div class="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm transition-opacity fade-in">
+      <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col fade-up">
+          <div class="p-6">
+              <div class="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center text-red-600 mb-4 mx-auto ring-8 ring-red-50/50">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+              </div>
+              <h3 class="text-lg font-bold text-zinc-900 text-center mb-2">{$t("reset_modal_title")}</h3>
+              <p class="text-sm text-zinc-500 text-center leading-relaxed">
+                  {$t("reset_modal_desc_1")} <strong class="text-zinc-700 font-semibold">{$t("reset_modal_desc_2")}</strong>.
+              </p>
+          </div>
+          <div class="px-6 py-4 bg-zinc-50/80 border-t border-zinc-100 flex gap-3">
+              <button on:click={() => showResetConfirm = false} class="flex-1 px-4 py-2.5 text-sm font-semibold text-zinc-600 bg-white border border-zinc-200 hover:bg-zinc-50 hover:text-zinc-900 rounded-lg transition-colors">
+                  {$t("reset_modal_cancel")}
+              </button>
+              <button on:click={executeReset} class="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors shadow-sm">
+                  {$t("reset_modal_confirm")}
+              </button>
+          </div>
+      </div>
+  </div>
+  {/if}
+
+  {#if showSaveDatasetModal}
+  <div class="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm transition-opacity fade-in">
+      <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col fade-up">
+          <div class="p-6">
+              <div class="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 mb-4 mx-auto ring-8 ring-amber-50/50">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              </div>
+              <h3 class="text-lg font-bold text-zinc-900 text-center mb-2">{$t("save_dataset_title")}</h3>
+              <p class="text-sm text-zinc-500 text-center leading-relaxed mb-4">{$t("save_dataset_desc")}</p>
+              {#if saveDatasetError}
+              <div class="mb-3 px-3 py-2 bg-red-50 border border-red-100 rounded-lg text-sm text-red-700 font-medium text-center">
+                  {saveDatasetError}
+              </div>
+              {/if}
+              <input
+                  type="text"
+                  bind:value={saveDatasetName}
+                  placeholder={$t("save_dataset_placeholder")}
+                  class="w-full px-4 py-2.5 text-sm border border-zinc-200 rounded-lg outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100 transition-all"
+                  on:keydown={(e) => { if (e.key === 'Enter') confirmSaveDataset(); }}
+              />
+          </div>
+          <div class="px-6 py-4 bg-zinc-50/80 border-t border-zinc-100 flex gap-3">
+              <button on:click={() => showSaveDatasetModal = false} class="flex-1 px-4 py-2.5 text-sm font-semibold text-zinc-600 bg-white border border-zinc-200 hover:bg-zinc-50 hover:text-zinc-900 rounded-lg transition-colors">
+                  {$t("reset_modal_cancel")}
+              </button>
+              <button on:click={confirmSaveDataset} disabled={!saveDatasetName.trim()} class="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-amber-600 hover:bg-amber-700 disabled:bg-amber-300 rounded-lg transition-colors shadow-sm">
+                  {$t("save_dataset_confirm")}
+              </button>
+          </div>
+      </div>
+  </div>
+  {/if}
 
   {#if activeWebcamClass !== null}
     <WebcamModal 

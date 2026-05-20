@@ -28,11 +28,11 @@ export default function AppReact({
   return (
     <div className="min-h-screen w-full bg-[#FAF9FC] overflow-hidden flex flex-col justify-center items-center relative">
       
-      {/* Full-screen animated shader overlay styled with purple/indigo flow colors */}
+      {/* Full-screen animated shader overlay styled with teal/indigo flow colors */}
       <div className="absolute inset-0 z-10 pointer-events-none w-full h-full">
         <Shader className="w-full h-full">
           <Swirl colorA="#ffffff" colorB="#faf9fc" detail={1.7} />
-          <ChromaFlow baseColor="#ffffff" downColor="#6366f1" leftColor="#4f46e5" rightColor="#9333ea" upColor="#a855f7" momentum={13} radius={3.5} />
+          <ChromaFlow baseColor="#ffffff" downColor="#6366f1" leftColor="#4f46e5" rightColor="#0d9488" upColor="#14b8a6" momentum={13} radius={3.5} />
           <FlutedGlass aberration={0.61} angle={31} frequency={8} highlight={0.12} highlightSoftness={0} lightAngle={-90} refraction={4} shape="rounded" softness={1} speed={0.15} />
           <FilmGrain strength={0.05} />
         </Shader>
@@ -83,7 +83,7 @@ export default function AppReact({
       {/* Main Content (Only the premium text and entrance buttons) */}
       <div className="w-full max-w-[1440px] px-6 sm:px-12 z-20 relative text-center flex flex-col items-center justify-center">
         <h1 className="text-[clamp(2.5rem,7vw,5.5rem)] font-black leading-[1.05] tracking-[-0.03em] text-transparent bg-clip-text bg-gradient-to-b from-zinc-950 via-zinc-900 to-indigo-950 max-w-[1100px] mx-auto mb-4 select-none">
-          AIMachina <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">XLab</span>
+          AIMachina <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-teal-600">XLab</span>
         </h1>
         
         <p className="text-lg sm:text-[22px] font-bold text-zinc-800 max-w-3xl mx-auto leading-snug mb-6 select-none">
@@ -113,7 +113,7 @@ export default function AppReact({
 
           <button 
             onClick={() => onSelectTab('llm')}
-            className="group flex items-center justify-between sm:justify-start gap-4 bg-purple-600 hover:bg-purple-700 text-white text-[14px] font-bold rounded-full pl-6 pr-2 py-2 transition-colors duration-300 shadow-[0_4px_14px_rgba(147,51,234,0.25)] w-full sm:w-auto cursor-pointer"
+            className="group flex items-center justify-between sm:justify-start gap-4 bg-teal-600 hover:bg-teal-700 text-white text-[14px] font-bold rounded-full pl-6 pr-2 py-2 transition-colors duration-300 shadow-[0_4px_14px_rgba(13,148,136,0.25)] w-full sm:w-auto cursor-pointer"
           >
             <span className="relative overflow-hidden h-[20px] flex flex-col">
               <span className="flex flex-col transition-transform duration-500 ease-[cubic-bezier(0.25,0.1,0.25,1)] group-hover:-translate-y-1/2">
@@ -122,7 +122,7 @@ export default function AppReact({
               </span>
             </span>
             <span className="w-8 h-8 rounded-full bg-white flex items-center justify-center transform transition-transform duration-500 ease-[cubic-bezier(0.25,0.1,0.25,1)] group-hover:-rotate-45">
-              <ArrowRight size={15} className="text-purple-600" />
+              <ArrowRight size={15} className="text-teal-600" />
             </span>
           </button>
         </div>
