@@ -937,6 +937,15 @@
     return list;
   })();
 
+  // Most probable surviving candidate — used to surface the "winner"
+  // in plain English above the chart so beginners read the result before
+  // the math.
+  $: topCandidate = computedCandidates.find(c => !c.filtered) ?? null;
+
+  // Math accordion: collapsed by default. Beginners read the chart;
+  // curious users click to see the formulas.
+  let showMath = false;
+
   // Select Preset Prompt
   function handlePresetChange(idx: number) {
     selectedPresetIdx = idx;
@@ -977,6 +986,12 @@
           <div class="flex flex-col gap-2">
             <label for="tokInput" class="text-xs font-bold uppercase tracking-wider text-zinc-400">{$t('tok_title')} Playground</label>
             <p class="text-sm text-zinc-600 leading-relaxed font-normal">{@html $t('tok_desc')}</p>
+            <!-- Beginner intuition: surface a concrete "try this" so people
+                 know what to play with rather than staring at a blank box. -->
+            <div class="flex items-start gap-2 mt-1 px-3 py-2 bg-amber-50/60 border border-amber-100 rounded-lg">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-amber-600 mt-0.5 shrink-0"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.6 1 1.4 1 2.3v1h6v-1c0-.9.4-1.7 1-2.3A7 7 0 0 0 12 2z"/></svg>
+              <p class="text-[12px] text-amber-900 leading-relaxed">{@html $t('tok_try_hint')}</p>
+            </div>
           </div>
 
           <div class="flex items-center gap-2 bg-zinc-100 p-1 rounded-xl self-start border border-zinc-200/40">
@@ -1054,6 +1069,7 @@
             <div class="bg-white border border-zinc-200 rounded-xl p-4 shadow-xs flex flex-col group relative cursor-help">
               <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-400">{$t('tok_stats_cost')}</span>
               <span class="text-2xl font-extrabold tracking-tight text-emerald-600 mt-1 tabular-nums">${estimatedCost}</span>
+              <span class="text-[10px] text-zinc-400 mt-0.5 leading-tight">{$t('tok_stats_cost_intuition')}</span>
               <!-- Tooltip explain -->
               <div class="absolute bottom-full left-0 mb-2 w-56 bg-zinc-900 text-white text-[10px] rounded p-2 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity shadow-lg leading-relaxed z-50">
                 {$t('tok_stats_cost_tooltip')}
@@ -1114,6 +1130,13 @@
           </div>
         </div>
       </div>
+
+      <!-- Honesty footer: surface what is real vs simulated so a careful
+           reader (or evaluator) doesn't have to read the source to know. -->
+      <div class="mt-6 px-4 py-3 bg-zinc-50 border border-zinc-200/70 rounded-lg flex items-start gap-2.5">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-zinc-400 mt-0.5 shrink-0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <p class="text-[11px] text-zinc-500 leading-relaxed">{@html $t('tok_honesty_note')}</p>
+      </div>
     {/if}
 
     <!-- ─── SUB-TAB 2: DECODING PLAYGROUND ────────────────────── -->
@@ -1124,6 +1147,12 @@
           <div class="flex flex-col gap-1.5">
             <span class="text-xs font-bold uppercase tracking-wider text-zinc-400">{$t('dec_title')}</span>
             <p class="text-sm text-zinc-600 leading-relaxed font-normal">{@html $t('dec_desc')}</p>
+            <!-- Beginner intuition: a concrete experiment to run with the
+                 sliders, so the user doesn't just stare at a chart. -->
+            <div class="flex items-start gap-2 mt-1 px-3 py-2 bg-amber-50/60 border border-amber-100 rounded-lg">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-amber-600 mt-0.5 shrink-0"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.6 1 1.4 1 2.3v1h6v-1c0-.9.4-1.7 1-2.3A7 7 0 0 0 12 2z"/></svg>
+              <p class="text-[12px] text-amber-900 leading-relaxed">{@html $t('dec_try_hint')}</p>
+            </div>
           </div>
 
           <!-- Prompt Preset selection -->
@@ -1157,6 +1186,11 @@
                 step="0.05"
                 class="w-full accent-indigo-600 h-1.5 bg-zinc-100 rounded-lg cursor-pointer"
               />
+              <!-- Plain-language anchors for the slider extremes. -->
+              <div class="flex justify-between text-[10px] font-semibold text-zinc-400 uppercase tracking-wider px-0.5">
+                <span>← {$t('dec_temp_anchor_low')}</span>
+                <span>{$t('dec_temp_anchor_high')} →</span>
+              </div>
               <p class="text-[11px] text-zinc-500 leading-normal">{$t('dec_temp_desc')}</p>
             </div>
 
@@ -1173,6 +1207,10 @@
                 step="0.05"
                 class="w-full accent-teal-600 h-1.5 bg-zinc-100 rounded-lg cursor-pointer"
               />
+              <div class="flex justify-between text-[10px] font-semibold text-zinc-400 uppercase tracking-wider px-0.5">
+                <span>← {$t('dec_topp_anchor_low')}</span>
+                <span>{$t('dec_topp_anchor_high')} →</span>
+              </div>
               <p class="text-[11px] text-zinc-500 leading-normal">{$t('dec_topp_desc')}</p>
             </div>
           </div>
@@ -1181,6 +1219,21 @@
         <!-- Probability Distribution Output Chart -->
         <div class="lg:col-span-6 flex flex-col gap-4">
           <div class="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs flex-1 flex flex-col gap-4">
+            <!-- Winner card: surfaces the most-likely word in plain English
+                 above the chart so beginners get the answer first, then
+                 explore the math afterwards. -->
+            {#if topCandidate}
+              <div class="bg-gradient-to-br from-indigo-50 to-indigo-50/40 border border-indigo-100 rounded-xl px-4 py-3 flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[10px] font-bold uppercase tracking-widest text-indigo-500">{$t('dec_winner_label')}</div>
+                  <div class="text-base font-bold text-indigo-900 truncate font-mono">"{topCandidate.word}" <span class="text-xs font-semibold text-indigo-400 tabular-nums">· {Math.round(topCandidate.normProb * 100)}%</span></div>
+                </div>
+              </div>
+            {/if}
+
             <div class="flex items-center justify-between border-b border-zinc-100 pb-3">
               <span class="text-xs font-bold uppercase tracking-wider text-zinc-500">{$t('dec_probs_chart_title')}</span>
               <div class="flex items-center gap-3">
@@ -1191,20 +1244,6 @@
                 <div class="flex items-center gap-1">
                   <span class="w-2.5 h-2.5 bg-zinc-200 rounded-sm"></span>
                   <span class="text-[10px] text-zinc-500">{$t('dec_legend_filtered')}</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Softmax Formula Box -->
-            <div class="bg-zinc-50 rounded-xl p-3 border border-zinc-200/50 flex flex-col gap-2">
-              <span class="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{$t('dec_math_title')}</span>
-              <div class="flex items-center justify-between text-xs text-zinc-600 gap-4 flex-wrap leading-relaxed">
-                <div>
-                  <code class="bg-white border border-zinc-200 px-1.5 py-0.5 rounded font-mono text-zinc-700">logit_novo = logit / T</code>
-                </div>
-                <div class="font-mono text-zinc-400">→</div>
-                <div>
-                  <code class="bg-white border border-zinc-200 px-1.5 py-0.5 rounded font-mono text-zinc-700">prob_i = exp(logit_i) / Σ exp(logit_j)</code>
                 </div>
               </div>
             </div>
@@ -1247,11 +1286,41 @@
               {/each}
             </div>
 
-            <p class="text-[11px] text-zinc-400 leading-normal border-t border-zinc-100 pt-3">
-              {@html $t('dec_note')}
-            </p>
+            <!-- Collapsible math: hidden by default so beginners aren't
+                 scared off; one click for the curious. -->
+            <div class="border-t border-zinc-100 pt-3">
+              <button
+                on:click={() => showMath = !showMath}
+                class="flex items-center justify-between w-full text-left text-[11px] font-bold uppercase tracking-widest text-zinc-500 hover:text-zinc-800 transition-colors cursor-pointer"
+              >
+                <span>{$t('dec_math_title')}</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="transition-transform {showMath ? 'rotate-180' : ''}"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              {#if showMath}
+                <div class="mt-3 bg-zinc-50 rounded-xl p-3 border border-zinc-200/50 flex flex-col gap-2 animate-fade-in">
+                  <div class="flex items-center justify-between text-xs text-zinc-600 gap-4 flex-wrap leading-relaxed">
+                    <div>
+                      <code class="bg-white border border-zinc-200 px-1.5 py-0.5 rounded font-mono text-zinc-700">logit_new = logit / T</code>
+                    </div>
+                    <div class="font-mono text-zinc-400">→</div>
+                    <div>
+                      <code class="bg-white border border-zinc-200 px-1.5 py-0.5 rounded font-mono text-zinc-700">prob_i = exp(logit_i) / Σ exp(logit_j)</code>
+                    </div>
+                  </div>
+                  <p class="text-[11px] text-zinc-500 leading-normal mt-1">
+                    {@html $t('dec_note')}
+                  </p>
+                </div>
+              {/if}
+            </div>
           </div>
         </div>
+      </div>
+
+      <!-- Honesty footer mirroring the tokenizer one. -->
+      <div class="mt-6 px-4 py-3 bg-zinc-50 border border-zinc-200/70 rounded-lg flex items-start gap-2.5">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-zinc-400 mt-0.5 shrink-0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <p class="text-[11px] text-zinc-500 leading-relaxed">{@html $t('dec_honesty_note')}</p>
       </div>
     {/if}
   </div>
