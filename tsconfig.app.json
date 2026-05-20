@@ -9,8 +9,7 @@
     "noEmit": true,
     "allowJs": true,
     "checkJs": true,
-    "moduleDetection": "force",
-    "jsx": "react-jsx"
+    "moduleDetection": "force"
   },
-  "include": ["src/**/*.ts", "src/**/*.js", "src/**/*.svelte", "src/**/*.tsx", "src/**/*.jsx"]
+  "include": ["src/**/*.ts", "src/**/*.js", "src/**/*.svelte"]
 }

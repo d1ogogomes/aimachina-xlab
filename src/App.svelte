@@ -21,8 +21,7 @@
   import { buildDecisionTree, type TreeNode as DTNode } from "./lib/ml/decisionTree";
   import DecisionTreeViz from "./lib/components/DecisionTreeViz.svelte";
   import LlmPlayground from "./lib/components/LlmPlayground.svelte";
-  import HomePortal from "./lib/components/HomePortal.svelte";
-  import ReactPortal from "./lib/components/ReactPortal.svelte";
+  import HomeHero from "./lib/components/HomeHero.svelte";
 
   let activeTab: 'home' | 'cv' | 'llm' = 'home';
   let isReady = false;
@@ -808,7 +807,7 @@
   })();
 </script>
 
-<div class="min-h-screen bg-[#FAF9FC] relative overflow-hidden flex flex-col font-sans text-zinc-900 pb-20 selection:bg-indigo-500 selection:text-white">
+<div class="min-h-screen bg-[#FAF9FC] relative overflow-hidden flex flex-col font-sans text-zinc-900 selection:bg-indigo-500 selection:text-white {activeTab === 'home' ? '' : 'pb-20'}">
 
   <!-- Ambient background glow elements, completely matching the landing page colors -->
   <div class="absolute top-[-200px] left-[10%] w-[600px] h-[600px] bg-indigo-200/25 rounded-full blur-[130px] pointer-events-none z-0"></div>
@@ -1593,7 +1592,7 @@
   {/if}
 
   {#if activeTab === 'home'}
-    <ReactPortal on:selectTab={(e) => activeTab = e.detail} />
+    <HomeHero on:selectTab={(e) => activeTab = e.detail} />
   {/if}
 
   {#if activeTab === 'llm'}
