@@ -104,7 +104,7 @@
   "llm_tab_title": "LLM pour Débutants",
   "llm_tab_desc": "Que se passe-t-il vraiment quand ChatGPT écrit une phrase ? Ouvrons le capot : comment il lit ton texte, comment il choisit le mot suivant, et pourquoi ça coûte de l'argent.",
   "tok_title": "1. Tokenisation",
-  "tok_desc": "Un LLM ne lit pas des mots. Il découpe ton texte en morceaux appelés <strong>tokens</strong> et convertit chacun en nombre. La facture de ChatGPT se paie au token, pas au mot, donc ça compte plus qu'on ne le croit.",
+  "tok_desc": "Un LLM ne lit pas des mots. Il découpe ton texte en morceaux appelés <strong>tokens</strong> et convertit chacun en nombre. Comme le coût d'utilisation de ces outils est calculé par token, et non par mot, cela compte bien plus qu'on ne le croit.",
   "tok_input_placeholder": "Écrivez quelque chose pour voir comment c'est tokenisé en temps réel...",
   "tok_mode_word": "Mot-Entier (Simple)",
   "tok_mode_subword": "Sous-mots (BPE - Réaliste)",
