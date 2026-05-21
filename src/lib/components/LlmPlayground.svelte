@@ -22,12 +22,14 @@
     const currentLocale = $locale || "pt";
     if (lastLocale === "") {
       // First initialization
-      tokenInput = DEFAULT_TOKEN_INPUTS[currentLocale] || DEFAULT_TOKEN_INPUTS.pt;
+      tokenInput =
+        DEFAULT_TOKEN_INPUTS[currentLocale] || DEFAULT_TOKEN_INPUTS.pt;
       lastLocale = currentLocale;
     } else if (currentLocale !== lastLocale) {
       // Language switched: only load new default if empty or if matching the previous default
       const prevDefault = DEFAULT_TOKEN_INPUTS[lastLocale];
-      const newDefault = DEFAULT_TOKEN_INPUTS[currentLocale] || DEFAULT_TOKEN_INPUTS.pt;
+      const newDefault =
+        DEFAULT_TOKEN_INPUTS[currentLocale] || DEFAULT_TOKEN_INPUTS.pt;
       if (!tokenInput || tokenInput === prevDefault) {
         tokenInput = newDefault;
       }
@@ -999,11 +1001,11 @@
 </script>
 
 <div
-  class="bg-white/70 backdrop-blur-md rounded-2xl border border-white/60 shadow-[0_8px_30px_rgba(0,0,0,0.02)] overflow-hidden flex flex-col transition-all duration-300 hover:border-indigo-300/80"
+  class="bg-zinc-50 rounded-2xl shadow-sm border border-zinc-200 overflow-hidden flex flex-col transition-all duration-200"
 >
   <!-- Inner Playground sub-navigation -->
   <div
-    class="bg-zinc-50/50 backdrop-blur-xs border-b border-zinc-200/40 px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4"
+    class="bg-white border-b border-zinc-200 px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4"
   >
     <div>
       <h2 class="text-lg font-bold tracking-tight text-zinc-900">
@@ -1080,14 +1082,14 @@
           bind:value={tokenInput}
           placeholder={$t("tok_input_placeholder")}
           rows="3"
-          class="w-full p-4 text-sm border border-zinc-200 rounded-xl outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100/50 transition-all font-sans bg-white/80 backdrop-blur-xs shadow-xs resize-none"
+          class="w-full p-4 text-sm border border-zinc-200 rounded-xl outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100/50 transition-all font-sans bg-white shadow-xs resize-none"
         ></textarea>
 
         <!-- Visualizer: the centerpiece. Token chips, no header, no hint
              text. The interaction is self-evident. -->
         {#if tokens.length > 0}
           <div
-            class="flex flex-wrap gap-x-1.5 gap-y-2 p-5 rounded-xl bg-white/70 backdrop-blur-md border border-white/60 shadow-[0_8px_30px_rgba(0,0,0,0.02)]"
+            class="flex flex-wrap gap-x-1.5 gap-y-2 p-5 rounded-xl bg-white border border-zinc-200 shadow-xs"
           >
             {#each tokens as tok, idx}
               <!-- svelte-ignore a11y-mouse-events-have-key-events -->
@@ -1114,7 +1116,7 @@
           {/if}
         {:else}
           <div
-            class="h-28 rounded-xl border border-dashed border-zinc-200 flex items-center justify-center text-sm text-zinc-400 italic bg-white/50 backdrop-blur-xs"
+            class="h-28 rounded-xl border border-dashed border-zinc-200 flex items-center justify-center text-sm text-zinc-400 italic bg-white"
           >
             {$t("tok_input_placeholder")}
           </div>
@@ -1126,7 +1128,7 @@
              figure so the number stops being abstract. -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div
-            class="bg-white/70 backdrop-blur-md border border-white/60 rounded-xl px-5 py-4 shadow-[0_8px_30px_rgba(0,0,0,0.02)]"
+            class="bg-white border border-zinc-200 rounded-xl px-5 py-4 shadow-xs"
           >
             <span
               class="text-[10px] font-bold uppercase tracking-wider text-zinc-400"
@@ -1139,7 +1141,7 @@
             </div>
           </div>
           <div
-            class="bg-white/70 backdrop-blur-md border border-white/60 rounded-xl px-5 py-4 shadow-[0_8px_30px_rgba(0,0,0,0.02)]"
+            class="bg-white border border-zinc-200 rounded-xl px-5 py-4 shadow-xs"
           >
             <span
               class="text-[10px] font-bold uppercase tracking-wider text-zinc-400"
@@ -1191,7 +1193,7 @@
         <!-- Sliders: kept compact. End-anchors give intuition; the small
              one-line description below each slider is enough for context. -->
         <div
-          class="bg-white/70 backdrop-blur-md rounded-2xl border border-white/60 shadow-[0_8px_30px_rgba(0,0,0,0.02)] p-5 flex flex-col gap-6"
+          class="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs flex flex-col gap-6"
         >
           <div class="flex flex-col gap-2">
             <div class="flex justify-between items-center">
@@ -1293,7 +1295,7 @@
              Filtered (Top-P excluded) bars are visibly muted so the user
              still sees the cut. -->
         <div
-          class="bg-white/70 backdrop-blur-md rounded-2xl border border-white/60 shadow-[0_8px_30px_rgba(0,0,0,0.02)] p-5 flex flex-col gap-3"
+          class="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs flex flex-col gap-3"
         >
           {#each computedCandidates as cand}
             <div class="flex items-center gap-3 w-full">

@@ -6,11 +6,25 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+
   /* Thin scrollbar */
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 9999px; }
-  ::-webkit-scrollbar-thumb:hover { background: #a1a1aa; }
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #d4d4d8;
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #a1a1aa;
+  }
 }
 
 @utility liquid-glass {
@@ -26,27 +40,3 @@
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.35);
 }
-
-@keyframes drift-slow-1 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(40px, -30px) scale(1.08); }
-}
-
-@keyframes drift-slow-2 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(-30px, 40px) scale(0.92); }
-}
-
-@utility animate-drift-slow-1 {
-  animation: drift-slow-1 25s ease-in-out infinite;
-}
-
-@utility animate-drift-slow-2 {
-  animation: drift-slow-2 30s ease-in-out infinite;
-}
-
-@utility animate-drift-slow-3 {
-  animation: drift-slow-1 35s ease-in-out infinite;
-}
-
-
