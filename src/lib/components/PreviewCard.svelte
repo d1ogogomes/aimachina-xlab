@@ -286,9 +286,9 @@
   }
 </script>
 
-<div class="bg-white rounded-xl shadow-sm border border-zinc-200 overflow-hidden flex flex-col">
+<div class="bg-white/70 backdrop-blur-md rounded-2xl border border-white/60 shadow-[0_8px_30px_rgba(0,0,0,0.02)] overflow-hidden flex flex-col hover:border-indigo-300/80 transition-all duration-300">
   <!-- Input Selector -->
-  <div class="px-5 py-3 flex items-center justify-between bg-white border-b border-zinc-100">
+  <div class="px-5 py-3 flex items-center justify-between bg-zinc-50/50 backdrop-blur-xs border-b border-zinc-100/50">
     <span class="text-sm font-medium text-zinc-500">{$t("input_source")}</span>
     <select bind:value={previewMode} class="ml-auto text-sm border border-zinc-200 bg-white hover:bg-zinc-50 rounded-lg px-3 py-1.5 outline-none font-medium text-zinc-700 transition-colors cursor-pointer shadow-sm">
       <option value="webcam">{$t("webcam")}</option>
@@ -354,7 +354,7 @@
   {/if}
 
   <!-- Output Area -->
-  <div class="px-6 py-5 bg-white flex flex-col gap-3">
+  <div class="px-6 py-5 bg-zinc-50/20 backdrop-blur-xs border-t border-zinc-100/50 flex flex-col gap-3">
 
     <div class="text-sm font-semibold uppercase text-zinc-400 tracking-widest mb-2">Output</div>
 

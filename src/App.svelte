@@ -807,12 +807,12 @@
   })();
 </script>
 
-<div class="min-h-screen bg-[#FAF9FC] relative overflow-hidden flex flex-col font-sans text-zinc-900 selection:bg-indigo-500 selection:text-white {activeTab === 'home' ? '' : 'pb-20'}">
+<div class="min-h-screen transition-colors duration-1000 relative overflow-hidden flex flex-col font-sans text-zinc-900 selection:bg-indigo-500 selection:text-white {activeTab === 'home' ? 'bg-[#FAF9FC]' : activeTab === 'cv' ? 'bg-gradient-to-tr from-indigo-100/8 via-[#FAF9FC] to-violet-100/6' : 'bg-gradient-to-tr from-teal-100/8 via-[#FAF9FC] to-indigo-100/6'} {activeTab === 'home' ? '' : 'pb-20'}">
 
   <!-- Ambient background glow elements, completely matching the landing page colors -->
-  <div class="absolute top-[-200px] left-[10%] w-[600px] h-[600px] bg-indigo-200/25 rounded-full blur-[130px] pointer-events-none z-0"></div>
-  <div class="absolute top-[300px] right-[5%] w-[500px] h-[500px] bg-teal-200/20 rounded-full blur-[120px] pointer-events-none z-0"></div>
-  <div class="absolute bottom-[-100px] left-[20%] w-[700px] h-[700px] bg-indigo-100/20 rounded-full blur-[140px] pointer-events-none z-0"></div>
+  <div class="fixed top-[-10%] left-[5%] w-[60vw] h-[60vw] max-w-[600px] max-h-[600px] bg-indigo-200/6 rounded-full blur-[130px] pointer-events-none z-0 animate-drift-slow-1"></div>
+  <div class="fixed top-[30%] right-[5%] w-[50vw] h-[50vw] max-w-[500px] max-h-[500px] bg-teal-200/5 rounded-full blur-[120px] pointer-events-none z-0 animate-drift-slow-2"></div>
+  <div class="fixed bottom-[-10%] left-[20%] w-[65vw] h-[65vw] max-w-[700px] max-h-[700px] bg-indigo-100/5 rounded-full blur-[140px] pointer-events-none z-0 animate-drift-slow-3"></div>
 
   <!-- Subtle Halftone grid matching the main landing page feel -->
   <div class="absolute inset-0 bg-[radial-gradient(#e4e4e7_1.2px,transparent_1.2px)] [background-size:24px_24px] opacity-[0.45] pointer-events-none z-0"></div>

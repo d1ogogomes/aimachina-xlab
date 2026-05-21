@@ -27,3 +27,26 @@
   border: 1px solid rgba(255, 255, 255, 0.35);
 }
 
+@keyframes drift-slow-1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(40px, -30px) scale(1.08); }
+}
+
+@keyframes drift-slow-2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-30px, 40px) scale(0.92); }
+}
+
+@utility animate-drift-slow-1 {
+  animation: drift-slow-1 25s ease-in-out infinite;
+}
+
+@utility animate-drift-slow-2 {
+  animation: drift-slow-2 30s ease-in-out infinite;
+}
+
+@utility animate-drift-slow-3 {
+  animation: drift-slow-1 35s ease-in-out infinite;
+}
+
+
