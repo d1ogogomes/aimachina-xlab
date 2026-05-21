@@ -109,36 +109,73 @@
       {$t('home_hero_desc_xlab')}
     </p>
 
-    <!-- Primary entrance buttons -->
-    <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+    <!-- Primary entrance cards / options with descriptions -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl w-full mt-2 px-4 mb-8">
+      <!-- Computer Vision Lab Card -->
       <button
         on:click={() => dispatch('selectTab', 'cv')}
-        class="group flex items-center justify-between sm:justify-start gap-4 bg-indigo-600 hover:bg-indigo-700 text-white text-[14px] font-bold rounded-full pl-6 pr-2 py-2 transition-colors duration-300 shadow-[0_4px_14px_rgba(79,70,229,0.25)] w-full sm:w-auto cursor-pointer"
+        class="group flex flex-col items-center p-8 rounded-3xl bg-white/40 border border-white/60 hover:bg-white/80 hover:border-indigo-500/30 hover:shadow-[0_20px_50px_rgba(99,102,241,0.08)] hover:-translate-y-1 transition-all duration-300 backdrop-blur-md cursor-pointer text-center relative w-full"
       >
-        <span class="relative overflow-hidden h-[20px] flex flex-col">
-          <span class="flex flex-col transition-transform duration-500 ease-[cubic-bezier(0.25,0.1,0.25,1)] group-hover:-translate-y-1/2">
-            <span class="h-[20px] flex items-center">{$t('home_cv_btn_xlab')}</span>
-            <span class="h-[20px] flex items-center">{$t('home_cv_btn_xlab')}</span>
+        <!-- Icon container with glowing circle -->
+        <div class="w-14 h-14 rounded-2xl bg-indigo-50/50 text-indigo-600 flex items-center justify-center mb-5 group-hover:scale-110 group-hover:bg-indigo-500 group-hover:text-white transition-all duration-500 shadow-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+        </div>
+
+        <h3 class="text-xl font-extrabold text-zinc-900 mb-2">{$t('home_cv_btn_xlab')}</h3>
+        
+        <p class="text-[14px] text-zinc-500 leading-relaxed mb-6 max-w-sm">
+          {$t('home_cv_desc_short_xlab')}
+        </p>
+
+        <!-- Premium dynamic action CTA -->
+        <div class="mt-auto flex items-center justify-between sm:justify-start gap-4 bg-indigo-600 group-hover:bg-indigo-700 text-white text-[13px] font-bold rounded-full pl-5 pr-1.5 py-1.5 transition-colors duration-300 shadow-[0_4px_14px_rgba(79,70,229,0.2)]">
+          <span class="relative overflow-hidden h-[18px] flex flex-col">
+            <span class="flex flex-col transition-transform duration-500 ease-[cubic-bezier(0.25,0.1,0.25,1)] group-hover:-translate-y-1/2">
+              <span class="h-[18px] flex items-center">{$t('home_cv_btn_enter_xlab')}</span>
+              <span class="h-[18px] flex items-center">{$t('home_cv_btn_enter_xlab')}</span>
+            </span>
           </span>
-        </span>
-        <span class="w-8 h-8 rounded-full bg-white flex items-center justify-center transform transition-transform duration-500 ease-[cubic-bezier(0.25,0.1,0.25,1)] group-hover:-rotate-45">
-          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-600"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-        </span>
+          <span class="w-7 h-7 rounded-full bg-white flex items-center justify-center transform transition-transform duration-500 ease-[cubic-bezier(0.25,0.1,0.25,1)] group-hover:-rotate-45">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-600"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </span>
+        </div>
       </button>
 
+      <!-- LLM Lab Card -->
       <button
         on:click={() => dispatch('selectTab', 'llm')}
-        class="group flex items-center justify-between sm:justify-start gap-4 bg-teal-600 hover:bg-teal-700 text-white text-[14px] font-bold rounded-full pl-6 pr-2 py-2 transition-colors duration-300 shadow-[0_4px_14px_rgba(13,148,136,0.25)] w-full sm:w-auto cursor-pointer"
+        class="group flex flex-col items-center p-8 rounded-3xl bg-white/40 border border-white/60 hover:bg-white/80 hover:border-teal-500/30 hover:shadow-[0_20px_50px_rgba(13,148,136,0.08)] hover:-translate-y-1 transition-all duration-300 backdrop-blur-md cursor-pointer text-center relative w-full"
       >
-        <span class="relative overflow-hidden h-[20px] flex flex-col">
-          <span class="flex flex-col transition-transform duration-500 ease-[cubic-bezier(0.25,0.1,0.25,1)] group-hover:-translate-y-1/2">
-            <span class="h-[20px] flex items-center">{$t('home_llm_btn_xlab')}</span>
-            <span class="h-[20px] flex items-center">{$t('home_llm_btn_xlab')}</span>
+        <!-- Icon container with glowing circle -->
+        <div class="w-14 h-14 rounded-2xl bg-teal-50/50 text-teal-600 flex items-center justify-center mb-5 group-hover:scale-110 group-hover:bg-teal-500 group-hover:text-white transition-all duration-500 shadow-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            <path d="M8 10h8"/>
+            <path d="M8 14h6"/>
+          </svg>
+        </div>
+
+        <h3 class="text-xl font-extrabold text-zinc-900 mb-2">{$t('home_llm_btn_xlab')}</h3>
+        
+        <p class="text-[14px] text-zinc-500 leading-relaxed mb-6 max-w-sm">
+          {$t('home_llm_desc_short_xlab')}
+        </p>
+
+        <!-- Premium dynamic action CTA -->
+        <div class="mt-auto flex items-center justify-between sm:justify-start gap-4 bg-teal-600 group-hover:bg-teal-700 text-white text-[13px] font-bold rounded-full pl-5 pr-1.5 py-1.5 transition-colors duration-300 shadow-[0_4px_14px_rgba(13,148,136,0.2)]">
+          <span class="relative overflow-hidden h-[18px] flex flex-col">
+            <span class="flex flex-col transition-transform duration-500 ease-[cubic-bezier(0.25,0.1,0.25,1)] group-hover:-translate-y-1/2">
+              <span class="h-[18px] flex items-center">{$t('home_llm_btn_enter_xlab')}</span>
+              <span class="h-[18px] flex items-center">{$t('home_llm_btn_enter_xlab')}</span>
+            </span>
           </span>
-        </span>
-        <span class="w-8 h-8 rounded-full bg-white flex items-center justify-center transform transition-transform duration-500 ease-[cubic-bezier(0.25,0.1,0.25,1)] group-hover:-rotate-45">
-          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-teal-600"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-        </span>
+          <span class="w-7 h-7 rounded-full bg-white flex items-center justify-center transform transition-transform duration-500 ease-[cubic-bezier(0.25,0.1,0.25,1)] group-hover:-rotate-45">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-teal-600"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </span>
+        </div>
       </button>
     </div>
   </div>

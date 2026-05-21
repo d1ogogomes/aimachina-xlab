@@ -144,6 +144,10 @@
   "feature_cost": "Estimador de Custo",
   "home_hero_subtitle_xlab": "Ideias fortes que começam com visão e inteligência.",
   "home_hero_desc_xlab": "Um laboratório interativo de inteligência artificial. Treine modelos de visão computacional diretamente no seu navegador e desvende o mecanismo interno de modelos de linguagem (LLMs).",
-  "home_cv_btn_xlab": "Abrir Laboratório de Visão",
-  "home_llm_btn_xlab": "Abrir Playground de LLMs"
+  "home_cv_btn_xlab": "Laboratório de Visão",
+  "home_llm_btn_xlab": "Laboratório de LLMs",
+  "home_cv_desc_short_xlab": "Treine modelos de visão computacional em tempo real usando a sua webcam ou desenhando diretamente no ecrã.",
+  "home_llm_desc_short_xlab": "Desvende como os modelos de linguagem leem textos, dividem palavras em tokens e escolhem a palavra seguinte.",
+  "home_cv_btn_enter_xlab": "Entrar no Laboratório",
+  "home_llm_btn_enter_xlab": "Entrar no Laboratório"
 }

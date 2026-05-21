@@ -144,6 +144,10 @@
   "feature_cost": "Cost Estimator",
   "home_hero_subtitle_xlab": "Bold ideas that start with vision and intelligence.",
   "home_hero_desc_xlab": "An interactive artificial intelligence laboratory. Train computer vision models directly in your browser and uncover the inner workings of large language models (LLMs).",
-  "home_cv_btn_xlab": "Open Computer Vision Lab",
-  "home_llm_btn_xlab": "Open LLM Playground"
+  "home_cv_btn_xlab": "Computer Vision Lab",
+  "home_llm_btn_xlab": "LLM Laboratory",
+  "home_cv_desc_short_xlab": "Train computer vision models in real-time using your webcam or drawing directly on the canvas.",
+  "home_llm_desc_short_xlab": "Deconstruct how language models read texts, split words into tokens, and predict the next word.",
+  "home_cv_btn_enter_xlab": "Enter Laboratory",
+  "home_llm_btn_enter_xlab": "Enter Laboratory"
 }
