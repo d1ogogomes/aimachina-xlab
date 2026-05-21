@@ -35,6 +35,7 @@
   let activeWebcamClass: number | null = null;
   let activeDrawClass: number | null = null;
   let activeTestWebcamClass: number | null = null;
+  let activeTestDrawClass: number | null = null;
 
   // ─── Custom Datasets (session-only) ────────────────────────
   type CustomDatasetEntry = {
@@ -92,18 +93,91 @@
   let savedLabels: number[] = [];
   let isBuildingTree = false;
 
-  // Load saved class names from localStorage
+  /** Convert a blob: URL to a data: URL so it survives revocation. */
+  function blobToDataUrl(url: string): Promise<string> {
+    if (!url.startsWith("blob:")) return Promise.resolve(url);
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        const c = document.createElement("canvas");
+        c.width = img.naturalWidth;
+        c.height = img.naturalHeight;
+        c.getContext("2d")!.drawImage(img, 0, 0);
+        resolve(c.toDataURL("image/jpeg", 0.85));
+      };
+      img.onerror = () => reject(new Error("blob→dataUrl failed"));
+      img.src = url;
+    });
+  }
+
+  let isSavingActiveCv = false;
+  async function saveActiveCvDataset() {
+    if (isSavingActiveCv) return;
+    isSavingActiveCv = true;
+    try {
+      const snapTraining: { [key: number]: string[] } = {};
+      const snapTest: { [key: number]: string[] } = {};
+      
+      for (const c of classes) {
+        const trImgs = trainingImages[c.id] || [];
+        snapTraining[c.id] = await Promise.all(trImgs.map(blobToDataUrl));
+        
+        const teImgs = testSamples[c.id] || [];
+        snapTest[c.id] = await Promise.all(teImgs.map(blobToDataUrl));
+      }
+      
+      const payload = {
+        classes: classes.map(c => ({ id: c.id, name: c.name, confidence: 0 })),
+        trainingImages: snapTraining,
+        testSamples: snapTest,
+        classCounter,
+        activeDemoDatasetType,
+        isDemoDatasetLoaded
+      };
+      
+      localStorage.setItem("aimachina_active_cv_dataset", JSON.stringify(payload));
+    } catch (e) {
+      console.warn("Failed to auto-save active CV dataset:", e);
+    } finally {
+      isSavingActiveCv = false;
+    }
+  }
+
+  // Load saved active CV dataset or class names from localStorage
   onMount(async () => {
     try {
-      const saved = localStorage.getItem("aimachina_classes");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (!Array.isArray(parsed)) throw new Error("invalid shape");
-        classes = parsed;
-        classCounter =
-          parsed.length > 0 ? Math.max(...parsed.map((c: any) => c.id)) + 1 : 0;
+      const savedList = localStorage.getItem("aimachina_saved_custom_datasets");
+      if (savedList) {
+        savedCustomDatasets = JSON.parse(savedList);
       }
-    } catch {}
+    } catch (e) {
+      console.warn("Failed to load saved custom datasets:", e);
+    }
+    try {
+      const active = localStorage.getItem("aimachina_active_cv_dataset");
+      if (active) {
+        const parsed = JSON.parse(active);
+        classes = parsed.classes || [];
+        trainingImages = parsed.trainingImages || {};
+        testSamples = parsed.testSamples || {};
+        classCounter = parsed.classCounter ?? 2;
+        activeDemoDatasetType = parsed.activeDemoDatasetType ?? "pets";
+        isDemoDatasetLoaded = parsed.isDemoDatasetLoaded ?? false;
+      } else {
+        const saved = localStorage.getItem("aimachina_classes");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            classes = parsed;
+            classCounter =
+              parsed.length > 0 ? Math.max(...parsed.map((c: any) => c.id)) + 1 : 0;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to load active CV dataset:", e);
+    }
     try {
       isLoadingModel = true;
       net = await loadBackbone();
@@ -132,6 +206,7 @@
           ),
         );
         lastPersistedSignature = signature;
+        saveActiveCvDataset(); // Auto-save active dataset when a class is renamed
       } catch {}
     }
   }
@@ -155,6 +230,7 @@
     trainingImages = { ...trainingImages };
     activeWebcamClass = null;
     invalidateTraining();
+    saveActiveCvDataset();
   }
 
   function handleDrawCapture(
@@ -166,6 +242,7 @@
     trainingImages = { ...trainingImages };
     activeDrawClass = null;
     invalidateTraining();
+    saveActiveCvDataset();
   }
 
   function handleTestWebcamCapture(
@@ -176,6 +253,18 @@
     testSamples[classId] = [...testSamples[classId], ...images];
     testSamples = { ...testSamples };
     activeTestWebcamClass = null;
+    saveActiveCvDataset();
+  }
+
+  function handleTestDrawCapture(
+    event: CustomEvent<{ classId: number; images: string[] }>,
+  ) {
+    const { classId, images } = event.detail;
+    if (!testSamples[classId]) testSamples[classId] = [];
+    testSamples[classId] = [...testSamples[classId], ...images];
+    testSamples = { ...testSamples };
+    activeTestDrawClass = null;
+    saveActiveCvDataset();
   }
 
   /**
@@ -211,6 +300,7 @@
       trainingImages[classId] = [...trainingImages[classId], imgUrl];
     }
     trainingImages = { ...trainingImages };
+    saveActiveCvDataset();
   }
 
   async function handleClassUpload(event: Event, classId: number) {
@@ -288,7 +378,9 @@
     inspectorExplainingIdx = null;
     inspectorLastExplainedIdx = null;
     activeWebcamClass = null;
+    activeDrawClass = null;
     activeTestWebcamClass = null;
+    activeTestDrawClass = null;
 
     try {
       await setPreviewImage(targetDataset[0].tests[0].src);
@@ -296,27 +388,10 @@
       console.error("[demo] preview image failed:", e);
       previewImgRef = null;
     }
+    saveActiveCvDataset();
   }
 
   // ─── Custom Dataset: Save & Load ──────────────────────────
-
-  /** Convert a blob: URL to a data: URL so it survives revocation. */
-  function blobToDataUrl(url: string): Promise<string> {
-    if (!url.startsWith("blob:")) return Promise.resolve(url);
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => {
-        const c = document.createElement("canvas");
-        c.width = img.naturalWidth;
-        c.height = img.naturalHeight;
-        c.getContext("2d")!.drawImage(img, 0, 0);
-        resolve(c.toDataURL("image/jpeg", 0.85));
-      };
-      img.onerror = () => reject(new Error("blob→dataUrl failed"));
-      img.src = url;
-    });
-  }
 
   function openSaveDatasetModal() {
     const totalImages = Object.values(trainingImages).reduce(
@@ -362,6 +437,11 @@
         testSamples: snapTest,
       },
     ];
+    try {
+      localStorage.setItem("aimachina_saved_custom_datasets", JSON.stringify(savedCustomDatasets));
+    } catch (e) {
+      console.warn("Failed to save custom datasets:", e);
+    }
     showSaveDatasetModal = false;
   }
 
@@ -400,7 +480,9 @@
     inspectorExplainingIdx = null;
     inspectorLastExplainedIdx = null;
     activeWebcamClass = null;
+    activeDrawClass = null;
     activeTestWebcamClass = null;
+    activeTestDrawClass = null;
 
     // Pick the first training image as preview if available
     const firstImgs = ds.trainingImages[ds.classes[0]?.id];
@@ -414,10 +496,16 @@
       previewUrl = "";
       previewImgRef = null;
     }
+    saveActiveCvDataset();
   }
 
   function deleteCustomDataset(index: number) {
     savedCustomDatasets = savedCustomDatasets.filter((_, i) => i !== index);
+    try {
+      localStorage.setItem("aimachina_saved_custom_datasets", JSON.stringify(savedCustomDatasets));
+    } catch (e) {
+      console.warn("Failed to save custom datasets:", e);
+    }
   }
 
   async function selectDemoTestImage(classId: number, imgUrl: string) {
@@ -433,6 +521,7 @@
     trainingImages[classId] = [...trainingImages[classId]];
     trainingImages = { ...trainingImages };
     invalidateTraining();
+    saveActiveCvDataset();
   }
 
   async function extractEmbedding(
@@ -651,6 +740,7 @@
     activeWebcamClass = null;
     activeDrawClass = null;
     activeTestWebcamClass = null;
+    activeTestDrawClass = null;
     langOpen = false;
     if (customModel) {
       customModel.dispose();
@@ -673,6 +763,7 @@
     inspectorLastExplainedIdx = null;
     try {
       localStorage.removeItem("aimachina_classes");
+      localStorage.removeItem("aimachina_active_cv_dataset");
     } catch {}
   }
 
@@ -688,6 +779,7 @@
       { id: newId, name: `Classe ${letter}`, confidence: 0 },
     ];
     invalidateTraining();
+    saveActiveCvDataset();
   }
 
   function removeClass(idToRemove: number) {
@@ -703,6 +795,7 @@
     delete testSamples[idToRemove];
     testSamples = { ...testSamples };
     invalidateTraining();
+    saveActiveCvDataset();
   }
 
   // ─── XAI state ────────────────────────────────────────
@@ -753,6 +846,7 @@
     testSamples[classId].splice(index, 1);
     testSamples[classId] = [...testSamples[classId]];
     testSamples = { ...testSamples };
+    saveActiveCvDataset();
   }
 
   async function handleTestUpload(event: Event, classId: number) {
@@ -769,6 +863,7 @@
       ];
     }
     testSamples = { ...testSamples };
+    saveActiveCvDataset();
   }
 
   async function evaluateModel() {
@@ -1214,12 +1309,9 @@
                 fill="none"
                 stroke="currentColor"
                 stroke-width="2.5"
-                ><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line
-                  x1="3"
-                  y1="9"
-                  x2="21"
-                  y2="9"
-                /><line x1="9" y1="21" x2="9" y2="9" /></svg
+                ><path
+                  d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"
+                ></path></svg
               >
               Demo (MNIST)
             </button>
@@ -1240,7 +1332,7 @@
                     ><path
                       d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"
                     /><polyline points="17 21 17 13 7 13 7 21" /><polyline
-                      points="7 3 7 8 15 8"
+                      points="7 3 7 8 15 8 15 3"
                     /></svg
                   >
                   {cds.name}
@@ -2111,6 +2203,17 @@
       />
     {/if}
 
+    {#if activeTestDrawClass !== null}
+      <DrawModal
+        classId={activeTestDrawClass}
+        className={"Teste - " +
+          (classes.find((c) => c.id === activeTestDrawClass)?.name ||
+            "Class")}
+        on:capture={handleTestDrawCapture}
+        on:close={() => (activeTestDrawClass = null)}
+      />
+    {/if}
+
     <section class="max-w-[85rem] mx-auto w-full px-8 mt-12 relative z-10">
       <div
         class="bg-white/70 backdrop-blur-md rounded-2xl border border-white/60 shadow-[0_8px_30px_rgba(0,0,0,0.02)] overflow-hidden hover:border-indigo-300/80 transition-all duration-300"
@@ -2168,6 +2271,24 @@
                           ><path
                             d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
                           ></path><circle cx="12" cy="13" r="4"></circle></svg
+                        >
+                      </button>
+                      <button
+                        on:click={() => (activeTestDrawClass = item.id)}
+                        class="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 bg-zinc-100 border border-zinc-200 text-zinc-700 rounded cursor-pointer hover:border-indigo-300 hover:text-indigo-600 transition-colors"
+                        title={$t("canvas")}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="12"
+                          height="12"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          ><path d="M12 20h9" /><path
+                            d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"
+                          /></svg
                         >
                       </button>
                       <label
