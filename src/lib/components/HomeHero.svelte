@@ -151,10 +151,10 @@
       >
         <!-- Icon container with glowing circle -->
         <div class="w-14 h-14 rounded-2xl bg-teal-50/50 text-teal-600 flex items-center justify-center mb-5 group-hover:scale-110 group-hover:bg-teal-500 group-hover:text-white transition-all duration-500 shadow-sm">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg class="transform translate-x-[-1px] translate-y-[1px]" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-            <path d="M8 10h8"/>
-            <path d="M8 14h6"/>
+            <path d="M8 9h8"/>
+            <path d="M8 13h6"/>
           </svg>
         </div>
 
