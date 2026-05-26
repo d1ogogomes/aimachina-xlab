@@ -6,6 +6,8 @@
   export let className: string;
   /** Pen thickness — MNIST mode uses a thicker pen so strokes survive downscaling. */
   export let strokeWidth: number = 12;
+  /** Optional preprocess hook applied to canvas before generating the data URL. */
+  export let preprocess: ((canvas: HTMLCanvasElement) => HTMLCanvasElement) | null = null;
 
   const dispatch = createEventDispatcher<{
     capture: { classId: number; images: string[] };
@@ -86,7 +88,8 @@
 
   function saveCurrentDrawing() {
     if (!drawCanvas || !hasStrokes) return;
-    const dataUrl = drawCanvas.toDataURL('image/png');
+    const canvasToSave = preprocess ? preprocess(drawCanvas) : drawCanvas;
+    const dataUrl = canvasToSave.toDataURL('image/png');
     savedImages = [...savedImages, dataUrl];
     clearCanvas();
   }
@@ -98,7 +101,8 @@
   function saveAndClose() {
     // If there are unsaved strokes on the canvas, save them first
     if (hasStrokes && drawCanvas) {
-      const dataUrl = drawCanvas.toDataURL('image/png');
+      const canvasToSave = preprocess ? preprocess(drawCanvas) : drawCanvas;
+      const dataUrl = canvasToSave.toDataURL('image/png');
       savedImages = [...savedImages, dataUrl];
     }
     if (savedImages.length > 0) {

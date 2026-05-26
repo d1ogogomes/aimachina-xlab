@@ -25,8 +25,9 @@
   import DecisionTreeViz from "./lib/components/DecisionTreeViz.svelte";
   import LlmPlayground from "./lib/components/LlmPlayground.svelte";
   import HomeHero from "./lib/components/HomeHero.svelte";
+  import DecisionTreeLab from "./lib/components/DecisionTreeLab.svelte";
 
-  let activeTab: "home" | "cv" | "llm" = "home";
+  let activeTab: "home" | "cv" | "llm" | "dt" = "home";
   let isReady = false;
   let customModel: tf.Sequential | null = null;
   let activeDemoDatasetType: "pets" | "mnist" | "custom" = "pets";
@@ -111,37 +112,12 @@
     });
   }
 
-  let isSavingActiveCv = false;
   async function saveActiveCvDataset() {
-    if (isSavingActiveCv) return;
-    isSavingActiveCv = true;
+    // No-op to avoid massive base64 image serialization in localStorage,
+    // which causes severe performance degradation and QuotaExceededError.
     try {
-      const snapTraining: { [key: number]: string[] } = {};
-      const snapTest: { [key: number]: string[] } = {};
-      
-      for (const c of classes) {
-        const trImgs = trainingImages[c.id] || [];
-        snapTraining[c.id] = await Promise.all(trImgs.map(blobToDataUrl));
-        
-        const teImgs = testSamples[c.id] || [];
-        snapTest[c.id] = await Promise.all(teImgs.map(blobToDataUrl));
-      }
-      
-      const payload = {
-        classes: classes.map(c => ({ id: c.id, name: c.name, confidence: 0 })),
-        trainingImages: snapTraining,
-        testSamples: snapTest,
-        classCounter,
-        activeDemoDatasetType,
-        isDemoDatasetLoaded
-      };
-      
-      localStorage.setItem("aimachina_active_cv_dataset", JSON.stringify(payload));
-    } catch (e) {
-      console.warn("Failed to auto-save active CV dataset:", e);
-    } finally {
-      isSavingActiveCv = false;
-    }
+      localStorage.removeItem("aimachina_active_cv_dataset");
+    } catch {}
   }
 
   // Load saved active CV dataset or class names from localStorage
@@ -149,7 +125,29 @@
     try {
       const savedList = localStorage.getItem("aimachina_saved_custom_datasets");
       if (savedList) {
-        savedCustomDatasets = JSON.parse(savedList);
+        const rawDatasets = JSON.parse(savedList);
+        if (Array.isArray(rawDatasets)) {
+          savedCustomDatasets = rawDatasets.map((ds: any) => {
+            const trImages: { [key: number]: string[] } = {};
+            const teSamples: { [key: number]: string[] } = {};
+            if (ds.trainingImages) {
+              for (const k in ds.trainingImages) {
+                trImages[Number(k)] = ds.trainingImages[k];
+              }
+            }
+            if (ds.testSamples) {
+              for (const k in ds.testSamples) {
+                teSamples[Number(k)] = ds.testSamples[k];
+              }
+            }
+            return {
+              name: ds.name || "",
+              classes: ds.classes || [],
+              trainingImages: trImages,
+              testSamples: teSamples,
+            };
+          });
+        }
       }
     } catch (e) {
       console.warn("Failed to load saved custom datasets:", e);
@@ -159,8 +157,19 @@
       if (active) {
         const parsed = JSON.parse(active);
         classes = parsed.classes || [];
-        trainingImages = parsed.trainingImages || {};
-        testSamples = parsed.testSamples || {};
+        
+        const rawTraining = parsed.trainingImages || {};
+        trainingImages = {};
+        for (const k in rawTraining) {
+          trainingImages[Number(k)] = rawTraining[k];
+        }
+        
+        const rawTest = parsed.testSamples || {};
+        testSamples = {};
+        for (const k in rawTest) {
+          testSamples[Number(k)] = rawTest[k];
+        }
+        
         classCounter = parsed.classCounter ?? 2;
         activeDemoDatasetType = parsed.activeDemoDatasetType ?? "pets";
         isDemoDatasetLoaded = parsed.isDemoDatasetLoaded ?? false;
@@ -461,12 +470,14 @@
     } catch {}
 
     classes = ds.classes.map((c) => ({ ...c, confidence: 0 }));
-    trainingImages = Object.fromEntries(
-      ds.classes.map((c) => [c.id, [...(ds.trainingImages[c.id] || [])]]),
-    );
-    testSamples = Object.fromEntries(
-      ds.classes.map((c) => [c.id, [...(ds.testSamples[c.id] || [])]]),
-    );
+    trainingImages = {};
+    for (const c of ds.classes) {
+      trainingImages[c.id] = [...(ds.trainingImages[c.id] || [])];
+    }
+    testSamples = {};
+    for (const c of ds.classes) {
+      testSamples[c.id] = [...(ds.testSamples[c.id] || [])];
+    }
     classCounter = ds.classes.length;
     selectedDemoTestClassId = 0;
     isDemoDatasetLoaded = false; // custom datasets are not "demo" datasets
@@ -536,6 +547,12 @@
     // this check, two concurrent trainings build duplicate tensor graphs
     // and race on `customModel?.dispose()` in the catch branch.
     if (isTrainingModel) return;
+
+    // Validate: at least 2 classes
+    if (classes.length < 2) {
+      trainingError = $t("error_min_classes");
+      return;
+    }
 
     // Validate: at least 1 image per class
     const classesWithNoImages = classes.filter(
@@ -1075,20 +1092,25 @@
           on:click={() => (activeTab = "home")}
           class="flex items-center gap-3 cursor-pointer select-none text-left bg-transparent border-0 outline-none p-0 group ml-1 justify-start"
         >
+          <!-- Super clean, elegant minimalist AI gradient logo -->
           <div
-            class="w-10 h-10 bg-gradient-to-tr from-indigo-600 to-teal-600 rounded-full flex items-center justify-center text-white text-[11px] font-black tracking-tight group-hover:scale-105 transition-all shadow-[0_4px_12px_rgba(79,70,229,0.15)]"
+            class="w-10 h-10 bg-gradient-to-tr from-indigo-600 via-indigo-500 to-teal-500 rounded-full flex items-center justify-center text-white text-[13px] font-black tracking-wider shadow-[0_4px_14px_rgba(79,70,229,0.18)] group-hover:scale-105 group-hover:shadow-[0_4px_20px_rgba(79,70,229,0.28)] transition-all duration-300 select-none"
           >
             AI
           </div>
           <div class="hidden sm:flex flex-col">
             <span
-              class="text-sm font-black tracking-tight text-zinc-900 leading-tight"
-              >AIMachina <span class="text-indigo-600 font-extrabold">XLab</span
-              ></span
+              class="text-sm font-black tracking-tight text-zinc-950 leading-none flex items-center gap-1 select-none"
             >
+              <span>AIMachina</span>
+              <span
+                class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-indigo-500 to-teal-500 font-black"
+                >XLab</span
+              >
+            </span>
             {#if isModelTrained && activeTab === "cv"}
               <span
-                class="text-[9px] font-bold text-emerald-600 flex items-center gap-1"
+                class="text-[9px] font-bold text-emerald-600 flex items-center gap-1 mt-1 leading-none"
               >
                 <span
                   class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"
@@ -1121,6 +1143,15 @@
                 : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200/50'}"
             >
               {$t("tab_llm")}
+            </button>
+            <button
+              on:click={() => (activeTab = "dt")}
+              class="px-4 py-1.5 text-xs font-bold rounded-full transition-all duration-300 cursor-pointer {activeTab ===
+              'dt'
+                ? 'bg-amber-600 text-white shadow-md scale-[1.02]'
+                : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200/50'}"
+            >
+              {$t("tab_dt")}
             </button>
           </div>
         </div>
@@ -2187,6 +2218,12 @@
         classId={activeDrawClass}
         className={classes.find((c) => c.id === activeDrawClass)?.name ||
           "Class"}
+        preprocess={isDemoDatasetLoaded && activeDemoDatasetType === "mnist"
+          ? preprocessMnistCanvas
+          : null}
+        strokeWidth={isDemoDatasetLoaded && activeDemoDatasetType === "mnist"
+          ? 20
+          : 12}
         on:capture={handleDrawCapture}
         on:close={() => (activeDrawClass = null)}
       />
@@ -2209,6 +2246,12 @@
         className={"Teste - " +
           (classes.find((c) => c.id === activeTestDrawClass)?.name ||
             "Class")}
+        preprocess={isDemoDatasetLoaded && activeDemoDatasetType === "mnist"
+          ? preprocessMnistCanvas
+          : null}
+        strokeWidth={isDemoDatasetLoaded && activeDemoDatasetType === "mnist"
+          ? 20
+          : 12}
         on:capture={handleTestDrawCapture}
         on:close={() => (activeTestDrawClass = null)}
       />
@@ -2839,6 +2882,14 @@
       class="max-w-[85rem] mx-auto w-full px-8 mt-10 animate-fade-in relative z-10"
     >
       <LlmPlayground />
+    </main>
+  {/if}
+
+  {#if activeTab === "dt"}
+    <main
+      class="max-w-[85rem] mx-auto w-full px-8 mt-10 animate-fade-in relative z-10"
+    >
+      <DecisionTreeLab />
     </main>
   {/if}
 </div>

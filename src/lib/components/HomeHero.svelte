@@ -3,7 +3,7 @@
   import { locale, t } from '../i18n';
   import { Shader, Swirl, ChromaFlow, FlutedGlass, FilmGrain } from 'shaders/svelte';
 
-  const dispatch = createEventDispatcher<{ selectTab: 'cv' | 'llm' }>();
+  const dispatch = createEventDispatcher<{ selectTab: 'cv' | 'llm' | 'dt' }>();
 
   const languages = [
     { code: 'pt', label: 'Português', short: 'PT' },
@@ -110,7 +110,7 @@
     </p>
 
     <!-- Primary entrance cards / options with descriptions -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl w-full mt-2 px-4 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl w-full mt-2 px-4 mb-8">
       <!-- Computer Vision Lab Card -->
       <button
         on:click={() => dispatch('selectTab', 'cv')}
@@ -174,6 +174,46 @@
           </span>
           <span class="w-7 h-7 rounded-full bg-white flex items-center justify-center transform transition-transform duration-500 ease-[cubic-bezier(0.25,0.1,0.25,1)] group-hover:-rotate-45">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-teal-600"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </span>
+        </div>
+      </button>
+
+      <!-- Decision Tree Lab Card -->
+      <button
+        on:click={() => dispatch('selectTab', 'dt')}
+        class="group flex flex-col items-center p-8 rounded-3xl bg-white/40 border border-white/60 hover:bg-white/80 hover:border-amber-500/30 hover:shadow-[0_20px_50px_rgba(245,158,11,0.08)] hover:-translate-y-1 transition-all duration-300 backdrop-blur-md cursor-pointer text-center relative w-full"
+      >
+        <!-- Icon container with glowing circle -->
+        <div class="w-14 h-14 rounded-2xl bg-amber-50/50 text-amber-600 flex items-center justify-center mb-5 group-hover:scale-110 group-hover:bg-amber-500 group-hover:text-white transition-all duration-500 shadow-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <!-- Root decision node -->
+            <rect x="7" y="1" width="10" height="6" rx="1.5"/>
+            <!-- Branches from root to leaves -->
+            <line x1="12" y1="7" x2="5" y2="15"/>
+            <line x1="12" y1="7" x2="19" y2="15"/>
+            <!-- Left leaf node -->
+            <rect x="1" y="15" width="8" height="6" rx="1.5"/>
+            <!-- Right leaf node -->
+            <rect x="15" y="15" width="8" height="6" rx="1.5"/>
+          </svg>
+        </div>
+
+        <h3 class="text-xl font-extrabold text-zinc-900 mb-2">{$t('home_dt_btn_xlab')}</h3>
+        
+        <p class="text-[14px] text-zinc-500 leading-relaxed mb-6 max-w-sm">
+          {$t('home_dt_desc_short_xlab')}
+        </p>
+
+        <!-- Premium dynamic action CTA -->
+        <div class="mt-auto flex items-center justify-between sm:justify-start gap-4 bg-amber-600 group-hover:bg-amber-700 text-white text-[13px] font-bold rounded-full pl-5 pr-1.5 py-1.5 transition-colors duration-300 shadow-[0_4px_14px_rgba(245,158,11,0.2)]">
+          <span class="relative overflow-hidden h-[18px] flex flex-col">
+            <span class="flex flex-col transition-transform duration-500 ease-[cubic-bezier(0.25,0.1,0.25,1)] group-hover:-translate-y-1/2">
+              <span class="h-[18px] flex items-center">{$t('home_dt_btn_enter_xlab')}</span>
+              <span class="h-[18px] flex items-center">{$t('home_dt_btn_enter_xlab')}</span>
+            </span>
+          </span>
+          <span class="w-7 h-7 rounded-full bg-white flex items-center justify-center transform transition-transform duration-500 ease-[cubic-bezier(0.25,0.1,0.25,1)] group-hover:-rotate-45">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-amber-600"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
           </span>
         </div>
       </button>
