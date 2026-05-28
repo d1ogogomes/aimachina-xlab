@@ -244,5 +244,15 @@
   "dt_err_min_samples": "The dataset must have at least 3 samples.",
   "dt_err_min_features": "The dataset must have at least one feature and a target column.",
   "dt_gini_desc": "Measures class mixing in a group (purity). If a group is 100% pure (e.g., only 'Yes'), Gini is 0. The algorithm looks for splits that create the cleanest, most uniform groups possible.",
-  "dt_entropy_desc": "Measures disorder or uncertainty (in bits). The algorithm picks the question that provides the highest 'Information Gain', maximizing the neatness and order of the resulting subsets."
+  "dt_entropy_desc": "Measures disorder or uncertainty (in bits). The algorithm picks the question that provides the highest 'Information Gain', maximizing the neatness and order of the resulting subsets.",
+  "dt_view_graph": "Graphical Visualization",
+  "dt_view_text": "Textual Visualization (Rules)",
+  "dt_active_rules_path": "Active Prediction Rules",
+  "dt_rules_simplified": "Simplified Rules (Consolidated Intervals)",
+  "dt_decision_rules_title": "Tree Decision Rules",
+  "dt_rule_path_none": "No active rules (root node or no model).",
+  "dt_rule_if": "IF",
+  "dt_rule_else": "ELSE",
+  "dt_rule_then": "➔ THEN: Predict",
+  "dt_rule_not_in": "NOT IN"
 }

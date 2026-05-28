@@ -412,4 +412,112 @@ export function layoutTabularTree(
   };
 }
 
+export function exportTreeToRulesText(
+  node: TabularTreeNode,
+  t: (key: string, defaultVal?: string) => string,
+  indent = ""
+): string {
+  if (node.type === 'leaf') {
+    const thenStr = t('dt_rule_then', '➔ THEN: Predict');
+    const confidenceStr = t('dt_leaf_confidence_label', 'Leaf Confidence');
+    const samplesStr = t('samples', 'Samples');
+    return `${indent}${thenStr} "${node.predictedClass}" (${confidenceStr}: ${node.confidence}%, ${samplesStr}: ${node.samples})`;
+  }
+
+  const ifStr = t('dt_rule_if', 'IF');
+  const elseStr = t('dt_rule_else', 'ELSE');
+
+  let leftCond = "";
+  let rightCond = "";
+  if (node.featureType === 'numerical') {
+    leftCond = `${node.featureName} <= ${node.threshold}`;
+    rightCond = `${node.featureName} > ${node.threshold}`;
+  } else {
+    leftCond = `${node.featureName} == "${node.categoryValue}"`;
+    rightCond = `${node.featureName} != "${node.categoryValue}"`;
+  }
+
+  return `${indent}${ifStr} ${leftCond}:\n` +
+         exportTreeToRulesText(node.left, t, indent + "  ") + "\n" +
+         `${indent}${elseStr} (${rightCond}):\n` +
+         exportTreeToRulesText(node.right, t, indent + "  ");
+}
+
+export function simplifyPathRules(
+  path: TabularTreeNode[],
+  t: (key: string, defaultVal?: string) => string
+): string[] {
+  if (path.length <= 1) return [];
+
+  const numericalBounds: Record<string, { min: number; max: number }> = {};
+  const categoricalEqualities: Record<string, string> = {};
+  const categoricalInequalities: Record<string, Set<string>> = {};
+
+  for (let i = 0; i < path.length - 1; i++) {
+    const curr = path[i];
+    const next = path[i + 1];
+    if (curr.type !== 'split') continue;
+
+    const goesLeft = curr.left === next;
+    const f = curr.featureName;
+
+    if (curr.featureType === 'numerical') {
+      if (!numericalBounds[f]) {
+        numericalBounds[f] = { min: -Infinity, max: Infinity };
+      }
+      const tVal = curr.threshold!;
+      if (goesLeft) {
+        numericalBounds[f].max = Math.min(numericalBounds[f].max, tVal);
+      } else {
+        numericalBounds[f].min = Math.max(numericalBounds[f].min, tVal);
+      }
+    } else {
+      const val = String(curr.categoryValue);
+      if (goesLeft) {
+        categoricalEqualities[f] = val;
+      } else {
+        if (!categoricalInequalities[f]) {
+          categoricalInequalities[f] = new Set();
+        }
+        categoricalInequalities[f].add(val);
+      }
+    }
+  }
+
+  const simplifiedRules: string[] = [];
+
+  // 1. Process numerical rules
+  for (const f in numericalBounds) {
+    const { min, max } = numericalBounds[f];
+    if (min !== -Infinity && max !== Infinity) {
+      simplifiedRules.push(`${min} < ${f} <= ${max}`);
+    } else if (max !== Infinity) {
+      simplifiedRules.push(`${f} <= ${max}`);
+    } else if (min !== -Infinity) {
+      simplifiedRules.push(`${f} > ${min}`);
+    }
+  }
+
+  // 2. Process categorical rules
+  for (const f in categoricalEqualities) {
+    simplifiedRules.push(`${f} == "${categoricalEqualities[f]}"`);
+  }
+
+  const notInStr = t('dt_rule_not_in', 'NOT IN');
+
+  for (const f in categoricalInequalities) {
+    if (categoricalEqualities[f] !== undefined) continue;
+
+    const items = Array.from(categoricalInequalities[f]);
+    if (items.length === 1) {
+      simplifiedRules.push(`${f} != "${items[0]}"`);
+    } else {
+      simplifiedRules.push(`${f} ${notInStr} [${items.map(x => `"${x}"`).join(', ')}]`);
+    }
+  }
+
+  return simplifiedRules;
+}
+
 export { NODE_W, NODE_H };
+

@@ -244,5 +244,15 @@
   "dt_err_min_samples": "Le jeu de données doit contenir au moins 3 échantillons.",
   "dt_err_min_features": "Le jeu de données doit avoir au moins une caractéristique et une colonne cible.",
   "dt_gini_desc": "Mesure le mélange des classes dans un groupe (pureté). Si un groupe est 100% pur (ex: seulement 'Oui'), le Gini est de 0. L'algorithme cherche des questions qui créent les groupes les plus propres et homogènes possibles.",
-  "dt_entropy_desc": "Mesure le désordre ou l'incertitude (en bits). L'objectif est de choisir la question qui apporte le plus grand gain d'information, c'est-à-dire qui organise le mieux les données."
+  "dt_entropy_desc": "Mesure le désordre ou l'incertitude (en bits). L'objectif est de choisir la question qui apporte le plus grand gain d'information, c'est-à-dire qui organise le mieux les données.",
+  "dt_view_graph": "Visualisation Graphique",
+  "dt_view_text": "Visualisation Textuelle (Règles)",
+  "dt_active_rules_path": "Règles Actives de la Prédiction",
+  "dt_rules_simplified": "Règles Simplifiées (Intervalles Consolidés)",
+  "dt_decision_rules_title": "Règles de Décision de l'Arbre",
+  "dt_rule_path_none": "Aucune règle active (nœud racine ou sans modèle).",
+  "dt_rule_if": "SI",
+  "dt_rule_else": "SINON",
+  "dt_rule_then": "➔ ALORS : Prédire",
+  "dt_rule_not_in": "PAS DANS"
 }

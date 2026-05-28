@@ -15,7 +15,9 @@
     predictTabular,
     computeAccuracy,
     countNodes,
-    type TabularTreeNode
+    type TabularTreeNode,
+    exportTreeToRulesText,
+    simplifyPathRules
   } from '../ml/tabularDecisionTree';
   import TabularDecisionTreeViz from './TabularDecisionTreeViz.svelte';
 
@@ -64,6 +66,9 @@
   let predictionResult = '';
   let predictionConfidence = 0;
   let highlightPath: TabularTreeNode[] = [];
+  let showTreeTextMode = false;
+  let simplifiedRulesPath: string[] = [];
+  let isTranslatingDataset = false;
 
   // UI tabs within the lab
   let activeSubTab: 'train' | 'data' = 'train';
@@ -336,13 +341,183 @@
     target.value = ''; // Reset file input
   }
 
+  async function translateActiveDataset() {
+    if (isTranslatingDataset) return;
+    isTranslatingDataset = true;
+
+    const targetLang = $locale === 'pt' ? 'pt-PT' : $locale;
+    const textToTranslateSet = new Set<string>();
+    
+    // 1. Gather all headers and categorical cell values
+    textToTranslateSet.add(activeDataset.targetName);
+    for (const f of activeDataset.features) {
+      textToTranslateSet.add(f);
+    }
+    
+    for (const row of activeDataset.data) {
+      for (const f of activeDataset.features) {
+        if (activeDataset.featureTypes[f] === 'categorical') {
+          const val = row[f];
+          if (val !== undefined && val !== null && val !== '') {
+            textToTranslateSet.add(String(val));
+          }
+        }
+      }
+      const targetVal = row[activeDataset.targetName];
+      if (targetVal !== undefined && targetVal !== null && targetVal !== '') {
+        textToTranslateSet.add(String(targetVal));
+      }
+    }
+
+    const uniqueTexts = Array.from(textToTranslateSet);
+    const translationMap: Record<string, string> = {};
+
+    try {
+      // 2. Translate a single unique string (returns the original on any soft failure)
+      const translateOne = async (text: string): Promise<string> => {
+        // Skip purely numeric/empty strings
+        if (text.trim() === '' || (!isNaN(Number(text)) && !isNaN(parseFloat(text)))) {
+          return text;
+        }
+
+        // Domain-specific custom overrides to ensure perfect context (e.g. Golf Play dataset)
+        const lowerText = text.trim().toLowerCase();
+        if (lowerText === 'play') return targetLang.startsWith('pt') ? 'Jogar' : targetLang.startsWith('fr') ? 'Jouer' : text;
+        if (lowerText === 'outlook') return targetLang.startsWith('pt') ? 'Clima' : targetLang.startsWith('fr') ? 'Météo' : text;
+        if (lowerText === 'windy') return targetLang.startsWith('pt') ? 'Vento' : targetLang.startsWith('fr') ? 'Vent' : text;
+
+        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`Google Translation API request failed (HTTP ${res.status})`);
+        const result = await res.json();
+
+        // Expected shape: [[["translated","original",...], ...], ...]
+        const translated = result?.[0]?.[0]?.[0];
+        if (typeof translated !== 'string' || translated.trim() === '') {
+          // Malformed/empty response — keep the original rather than corrupting the cell
+          return text;
+        }
+        return translated.trim();
+      };
+
+      // 2b. Run translations through a bounded worker pool. Firing one fetch per
+      // unique value at once trips Google's rate limiting (HTTP 429) and CORS
+      // throttling on larger datasets; a hard request error aborts the batch.
+      const CONCURRENCY = 8;
+      let cursor = 0;
+      let aborted = false;
+      const worker = async () => {
+        while (cursor < uniqueTexts.length && !aborted) {
+          const text = uniqueTexts[cursor++];
+          try {
+            translationMap[text] = await translateOne(text);
+          } catch (err) {
+            aborted = true;
+            throw err;
+          }
+        }
+      };
+      await Promise.all(
+        Array.from({ length: Math.min(CONCURRENCY, uniqueTexts.length) }, () => worker())
+      );
+
+      // 3. Map features, headers and categorical values
+      const translatedFeatures = activeDataset.features.map(f => translationMap[f] || f);
+      const translatedTargetName = translationMap[activeDataset.targetName] || activeDataset.targetName;
+      
+      const translatedFeatureTypes: Record<string, 'categorical' | 'numerical'> = {};
+      for (const f of activeDataset.features) {
+        const transF = translationMap[f] || f;
+        translatedFeatureTypes[transF] = activeDataset.featureTypes[f];
+      }
+
+      const translatedTargetClasses = activeDataset.targetClasses.map(c => translationMap[c] || c);
+
+      const translatedData = activeDataset.data.map(row => {
+        const newRow: Record<string, any> = {};
+        for (const f of activeDataset.features) {
+          const transF = translationMap[f] || f;
+          const val = row[f];
+          if (activeDataset.featureTypes[f] === 'categorical' && typeof val === 'string') {
+            newRow[transF] = translationMap[val] || val;
+          } else {
+            newRow[transF] = val;
+          }
+        }
+        const targetVal = row[activeDataset.targetName];
+        if (typeof targetVal === 'string') {
+          newRow[translatedTargetName] = translationMap[targetVal] || targetVal;
+        } else {
+          newRow[translatedTargetName] = targetVal;
+        }
+        return newRow;
+      });
+
+      // 4. Create new translated dataset
+      const translatedDataset: TabularDataset = {
+        id: activeDataset.id.startsWith('custom_') ? activeDataset.id : 'custom_' + Date.now(),
+        name: `${activeDataset.name.replace(/\s\([A-Z-]{2,5}\)$/, '')} (${$locale.toUpperCase()})`,
+        features: translatedFeatures,
+        featureTypes: translatedFeatureTypes,
+        targetName: translatedTargetName,
+        targetClasses: translatedTargetClasses,
+        data: translatedData
+      };
+
+      // 5. Update Svelte states. Capture the previous id BEFORE reassigning
+      // activeDataset, otherwise the lookup below compares against the new id.
+      const prevId = activeDataset.id;
+      activeDataset = translatedDataset;
+
+      if (translatedDataset.id === prevId) {
+        // In-place re-translation of an existing custom dataset.
+        datasets = datasets.map(d => d.id === prevId ? translatedDataset : d);
+      } else {
+        // Built-in dataset translated into a new custom copy — keep the
+        // original and append the translated version.
+        datasets = [...datasets, translatedDataset];
+      }
+
+      if (translatedDataset.id.startsWith('custom_')) {
+        saveCustomDataset(translatedDataset);
+      }
+
+      selectedDatasetId = translatedDataset.id;
+      initPredictorInputs();
+      triggerTrain();
+
+    } catch (e: any) {
+      console.error("Dataset translation failed:", e);
+      alert($locale === 'pt' ? 'Erro na tradução: ' + e.message : $locale === 'fr' ? 'Erreur de traduction : ' + e.message : 'Translation error: ' + e.message);
+    } finally {
+      isTranslatingDataset = false;
+    }
+  }
+
+  // Deterministic seeded shuffle to ensure Train/Test split is reproducible and stable
+  function seededShuffle<T>(array: T[], seed: number): T[] {
+    let m = array.length, t, i;
+    const arr = [...array];
+    let rand = () => {
+      seed = (seed * 9301 + 49297) % 233280;
+      return seed / 233280;
+    };
+    while (m) {
+      i = Math.floor(rand() * m--);
+      t = arr[m];
+      arr[m] = arr[i];
+      arr[i] = t;
+    }
+    return arr;
+  }
+
   // ─── DECISION TREE TRAINING ──────────────────────────────────
   function triggerTrain() {
     isPostPrunedApplied = false;
     postPrunedTree = null;
 
-    // 1. Split Train and Test set
-    const shuffled = [...activeDataset.data].sort(() => Math.random() - 0.5);
+    // 1. Split Train and Test set deterministically
+    const shuffled = seededShuffle(activeDataset.data, 12345);
     const splitIdx = Math.floor(shuffled.length * trainRatio);
     
     // Ensure train ratio yields valid subsets
@@ -420,6 +595,7 @@
     const { predictedClass, path } = predictTabular(treeToUse, predictorInputs);
     predictionResult = predictedClass;
     highlightPath = path;
+    simplifiedRulesPath = simplifyPathRules(path, $t);
 
     // Get leaf node confidence
     const finalLeaf = path[path.length - 1];
@@ -492,6 +668,21 @@
           {$t('dt_dataset_contains')} <strong>{activeDataset.data.length} {$t('dt_dataset_samples')}</strong> {$t('dt_dataset_and')} <strong>{activeDataset.features.length} {$t('dt_dataset_features')}</strong>.
         </span>
       </div>
+
+      <!-- Translate Dataset Button (Google Translate API) -->
+      <button
+        on:click={translateActiveDataset}
+        disabled={isTranslatingDataset}
+        class="w-full text-xs font-bold bg-indigo-50 border border-indigo-100 text-indigo-600 hover:bg-indigo-100 py-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {#if isTranslatingDataset}
+          <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>
+          {$locale === 'pt' ? 'A traduzir com o Google...' : $locale === 'fr' ? 'Traduction avec Google...' : 'Translating with Google...'}
+        {:else}
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m5 8 6 6M4 14l6-6M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6"/></svg>
+          {$locale === 'pt' ? 'Traduzir Dataset (Google)' : $locale === 'fr' ? 'Traduire le Dataset (Google)' : 'Translate Dataset (Google)'}
+        {/if}
+      </button>
     </div>
 
     <!-- Mode Subtabs Switcher -->
@@ -908,14 +1099,43 @@
 
     </div>
 
-    <!-- Tree Visualizer Canvas -->
+    <!-- Tree Visualizer Canvas / Text Mode -->
     {#if trainedTree}
-      <div class="relative group">
-        <TabularDecisionTreeViz 
-          tree={isPostPrunedApplied && postPrunedTree ? postPrunedTree : trainedTree} 
-          targetClasses={activeDataset.targetClasses}
-          highlightPath={highlightPath}
-        />
+      <div class="bg-white/80 backdrop-blur-md rounded-3xl p-6 border border-zinc-200/50 shadow-sm flex flex-col gap-4">
+        <div class="flex items-center justify-between border-b border-zinc-100 pb-4">
+          <h3 class="text-sm font-black text-zinc-950 uppercase tracking-wider flex items-center gap-1.5">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="5" r="3"/><circle cx="6" cy="19" r="3"/><circle cx="18" cy="19" r="3"/><path d="M12 8v8M12 12H6M12 12h6"/></svg>
+            {$t('dt_decision_rules_title')}
+          </h3>
+          <div class="flex bg-zinc-100 p-0.5 rounded-lg border border-zinc-200">
+            <button
+              on:click={() => showTreeTextMode = false}
+              class="px-3 py-1 text-xs font-extrabold rounded-md cursor-pointer transition-all {!showTreeTextMode ? 'bg-white text-indigo-600 shadow-xs' : 'text-zinc-500 hover:text-zinc-800'}"
+            >
+              {$t('dt_view_graph')}
+            </button>
+            <button
+              on:click={() => showTreeTextMode = true}
+              class="px-3 py-1 text-xs font-extrabold rounded-md cursor-pointer transition-all {showTreeTextMode ? 'bg-white text-indigo-600 shadow-xs' : 'text-zinc-500 hover:text-zinc-800'}"
+            >
+              {$t('dt_view_text')}
+            </button>
+          </div>
+        </div>
+
+        {#if !showTreeTextMode}
+          <div class="relative group overflow-hidden">
+            <TabularDecisionTreeViz 
+              tree={isPostPrunedApplied && postPrunedTree ? postPrunedTree : trainedTree} 
+              targetClasses={activeDataset.targetClasses}
+              highlightPath={highlightPath}
+            />
+          </div>
+        {:else}
+          <div class="bg-zinc-900 rounded-2xl p-6 font-mono text-xs text-zinc-100 overflow-x-auto leading-relaxed shadow-inner max-h-[500px] border border-zinc-950">
+            <pre class="whitespace-pre">{exportTreeToRulesText(isPostPrunedApplied && postPrunedTree ? postPrunedTree : trainedTree, $t)}</pre>
+          </div>
+        {/if}
       </div>
     {/if}
 
@@ -981,6 +1201,42 @@
           <span class="text-base font-black text-teal-800 mt-0.5 font-mono">{predictionConfidence}%</span>
         </div>
       </div>
+
+      <!-- Simplified Active Prediction Rules Path -->
+      {#if trainedTree && predictionResult}
+        <div class="mt-4 bg-zinc-50 border border-zinc-200/60 rounded-2xl p-5 flex flex-col gap-2">
+          <h4 class="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-1.5">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            {$t('dt_active_rules_path')}
+          </h4>
+          <p class="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">{$t('dt_rules_simplified')}</p>
+          
+          {#if simplifiedRulesPath.length > 0}
+            <div class="flex flex-wrap gap-2 mt-1">
+              {#each simplifiedRulesPath as rule, index}
+                <div class="flex items-center gap-2">
+                  <span class="bg-indigo-50 border border-indigo-100 text-indigo-700 px-3 py-1.5 rounded-xl text-xs font-mono font-bold shadow-xs">
+                    {rule}
+                  </span>
+                  {#if index < simplifiedRulesPath.length - 1}
+                    <span class="text-[9px] font-black text-indigo-400 uppercase tracking-wider font-mono">
+                      {$locale === 'pt' ? 'E' : $locale === 'fr' ? 'ET' : 'AND'}
+                    </span>
+                  {/if}
+                </div>
+              {/each}
+              <div class="flex items-center gap-1.5 w-full border-t border-zinc-200/50 pt-2.5 mt-2 text-xs font-semibold text-zinc-600">
+                <span class="text-[10px] font-black text-indigo-500 uppercase tracking-wider">➔</span>
+                {$locale === 'pt' ? 'Previsão:' : $locale === 'fr' ? 'Prévision :' : 'Prediction:'}
+                <strong class="text-zinc-900 font-extrabold">{predictionResult}</strong>
+                <span class="text-[10px] text-zinc-400">({predictionConfidence}% {$locale === 'pt' ? 'de confiança' : $locale === 'fr' ? 'de confiance' : 'confidence'})</span>
+              </div>
+            </div>
+          {:else}
+            <p class="text-xs text-zinc-400 font-medium italic mt-1">{$t('dt_rule_path_none')}</p>
+          {/if}
+        </div>
+      {/if}
     </div>
   </section>
 </div>

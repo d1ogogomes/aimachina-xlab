@@ -244,5 +244,15 @@
   "dt_err_min_samples": "O dataset deve ter pelo menos 3 amostras.",
   "dt_err_min_features": "O dataset deve ter pelo menos uma característica e uma coluna alvo.",
   "dt_gini_desc": "Mede a mistura de classes num grupo (pureza). Se o grupo for 100% puro (ex: só 'Sim'), a impureza é 0. O algoritmo escolhe as perguntas que criam os grupos mais limpos e homogéneos possíveis.",
-  "dt_entropy_desc": "Mede a desarrumação ou incerteza (em bits). O objetivo é escolher a pergunta que traga a maior quantidade de 'organização' (Ganho de Informação) ao separar as amostras."
+  "dt_entropy_desc": "Mede a desarrumação ou incerteza (em bits). O objetivo é escolher a pergunta que traga a maior quantidade de 'organização' (Ganho de Informação) ao separar as amostras.",
+  "dt_view_graph": "Visualização Gráfica",
+  "dt_view_text": "Visualização em Texto (Regras)",
+  "dt_active_rules_path": "Regras Ativas da Predição",
+  "dt_rules_simplified": "Regras Simplificadas (Intervalos Consolidados)",
+  "dt_decision_rules_title": "Regras de Decisão da Árvore",
+  "dt_rule_path_none": "Nenhuma regra ativa (nó raiz ou sem modelo).",
+  "dt_rule_if": "SE",
+  "dt_rule_else": "SENÃO",
+  "dt_rule_then": "➔ ENTÃO: Prever",
+  "dt_rule_not_in": "NÃO EM"
 }
