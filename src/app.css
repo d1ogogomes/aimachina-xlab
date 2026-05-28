@@ -40,3 +40,7 @@
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.35);
 }
+
+@utility animate-spin-slow {
+  animation: spin 25s linear infinite;
+}

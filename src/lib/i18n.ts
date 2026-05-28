@@ -8,7 +8,7 @@ const translations: Record<string, Record<string, string>> = { pt, en, fr };
 // O idioma padrão
 export const locale = writable('pt');
 
-// Função reativa que recebe a chave 
-export const t = derived(locale, ($locale) => (key: string) => {
-    return translations[$locale]?.[key] || key;
+// Função reativa que recebe a chave (e um fallback opcional)
+export const t = derived(locale, ($locale) => (key: string, defaultVal?: string) => {
+    return translations[$locale]?.[key] || defaultVal || key;
 });
