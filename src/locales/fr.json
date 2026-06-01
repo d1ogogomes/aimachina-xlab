@@ -259,5 +259,13 @@
   "dt_rule_if": "SI",
   "dt_rule_else": "SINON",
   "dt_rule_then": "➔ ALORS : Prédire",
-  "dt_rule_not_in": "PAS DANS"
+  "dt_rule_not_in": "PAS DANS",
+  "dt_feature_importance": "Importance des Attributs",
+  "dt_feature_importance_desc": "Représente la contribution mathématique de chaque attribute à la réduction de l'impureté (Gini/Entropie) à travers les divisions de l'arbre, pondérée par le volume d'échantillons.",
+  "dt_export_python": "Code Python",
+  "dt_export_js": "Fonction JavaScript",
+  "dt_copy_btn": "Copier le Code",
+  "dt_copied_success": "Copié !",
+  "dt_code_exporter_desc": "Utilisez ce code autonome et exécutable pour intégrer cet arbre de décision dans d'autres environnements logiciels.",
+  "dt_rules_tab": "Règles de Décision"
 }

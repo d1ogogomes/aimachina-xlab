@@ -259,5 +259,13 @@
   "dt_rule_if": "IF",
   "dt_rule_else": "ELSE",
   "dt_rule_then": "➔ THEN: Predict",
-  "dt_rule_not_in": "NOT IN"
+  "dt_rule_not_in": "NOT IN",
+  "dt_feature_importance": "Feature Importance",
+  "dt_feature_importance_desc": "Represents the mathematical contribution of each attribute to the reduction of impurity (Gini/Entropy) across tree splits, weighted by sample volume.",
+  "dt_export_python": "Python Code",
+  "dt_export_js": "JavaScript Function",
+  "dt_copy_btn": "Copy Code",
+  "dt_copied_success": "Copied!",
+  "dt_code_exporter_desc": "Use this self-contained, executable code to integrate this decision tree into other software environments.",
+  "dt_rules_tab": "Decision Rules"
 }

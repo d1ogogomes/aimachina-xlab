@@ -567,5 +567,184 @@ export function simplifyPathRules(
   return simplifiedRules;
 }
 
+export function computeFeatureImportance(
+  root: TabularTreeNode,
+  features: string[]
+): Record<string, number> {
+  const importance: Record<string, number> = {};
+  for (const f of features) {
+    importance[f] = 0;
+  }
+  const rootSamples = root.samples;
+  if (rootSamples === 0) return importance;
+
+  function traverse(node: TabularTreeNode) {
+    if (node.type === 'leaf') return;
+    const f = node.featureName;
+    importance[f] = (importance[f] || 0) + (node.samples / rootSamples) * node.gain;
+    traverse(node.left);
+    traverse(node.right);
+  }
+
+  traverse(root);
+
+  // Normalize to sum to 1.0 if sum > 0
+  let sum = 0;
+  for (const f of features) {
+    sum += importance[f];
+  }
+  if (sum > 0) {
+    for (const f of features) {
+      importance[f] = Math.round((importance[f] / sum) * 1000) / 1000;
+    }
+  }
+
+  return importance;
+}
+
+export function exportTreeToPythonCode(
+  node: TabularTreeNode,
+  targetName: string,
+  indent = "    ",
+  lang = "pt"
+): string {
+  if (node.type === 'leaf') {
+    let comment = `Confidence: ${node.confidence}%, Support: ${node.samples} samples`;
+    if (lang === 'pt') {
+      comment = `Confiança: ${node.confidence}%, Suporte: ${node.samples} amostras`;
+    } else if (lang === 'fr') {
+      comment = `Confiance: ${node.confidence}%, Support: ${node.samples} échantillons`;
+    }
+    return `${indent}return "${node.predictedClass}"  # (${comment})`;
+  }
+
+  let leftCond = "";
+  let rightCond = "";
+  if (node.featureType === 'numerical') {
+    leftCond = `features.get('${node.featureName}') <= ${node.threshold}`;
+    rightCond = `features.get('${node.featureName}') > ${node.threshold}`;
+  } else {
+    leftCond = `features.get('${node.featureName}') == '${node.categoryValue}'`;
+    rightCond = `features.get('${node.featureName}') != '${node.categoryValue}'`;
+  }
+
+  return `${indent}if ${leftCond}:\n` +
+         exportTreeToPythonCode(node.left, targetName, indent + "    ", lang) + "\n" +
+         `${indent}else:  # ${rightCond}\n` +
+         exportTreeToPythonCode(node.right, targetName, indent + "    ", lang);
+}
+
+export function getPythonBoilerplate(
+  root: TabularTreeNode,
+  targetName: string,
+  lang = "pt"
+): string {
+  const code = exportTreeToPythonCode(root, targetName, "    ", lang);
+
+  let docPredict = `Predicts the value of "${targetName}" using a trained decision tree model.`;
+  let docParam = `features: dictionary with the feature key-value pairs`;
+  let docReturn = `predicted class label (string)`;
+  let usageComment = `Example usage:`;
+  let predictionLabel = `Prediction:`;
+
+  if (lang === 'pt') {
+    docPredict = `Preve o valor de "${targetName}" com base num modelo de arvore de decisao treinado.`;
+    docParam = `features: dicionario com os pares chave-valor dos atributos`;
+    docReturn = `classe predita (string)`;
+    usageComment = `Exemplo de utilizacao:`;
+    predictionLabel = `Previsao:`;
+  } else if (lang === 'fr') {
+    docPredict = `Prédit la valeur de "${targetName}" à l'aide d'un modèle d'arbre de décision entraîné.`;
+    docParam = `features: dictionnaire avec les paires clé-valeur des caractéristiques`;
+    docReturn = `classe prédite (chaîne)`;
+    usageComment = `Exemple d'utilisation :`;
+    predictionLabel = `Prédiction :`;
+  }
+
+  return `def predict(features):\n` +
+         `    """\n` +
+         `    ${docPredict}\n` +
+         `    :param features: ${docParam}\n` +
+         `    :return: ${docReturn}\n` +
+         `    """\n` +
+         code + `\n\n` +
+         `# ${usageComment}\n` +
+         `# sample = { ... }\n` +
+         `# print("${predictionLabel}", predict(sample))\n`;
+}
+
+export function exportTreeToJsCode(
+  node: TabularTreeNode,
+  targetName: string,
+  indent = "  ",
+  lang = "pt"
+): string {
+  if (node.type === 'leaf') {
+    let comment = `Confidence: ${node.confidence}%, Support: ${node.samples} samples`;
+    if (lang === 'pt') {
+      comment = `Confiança: ${node.confidence}%, Suporte: ${node.samples} amostras`;
+    } else if (lang === 'fr') {
+      comment = `Confiance: ${node.confidence}%, Support: ${node.samples} échantillons`;
+    }
+    return `${indent}return "${node.predictedClass}"; // (${comment})`;
+  }
+
+  let leftCond = "";
+  let rightCond = "";
+  if (node.featureType === 'numerical') {
+    leftCond = `Number(features['${node.featureName}']) <= ${node.threshold}`;
+    rightCond = `Number(features['${node.featureName}']) > ${node.threshold}`;
+  } else {
+    leftCond = `String(features['${node.featureName}']) === "${node.categoryValue}"`;
+    rightCond = `String(features['${node.featureName}']) !== "${node.categoryValue}"`;
+  }
+
+  return `${indent}if (${leftCond}) {\n` +
+         exportTreeToJsCode(node.left, targetName, indent + "  ", lang) + "\n" +
+         `${indent}} else { // ${rightCond}\n` +
+         exportTreeToJsCode(node.right, targetName, indent + "  ", lang) + "\n" +
+         `${indent}}`;
+}
+
+export function getJsBoilerplate(
+  root: TabularTreeNode,
+  targetName: string,
+  lang = "pt"
+): string {
+  const code = exportTreeToJsCode(root, targetName, "  ", lang);
+
+  let docPredict = `Predicts the value of "${targetName}" based on the decision tree.`;
+  let docParam = `features - Dictionary with the attribute key-value pairs`;
+  let docReturn = `predicted class`;
+  let usageComment = `Example usage:`;
+  let predictionLabel = `Prediction:`;
+
+  if (lang === 'pt') {
+    docPredict = `Preve o valor de "${targetName}" com base na arvore de decisao.`;
+    docParam = `features - Dicionario com pares chave-valor dos atributos`;
+    docReturn = `classe predita`;
+    usageComment = `Exemplo de utilizacao:`;
+    predictionLabel = `Previsao:`;
+  } else if (lang === 'fr') {
+    docPredict = `Prédit la valeur de "${targetName}" sur la base de l'arbre de décision.`;
+    docParam = `features - Dictionnaire avec les paires clé-valeur des attributs`;
+    docReturn = `classe prédite`;
+    usageComment = `Exemple d'utilisation :`;
+    predictionLabel = `Prédiction :`;
+  }
+
+  return `function predict(features) {\n` +
+         `  /**\n` +
+         `   * ${docPredict}\n` +
+         `   * @param {Object} features - ${docParam}\n` +
+         `   * @returns {string} ${docReturn}\n   */\n` +
+         code + `\n` +
+         `}\n\n` +
+         `// ${usageComment}\n` +
+         `// const sample = { ... };\n` +
+         `// console.log("${predictionLabel}", predict(sample));\n`;
+}
+
 export { NODE_W, NODE_H };
+
 

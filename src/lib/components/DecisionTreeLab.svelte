@@ -17,7 +17,10 @@
     countNodes,
     type TabularTreeNode,
     exportTreeToRulesText,
-    simplifyPathRules
+    simplifyPathRules,
+    computeFeatureImportance,
+    getPythonBoilerplate,
+    getJsBoilerplate
   } from '../ml/tabularDecisionTree';
   import TabularDecisionTreeViz from './TabularDecisionTreeViz.svelte';
 
@@ -70,9 +73,14 @@
   let predictionResult = '';
   let predictionConfidence = 0;
   let highlightPath: TabularTreeNode[] = [];
+  let isTranslatingDataset = false;
   let showTreeTextMode = false;
   let simplifiedRulesPath: string[] = [];
-  let isTranslatingDataset = false;
+
+  // Feature Importance & Exporter state
+  let featureImportance: Record<string, number> = {};
+  let codeExportTab: 'graph' | 'rules' | 'python' | 'js' = 'graph';
+  let copyFeedback = false;
 
   // UI tabs within the lab
   let activeSubTab: 'train' | 'data' = 'train';
@@ -628,6 +636,10 @@
     unprunedTrainAccuracy = computeAccuracy(unprunedTree, trainSet, activeDataset.targetName);
     unprunedTestAccuracy = computeAccuracy(unprunedTree, testSet, activeDataset.targetName);
 
+    if (trainedTree) {
+      featureImportance = computeFeatureImportance(trainedTree, activeDataset.features);
+    }
+
     if (Object.keys(predictorInputs).length === 0) {
       initPredictorInputs();
     } else {
@@ -656,7 +668,19 @@
     trainAccuracy = computeAccuracy(postPrunedTree, trainSet, activeDataset.targetName);
     testAccuracy = computeAccuracy(postPrunedTree, testSet, activeDataset.targetName);
     
+    if (postPrunedTree) {
+      featureImportance = computeFeatureImportance(postPrunedTree, activeDataset.features);
+    }
+
     runLivePrediction();
+  }
+
+  function copyToClipboard(text: string) {
+    navigator.clipboard.writeText(text);
+    copyFeedback = true;
+    setTimeout(() => {
+      copyFeedback = false;
+    }, 2000);
   }
 
   // ─── PREDICTION SYSTEM ───────────────────────────────────────
@@ -1050,6 +1074,35 @@
             </div>
           </div>
         {/if}
+
+        {#if trainedTree && Object.keys(featureImportance).length > 0}
+          <div class="mt-6 bg-white/80 backdrop-blur-md rounded-3xl p-6 border border-zinc-200/50 shadow-sm flex flex-col gap-4">
+            <div>
+              <h3 class="text-sm font-black text-zinc-950 uppercase tracking-wider flex items-center gap-1.5">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-indigo-600"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+                {$t('dt_feature_importance')}
+              </h3>
+              <p class="text-[10px] text-zinc-500 font-semibold leading-relaxed mt-1">
+                {$t('dt_feature_importance_desc')}
+              </p>
+            </div>
+
+            <div class="flex flex-col gap-3 mt-1">
+              {#each Object.entries(featureImportance).sort((a, b) => b[1] - a[1]) as [feat, val]}
+                {@const pct = Math.round(val * 100)}
+                <div class="flex flex-col gap-1">
+                  <div class="flex justify-between items-center text-xs font-bold">
+                    <span class="text-zinc-700 font-mono">{feat}</span>
+                    <span class="text-indigo-600">{pct}%</span>
+                  </div>
+                  <div class="w-full h-2 bg-zinc-100 rounded-full overflow-hidden border border-zinc-200/30">
+                    <div class="h-full bg-gradient-to-r from-violet-500 to-indigo-600 rounded-full transition-all duration-500" style="width: {pct}%"></div>
+                  </div>
+                </div>
+              {/each}
+            </div>
+          </div>
+        {/if}
       </div>
     {/if}
   </section>
@@ -1192,39 +1245,86 @@
 
     <!-- Tree Visualizer Canvas / Text Mode -->
     {#if trainedTree}
+      {@const activeTree = isPostPrunedApplied && postPrunedTree ? postPrunedTree : trainedTree}
       <div class="bg-white/80 backdrop-blur-md rounded-3xl p-6 border border-zinc-200/50 shadow-sm flex flex-col gap-4">
-        <div class="flex items-center justify-between border-b border-zinc-100 pb-4">
-          <h3 class="text-sm font-black text-zinc-950 uppercase tracking-wider flex items-center gap-1.5">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-100 pb-4">
+          <h3 class="text-sm font-black text-zinc-950 uppercase tracking-wider flex items-center gap-1.5 shrink-0">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="5" r="3"/><circle cx="6" cy="19" r="3"/><circle cx="18" cy="19" r="3"/><path d="M12 8v8M12 12H6M12 12h6"/></svg>
             {$t('dt_decision_rules_title')}
           </h3>
-          <div class="flex bg-zinc-100 p-0.5 rounded-lg border border-zinc-200">
+          <div class="flex items-center bg-zinc-100 p-0.5 rounded-lg border border-zinc-200 gap-0.5 self-start md:self-auto overflow-x-auto max-w-full whitespace-nowrap shrink-0">
             <button
-              on:click={() => showTreeTextMode = false}
-              class="px-3 py-1 text-xs font-extrabold rounded-md cursor-pointer transition-all {!showTreeTextMode ? 'bg-white text-indigo-600 shadow-xs' : 'text-zinc-500 hover:text-zinc-800'}"
+              on:click={() => codeExportTab = 'graph'}
+              class="px-2.5 py-1 text-[10px] font-extrabold rounded-md cursor-pointer transition-all {codeExportTab === 'graph' ? 'bg-white text-indigo-600 shadow-xs' : 'text-zinc-500 hover:text-zinc-800'}"
             >
               {$t('dt_view_graph')}
             </button>
             <button
-              on:click={() => showTreeTextMode = true}
-              class="px-3 py-1 text-xs font-extrabold rounded-md cursor-pointer transition-all {showTreeTextMode ? 'bg-white text-indigo-600 shadow-xs' : 'text-zinc-500 hover:text-zinc-800'}"
+              on:click={() => codeExportTab = 'rules'}
+              class="px-2.5 py-1 text-[10px] font-extrabold rounded-md cursor-pointer transition-all {codeExportTab === 'rules' ? 'bg-white text-indigo-600 shadow-xs' : 'text-zinc-500 hover:text-zinc-800'}"
             >
-              {$t('dt_view_text')}
+              {$t('dt_rules_tab')}
+            </button>
+            <button
+              on:click={() => codeExportTab = 'python'}
+              class="px-2.5 py-1 text-[10px] font-extrabold rounded-md cursor-pointer transition-all {codeExportTab === 'python' ? 'bg-white text-indigo-600 shadow-xs' : 'text-zinc-500 hover:text-zinc-800'}"
+            >
+              {$t('dt_export_python')}
+            </button>
+            <button
+              on:click={() => codeExportTab = 'js'}
+              class="px-2.5 py-1 text-[10px] font-extrabold rounded-md cursor-pointer transition-all {codeExportTab === 'js' ? 'bg-white text-indigo-600 shadow-xs' : 'text-zinc-500 hover:text-zinc-800'}"
+            >
+              {$t('dt_export_js')}
             </button>
           </div>
         </div>
 
-        {#if !showTreeTextMode}
+        {#if codeExportTab === 'graph'}
           <div class="relative group overflow-hidden">
             <TabularDecisionTreeViz 
-              tree={isPostPrunedApplied && postPrunedTree ? postPrunedTree : trainedTree} 
+              tree={activeTree} 
               targetClasses={activeDataset.targetClasses}
               highlightPath={highlightPath}
             />
           </div>
-        {:else}
+        {:else if codeExportTab === 'rules'}
           <div class="bg-zinc-900 rounded-2xl p-6 font-mono text-xs text-zinc-100 overflow-x-auto leading-relaxed shadow-inner max-h-[500px] border border-zinc-950">
-            <pre class="whitespace-pre">{exportTreeToRulesText(isPostPrunedApplied && postPrunedTree ? postPrunedTree : trainedTree, $t)}</pre>
+            <pre class="whitespace-pre">{exportTreeToRulesText(activeTree, $t)}</pre>
+          </div>
+        {:else if codeExportTab === 'python'}
+          {@const pythonCode = getPythonBoilerplate(activeTree, activeDataset.targetName, $locale)}
+          <div class="flex flex-col gap-3">
+            <div class="flex justify-between items-center bg-zinc-50 border border-zinc-200/50 rounded-xl px-4 py-2.5 text-xs text-zinc-600">
+              <span class="font-semibold">{$t('dt_code_exporter_desc')}</span>
+              <button
+                on:click={() => copyToClipboard(pythonCode)}
+                class="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold px-3 py-1.5 rounded-lg transition-colors cursor-pointer text-[10px] flex items-center gap-1 shadow-xs shrink-0"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                {copyFeedback ? $t('dt_copied_success') : $t('dt_copy_btn')}
+              </button>
+            </div>
+            <div class="bg-zinc-900 rounded-2xl p-6 font-mono text-xs text-zinc-100 overflow-x-auto leading-relaxed shadow-inner max-h-[500px] border border-zinc-950">
+              <pre class="whitespace-pre">{pythonCode}</pre>
+            </div>
+          </div>
+        {:else if codeExportTab === 'js'}
+          {@const jsCode = getJsBoilerplate(activeTree, activeDataset.targetName, $locale)}
+          <div class="flex flex-col gap-3">
+            <div class="flex justify-between items-center bg-zinc-50 border border-zinc-200/50 rounded-xl px-4 py-2.5 text-xs text-zinc-600">
+              <span class="font-semibold">{$t('dt_code_exporter_desc')}</span>
+              <button
+                on:click={() => copyToClipboard(jsCode)}
+                class="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold px-3 py-1.5 rounded-lg transition-colors cursor-pointer text-[10px] flex items-center gap-1 shadow-xs shrink-0"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                {copyFeedback ? $t('dt_copied_success') : $t('dt_copy_btn')}
+              </button>
+            </div>
+            <div class="bg-zinc-900 rounded-2xl p-6 font-mono text-xs text-zinc-100 overflow-x-auto leading-relaxed shadow-inner max-h-[500px] border border-zinc-950">
+              <pre class="whitespace-pre">{jsCode}</pre>
+            </div>
           </div>
         {/if}
       </div>

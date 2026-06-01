@@ -1,5 +1,8 @@
 # AIMachina XLab
 
+[![AIMachina XLab CI Pipeline](https://github.com/d1ogogomes/aimachina-xlab/actions/workflows/ci.yml/badge.svg)](https://github.com/d1ogogomes/aimachina-xlab/actions)
+[![Live Demo](https://img.shields.io/badge/demo-live_demo-indigo?style=for-the-badge&logo=vercel)](https://aimachina-xlab.vercel.app)
+
 > An interactive, fully client-side **AI laboratory** that runs real machine-learning models directly in the browser — no backend, no GPU server, no data ever leaving the device.
 
 AIMachina XLab is a single-page educational playground built to make the *internals* of modern AI tangible. It bundles three self-contained labs — **Computer Vision**, **LLM mechanics**, and **Decision Trees** — each one a hands-on, visual demonstration of a core ML concept. Everything (training, inference, explainability, tree induction) executes locally in the user's browser using TensorFlow.js and hand-written algorithms.
@@ -20,6 +23,7 @@ The UI is trilingual (🇵🇹 Português · 🇬🇧 English · 🇫🇷 Franç
 - [Project Structure](#project-structure)
 - [Getting Started](#getting-started)
 - [Available Scripts](#available-scripts)
+- [Testing Suite](#testing-suite)
 - [Internationalization (i18n)](#internationalization-i18n)
 - [Machine Learning Internals](#machine-learning-internals)
 - [Known Limitations](#known-limitations)
@@ -33,10 +37,11 @@ The UI is trilingual (🇵🇹 Português · 🇬🇧 English · 🇫🇷 Franç
 - 🔍 **Explainable AI (XAI)** — occlusion-sensitivity heatmaps reveal *which pixels* drove a prediction.
 - 📊 **Full evaluation suite** — confusion matrix, per-class precision/recall/F1, and a sample inspector.
 - 🌳 **Two hand-written CART implementations** — one over MobileNet embedding vectors, one over arbitrary tabular data, both with Gini/Entropy criteria, pre-pruning, and reduced-error post-pruning.
-- 🔤 **LLM demystified** — interactive tokenizer and a temperature / nucleus (top-p) sampling visualizer.
+- 🔤 **LLM Decoder Emulator** — interactive tokenizer and a temperature / nucleus (top-p) sampling visualizer explaining the probabilistic mechanics of generative models.
 - 🌐 **Trilingual UI** — PT / EN / FR via a lightweight custom i18n store, plus on-the-fly dataset translation.
 - 🔒 **Privacy by design** — no server, no telemetry; webcam frames, drawings, and datasets never leave the browser.
 - 💾 **Persistence** — custom datasets and trained CV projects are saved to `localStorage`.
+- 🧪 **Devops & Integrity** — full TypeScript type safety, automated CI pipelines, and a robust unit testing suite.
 
 ---
 
@@ -46,7 +51,7 @@ The app is organized as four tabs in [`src/App.svelte`](src/App.svelte): a **Hom
 
 ### 1. Computer Vision Lab (CV)
 
-A complete **transfer-learning** workflow that lets a user build an image classifier from scratch, in the browser, in a few clicks.
+A complete **transfer-learning** workflow that lets a user build an image classifier from scratch, in the browser, in a few clicks. Encapsulated in the modular [`ComputerVisionLab.svelte`](src/lib/components/ComputerVisionLab.svelte) component.
 
 **Pipeline**
 1. **Backbone** — [MobileNet v1](https://github.com/tensorflow/tfjs-models/tree/master/mobilenet) (α=1.0) loaded once; its penultimate layer yields a **1024-dimensional embedding** per image (`FEATURE_SIZE = 1024`).
@@ -72,12 +77,9 @@ A complete **transfer-learning** workflow that lets a user build an image classi
 A fully client-side, illustrative look at how language models process text and choose tokens. Implemented in [`LlmPlayground.svelte`](src/lib/components/LlmPlayground.svelte) with two sub-tabs:
 
 - **Tokenizer** — visualizes how text is split into tokens in **word** or **subword** mode, with hover highlighting and per-language default sample texts.
-- **Decoding / Sampling** — an interactive demonstration of how a probability distribution over the vocabulary becomes a chosen token:
-  - **Temperature** scaling (`T`) to sharpen or flatten the distribution,
-  - **Nucleus / top-p sampling** (`P`) over a cumulative-probability cutoff,
-  - visual feedback on which candidate tokens survive the filter.
-
-> Note: the decoding demo uses illustrative logits (no remote model call) — the point is to make the *mechanics* of temperature and top-p intuitive.
+- **Decoding / Sampling (Visual Emulator)** — an interactive demonstration of how a probability distribution over the vocabulary becomes a chosen token. 
+  
+  *Note on Academic Honesty: This playground runs a visual emulator utilizing simulated vocabulary logits. It is designed purely to teach and make the mathematical mechanics of Temperature (`T`), Nucleus/Top-P sampling (`P`), and Top-K filters intuitive and visually understandable, showing how they shape logits distributions before final token selection.*
 
 ### 3. Decision Tree Lab (DT)
 
@@ -100,6 +102,8 @@ A from-scratch **CART** classifier for **tabular data**, in [`tabularDecisionTre
   - **Text rules** — the tree exported as nested `IF / ELSE / THEN` rules (`exportTreeToRulesText`).
 - **Simplified rule path** (`simplifyPathRules`) — collapses a prediction's path into consolidated, human-readable conditions (e.g. merging `x > 2` and `x <= 5` into `2 < x <= 5`, and multiple `!=` into a single `NOT IN [...]`).
 - **On-the-fly dataset translation** — translates headers and categorical values into the active UI language (via the Google Translate endpoint), with a bounded-concurrency request pool, domain-specific overrides, and graceful fallback to the original value on any failure.
+- **Feature Importance** — mathematically computes Gini/Entropy impurity decreases weighted by sample support at split nodes, normalising scores to a `0-100%` scale displayed as modern animated progress bars.
+- **Code Exporters** — translates the trained tree into copy-pasteable, production-ready, executable autonomous code in both **Python** (nested conditional script) and **JavaScript** (standalone prediction function).
 
 ---
 
@@ -109,6 +113,7 @@ A from-scratch **CART** classifier for **tabular data**, in [`tabularDecisionTre
 |---|---|
 | **Framework** | [Svelte 5](https://svelte.dev/) (`^5.53`) |
 | **Build tool** | [Vite 8](https://vite.dev/) |
+| **Test Runner** | [Vitest](https://vitest.dev/) (fast unit test executions) |
 | **Language** | TypeScript 5.9 (strict, `checkJs` enabled) |
 | **Styling** | [Tailwind CSS 4](https://tailwindcss.com/) + PostCSS + Autoprefixer |
 | **ML runtime** | [TensorFlow.js 4.22](https://www.tensorflow.org/js) + `@tensorflow-models/mobilenet` |
@@ -121,11 +126,10 @@ A from-scratch **CART** classifier for **tabular data**, in [`tabularDecisionTre
 ## Architecture & Design Decisions
 
 - **No backend.** Every model, dataset, and computation lives in the browser. This keeps the project trivially deployable as static files and makes privacy a structural guarantee rather than a promise.
-- **ML logic extracted from components.** All TensorFlow.js plumbing is centralized in [`src/lib/ml/tfjs.ts`](src/lib/ml/tfjs.ts) (previously duplicated between `App.svelte` and `PreviewCard.svelte`). The two CART implementations and the MNIST preprocessing are likewise standalone, dependency-light TypeScript modules — easy to test and reason about in isolation.
+- **Decoupled Architecture.** All heavy machine learning controllers are extracted from UI views. [`App.svelte`](src/App.svelte) serves as a lightweight Router and Shell, delegating the training, capturing, and XAI pipelines to the standalone [`ComputerVisionLab.svelte`](src/lib/components/ComputerVisionLab.svelte) component.
 - **Memory discipline.** Every tensor-producing helper wraps work in `tf.tidy`, so intermediate tensors are released even when an error is thrown mid-pipeline.
 - **Determinism where it matters.** The Decision Tree Lab uses a seeded shuffle so results are reproducible — important for a teaching tool where a user expects the same input to yield the same tree.
 - **Graceful degradation in i18n.** The translation store resolves `key → translation → explicit fallback → key`, so a missing locale key surfaces readable text instead of a raw identifier.
-- **Resilient external calls.** The dataset-translation feature caps concurrency (to avoid rate-limiting), guards against malformed responses, and never corrupts a cell on failure — it falls back to the original value.
 
 ---
 
@@ -139,11 +143,14 @@ aimachina-xlab/
 ├── tailwind.config.js              # Tailwind setup
 ├── postcss.config.js
 ├── tsconfig*.json                  # App + node TS configs
+├── .github/
+│   └── workflows/
+│       └── ci.yml                  # GitHub Actions CI Workflow configuration
 ├── public/
 │   └── datasets/                   # Bundled Cats / Dogs demo images (+ ATTRIBUTION.md)
 ├── src/
 │   ├── main.ts                     # App bootstrap
-│   ├── App.svelte                  # Root: tab shell (Home / CV / LLM / DT), CV lab logic
+│   ├── App.svelte                  # Lightweight Svelte Application Shell / Router
 │   ├── app.css                     # Global styles
 │   ├── i18n.ts                     # Custom translation store (locale + t)
 │   ├── locales/                    # en.json · pt.json · fr.json
@@ -153,6 +160,7 @@ aimachina-xlab/
 │   └── lib/
 │       ├── components/
 │       │   ├── HomeHero.svelte             # Animated shader landing page
+│       │   ├── ComputerVisionLab.svelte    # Decoupled Deep Learning / CNN Lab
 │       │   ├── PreviewCard.svelte          # Live CV inference card
 │       │   ├── WebcamModal.svelte          # Webcam capture
 │       │   ├── DrawModal.svelte            # Freehand drawing capture
@@ -165,6 +173,7 @@ aimachina-xlab/
 │           ├── preprocess.ts               # MNIST canvas preprocessing
 │           ├── decisionTree.ts             # CART over embedding vectors
 │           ├── tabularDecisionTree.ts      # CART over tabular data (+ rule export)
+│           ├── tabularDecisionTree.test.ts # Vitest suite for the CART algorithm
 │           └── tabularDatasets.ts          # Built-in datasets + localStorage CRUD
 └── mnist_png/, prune_mnist.js              # MNIST asset tooling
 ```
@@ -186,6 +195,9 @@ npm install
 # start the dev server (http://localhost:5173)
 npm run dev
 
+# run the vitest unit testing suite
+npm run test
+
 # type-check the whole project
 npm run check
 
@@ -196,19 +208,6 @@ npm run build
 npm run preview
 ```
 
-### Environment variables
-
-Optional, read by Vite (`import.meta.env`). Copy and edit as needed:
-
-```bash
-VITE_APP_TITLE=...
-VITE_APP_VERSION=...
-VITE_ENVIRONMENT=...
-VITE_ENABLE_DEBUG=...
-```
-
-> `.env` is git-ignored; an `.env.example` is the intended template for collaborators.
-
 ---
 
 ## Available Scripts
@@ -216,9 +215,27 @@ VITE_ENABLE_DEBUG=...
 | Script | Description |
 |---|---|
 | `npm run dev` | Start the Vite dev server with HMR |
+| `npm run test` | Run the Vitest unit test suite |
 | `npm run build` | Production build to `dist/` |
 | `npm run preview` | Serve the production build locally |
 | `npm run check` | `svelte-check` + `tsc` type-checking (0 errors enforced) |
+
+---
+
+## Testing Suite
+
+The custom CART classification library is fully unit tested using **Vitest** for robust predictive calculations. Coverage in [`tabularDecisionTree.test.ts`](src/lib/ml/tabularDecisionTree.test.ts) includes:
+
+- **Impurity Calculations**: Evaluates correct Gini and Entropy metrics on pure, partially pure, and fully mixed class distributions.
+- **Tree Synthesis & Stopping Criteria**: Assures Gini/Entropy minimization paths and enforces early-stopping depth limits.
+- **Post-Pruning Math**: Assures validation subsets are recursively sliced down to matching paths for Reduced Error Pruning without data leakages.
+- **Purity & Support Routing**: Validates prediction fallback mechanisms when encountering row features with missing/empty values.
+- **Normalized Feature Importance**: Assures that calculated relative Gini feature weights properly sum to exactly `1.0`.
+
+Execute tests via:
+```bash
+npm run test
+```
 
 ---
 

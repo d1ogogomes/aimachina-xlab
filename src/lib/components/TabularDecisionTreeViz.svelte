@@ -79,7 +79,10 @@
       let label = '';
       if (parentNode && parentNode.type === 'split') {
         if (parentNode.featureType === 'numerical') {
-          label = e.isLeftChild ? `≤ ${parentNode.threshold}` : `> ${parentNode.threshold}`;
+          const fmtThreshold = typeof parentNode.threshold === 'number'
+            ? Math.round(parentNode.threshold * 1000) / 1000
+            : parentNode.threshold;
+          label = e.isLeftChild ? `≤ ${fmtThreshold}` : `> ${fmtThreshold}`;
         } else {
           label = e.isLeftChild ? `= ${parentNode.categoryValue}` : `≠ ${parentNode.categoryValue}`;
         }
@@ -91,6 +94,7 @@
       const isHighlighted = isParentOnPath && isChildOnPath;
 
       return {
+        id: `${e.parentX}-${e.parentY}-${e.x}-${e.y}`,
         x1: e.parentX! + NODE_W / 2,
         y1: e.parentY! + NODE_H,
         x2: e.x + NODE_W / 2,
@@ -132,6 +136,10 @@
     } catch {}
   }
 
+  function onLostPointerCapture() {
+    isDragging = false;
+  }
+
   let _centeredForTree: TabularTreeNode | null = null;
   afterUpdate(() => {
     if (tree === _centeredForTree || !scrollEl) return;
@@ -152,9 +160,9 @@
     
     <div class="flex flex-wrap items-center gap-3">
       <span class="text-xs text-zinc-400 font-medium">Classes:</span>
-      {#each targetClasses as cls, i}
+      {#each targetClasses as cls (cls)}
         <div class="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-full border border-zinc-200/60 shadow-sm text-xs font-semibold">
-          <span class="w-2 h-2 rounded-full" style="background:{color(cls)}"></span>
+          <span class="w-2.5 h-2.5 rounded-full" style="background:{color(cls)}"></span>
           <span class="text-zinc-600">{cls}</span>
         </div>
       {/each}
@@ -172,6 +180,7 @@
     on:pointermove={onPointerMove}
     on:pointerup={onPointerUp}
     on:pointercancel={onPointerUp}
+    on:lostpointercapture={onLostPointerCapture}
   >
     <svg
       viewBox={vb}
@@ -197,7 +206,7 @@
         </filter>
 
         <!-- Glowing active path leaf shadows -->
-        {#each targetClasses as cls, i}
+        {#each targetClasses as cls, i (cls)}
           <filter id="leaf-glow-{i}" x="-20%" y="-20%" width="140%" height="140%">
             <feDropShadow dx="0" dy="5" stdDeviation="6" flood-color={color(cls)} flood-opacity="0.22" />
           </filter>
@@ -208,7 +217,7 @@
       <rect x={-PAD} y={-PAD} width={svgW + PAD * 2} height={svgH + PAD * 2} fill="url(#dot-grid)" />
 
       <!-- Draw Connection Edges -->
-      {#each edges as edge}
+      {#each edges as edge (edge.id)}
         <!-- Glow backing path for highlighted path -->
         {#if edge.isHighlighted}
           <path
@@ -264,7 +273,7 @@
       {/each}
 
       <!-- Draw Nodes -->
-      {#each entries as entry}
+      {#each entries as entry (`${entry.x}-${entry.y}`)}
         {@const n = entry.node}
         {@const maj = getMajorityClass(n.classDist)}
         {@const bars = distBar(n.classDist, n.samples)}
@@ -303,7 +312,7 @@
               font-size="13.5" font-weight="800" fill="#0f172a"
               text-anchor="middle" dominant-baseline="middle" class="font-mono">
               {#if n.featureType === 'numerical'}
-                ≤ {n.threshold}
+                ≤ {typeof n.threshold === 'number' ? Math.round(n.threshold * 1000) / 1000 : n.threshold}
               {:else}
                 = {n.categoryValue}
               {/if}
@@ -318,11 +327,11 @@
 
             <!-- Dist Bar backing -->
             <rect x={BAR_X} y={BAR_Y} width={BAR_W} height={BAR_H} rx="3" fill="#f1f5f9"/>
-            {#each bars as seg, si}
+            {#each bars as seg, si (seg.cls)}
               <rect
                 x={BAR_X + BAR_W * seg.offset / 100}
                 y={BAR_Y}
-                width={Math.max(2, BAR_W * seg.pct / 100)}
+                width={Math.max(2, BAR_W * seg.pct / 100 + 0.5)}
                 height={BAR_H}
                 rx={si === 0 ? 3 : (si === bars.length - 1 ? 3 : 0)}
                 fill={color(seg.cls)}
@@ -332,15 +341,16 @@
 
           {:else}
             <!-- Leaf Card with Left-border Accent Stripe -->
+            {@const classIdx = targetClasses.indexOf(maj)}
             <rect
               width={NODE_W}
               height={NODE_H}
               rx="14"
               fill="#ffffff"
               fill-opacity="0.98"
-              stroke={isOnPath ? color(maj) : '#e2e8f0'}
+              stroke={isOnPath && classIdx >= 0 ? color(maj) : '#e2e8f0'}
               stroke-width={isOnPath ? '3' : '1.5'}
-              filter={isOnPath ? 'url(#leaf-glow-' + targetClasses.indexOf(maj) + ')' : 'url(#standard-shadow)'}
+              filter={isOnPath && classIdx >= 0 ? 'url(#leaf-glow-' + classIdx + ')' : 'url(#standard-shadow)'}
               class="transition-all duration-300"
             />
 
@@ -378,11 +388,11 @@
 
             <!-- Dist Bar backing -->
             <rect x={BAR_X} y={BAR_Y} width={BAR_W} height={BAR_H} rx="3" fill="#00000010"/>
-            {#each bars as seg, si}
+            {#each bars as seg, si (seg.cls)}
               <rect
                 x={BAR_X + BAR_W * seg.offset / 100}
                 y={BAR_Y}
-                width={Math.max(2, BAR_W * seg.pct / 100)}
+                width={Math.max(2, BAR_W * seg.pct / 100 + 0.5)}
                 height={BAR_H}
                 rx={si === 0 ? 3 : (si === bars.length - 1 ? 3 : 0)}
                 fill={color(seg.cls)}
