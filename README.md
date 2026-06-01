@@ -1,7 +1,6 @@
 # AIMachina XLab
 
 [![AIMachina XLab CI Pipeline](https://github.com/d1ogogomes/aimachina-xlab/actions/workflows/ci.yml/badge.svg)](https://github.com/d1ogogomes/aimachina-xlab/actions)
-[![Live Demo](https://img.shields.io/badge/demo-live_demo-indigo?style=for-the-badge&logo=vercel)](https://aimachina-xlab.vercel.app)
 
 > An interactive, fully client-side **AI laboratory** that runs real machine-learning models directly in the browser — no backend, no GPU server, no data ever leaving the device.
 
