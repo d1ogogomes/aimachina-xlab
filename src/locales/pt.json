@@ -259,5 +259,13 @@
   "dt_rule_if": "SE",
   "dt_rule_else": "SENÃO",
   "dt_rule_then": "➔ ENTÃO: Prever",
-  "dt_rule_not_in": "NÃO EM"
+  "dt_rule_not_in": "NÃO EM",
+  "dt_feature_importance": "Importância dos Atributos",
+  "dt_feature_importance_desc": "Representa a contribuição matemática de cada atributo para a redução da impureza (Gini/Entropia) nas divisões da árvore, ponderada pelo volume de amostras.",
+  "dt_export_python": "Código Python",
+  "dt_export_js": "Função JavaScript",
+  "dt_copy_btn": "Copiar Código",
+  "dt_copied_success": "Copiado!",
+  "dt_code_exporter_desc": "Utilize este código autónomo e executável para integrar esta árvore de decisão noutros ambientes de software.",
+  "dt_rules_tab": "Regras de Decisão"
 }
