@@ -56,6 +56,10 @@
   let postPrunedTree: TabularTreeNode | null = null; // Stores validation/test post-pruned state
   let isPostPrunedApplied = false;
 
+  // Pruning statistics telemetry
+  let unprunedStats = { splits: 0, leaves: 0, maxDepth: 0 };
+  let prunedStats = { splits: 0, leaves: 0, maxDepth: 0 };
+
   let trainAccuracy = 0;
   let testAccuracy = 0;
   let unprunedTrainAccuracy = 0;
@@ -137,6 +141,66 @@
       { Aspecto: 'Chuva', Vento: 25, Jogar: 'Nao' },
       { Aspecto: 'Chuva', Vento: 8, Jogar: 'Sim' },
     ];
+  }
+
+  function updateFeatureName(idx: number, newName: string) {
+    const oldName = customFeatures[idx];
+    if (oldName === newName) return;
+    
+    // Update the features array
+    customFeatures[idx] = newName;
+    customFeatures = [...customFeatures];
+    
+    // Rename key in customFeatureTypes
+    if (customFeatureTypes[oldName] !== undefined) {
+      customFeatureTypes[newName] = customFeatureTypes[oldName];
+      delete customFeatureTypes[oldName];
+      customFeatureTypes = { ...customFeatureTypes };
+    }
+    
+    // Rename keys in customData rows
+    customData = customData.map(row => {
+      const newRow = { ...row };
+      if (oldName in newRow) {
+        newRow[newName] = newRow[oldName];
+        delete newRow[oldName];
+      }
+      return newRow;
+    });
+  }
+
+  function updateFeatureType(f: string, type: 'categorical' | 'numerical') {
+    customFeatureTypes[f] = type;
+    customFeatureTypes = { ...customFeatureTypes };
+    
+    // Coerce values in customData to prevent type mismatches
+    customData = customData.map(row => {
+      const newRow = { ...row };
+      if (type === 'numerical') {
+        const num = Number(newRow[f]);
+        newRow[f] = isNaN(num) ? 0 : num;
+      } else {
+        newRow[f] = String(newRow[f]);
+      }
+      return newRow;
+    });
+  }
+
+  function updateTargetName(newName: string) {
+    const oldName = customTargetName;
+    if (oldName === newName) return;
+    
+    customTargetName = newName;
+    
+    // Rename keys in customData rows
+    customData = customData.map(row => {
+      const newRow = { ...row };
+      if (oldName in newRow) {
+        newRow[newName] = newRow[oldName];
+        delete newRow[oldName];
+      }
+      return newRow;
+    });
   }
 
   function addFeatureColumn() {
@@ -299,16 +363,18 @@
         const featureTypes: Record<string, 'categorical' | 'numerical'> = {};
         for (const f of features) {
           let allNumerical = true;
+          let hasValues = false;
           for (const row of importedData) {
             const val = row[f];
-            if (val !== undefined && val !== null && val !== '') {
+            if (val !== undefined && val !== null && String(val).trim() !== '') {
+              hasValues = true;
               if (isNaN(Number(val))) {
                 allNumerical = false;
                 break;
               }
             }
           }
-          featureTypes[f] = allNumerical ? 'numerical' : 'categorical';
+          featureTypes[f] = (hasValues && allNumerical) ? 'numerical' : 'categorical';
         }
 
         // Get unique target classes
@@ -537,6 +603,9 @@
         minSamplesLeaf: minSamplesLeaf
       }
     );
+    if (trainedTree) {
+      unprunedStats = countNodes(trainedTree);
+    }
 
     // 3. Build Full Unpruned Tree (Unlimited) to illustrate Overfitting
     unprunedTree = buildTabularTree(
@@ -577,6 +646,9 @@
       testSet,
       activeDataset.targetName
     );
+    if (postPrunedTree) {
+      prunedStats = countNodes(postPrunedTree);
+    }
 
     isPostPrunedApplied = true;
     
@@ -844,7 +916,8 @@
               <input 
                 id="ds-target-inp"
                 type="text" 
-                bind:value={customTargetName} 
+                value={customTargetName} 
+                on:input={(e) => updateTargetName((e.target as HTMLInputElement).value)}
                 class="bg-zinc-50 border border-zinc-200 rounded-lg px-2.5 py-1.5 text-xs text-zinc-800 outline-none font-bold"
               />
             </div>
@@ -860,11 +933,13 @@
                 <div class="flex items-center gap-2 bg-zinc-50 border border-zinc-200 p-2 rounded-lg">
                   <input 
                     type="text" 
-                    bind:value={customFeatures[idx]} 
+                    value={f} 
+                    on:input={(e) => updateFeatureName(idx, (e.target as HTMLInputElement).value)}
                     class="bg-white border border-zinc-200 rounded px-1.5 py-0.5 text-[11px] font-semibold text-zinc-800 outline-none flex-1"
                   />
                   <select 
-                    bind:value={customFeatureTypes[f]} 
+                    value={customFeatureTypes[f]} 
+                    on:change={(e) => updateFeatureType(f, (e.target as HTMLSelectElement).value as 'categorical' | 'numerical')}
                     class="bg-white border border-zinc-200 rounded px-1.5 py-0.5 text-[10px] font-bold text-zinc-700"
                   >
                     <option value="categorical">{$t('dt_categorical_type')}</option>
@@ -908,12 +983,14 @@
                             <input 
                               type="number" 
                               bind:value={row[f]} 
+                              on:input={() => customData = customData}
                               class="w-full bg-transparent border-0 outline-none p-1"
                             />
                           {:else}
                             <input 
                               type="text" 
                               bind:value={row[f]} 
+                              on:input={() => customData = customData}
                               class="w-full bg-transparent border-0 outline-none p-1"
                             />
                           {/if}
@@ -923,6 +1000,7 @@
                         <input 
                            type="text" 
                           bind:value={row[customTargetName]} 
+                          on:input={() => customData = customData}
                           class="w-full bg-transparent border-0 outline-none p-1 text-indigo-700 font-bold"
                         />
                       </td>
@@ -1085,8 +1163,21 @@
             {$t('dt_run_post_pruning_btn')}
           </button>
         {:else}
-          <div class="mt-2 text-xs text-emerald-800 bg-emerald-50 border border-emerald-100 p-2.5 rounded-xl font-medium leading-tight">
-            {$t('dt_post_pruning_success')}
+          {@const unprunedTotal = unprunedStats.splits + unprunedStats.leaves}
+          {@const prunedTotal = prunedStats.splits + prunedStats.leaves}
+          {@const reduction = unprunedTotal > 0 ? Math.round((1 - prunedTotal / unprunedTotal) * 100) : 0}
+          <div class="mt-2 text-xs text-emerald-800 bg-emerald-50 border border-emerald-100 p-2.5 rounded-xl font-medium leading-tight flex flex-col gap-1.5 shadow-xs">
+            <span class="font-extrabold flex items-center gap-1">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              {$t('dt_post_pruning_success')}
+            </span>
+            <div class="text-[10px] text-emerald-700/90 font-bold border-t border-emerald-200/50 pt-1.5 flex flex-col gap-1 font-mono">
+              <div>{$t('dt_pruned_telemetry_original')}: {unprunedTotal} {$t('dt_pruned_telemetry_nodes')} ({unprunedStats.splits} splits, {unprunedStats.leaves} leaves)</div>
+              <div>{$t('dt_pruned_telemetry_pruned')}: {prunedTotal} {$t('dt_pruned_telemetry_nodes')} ({prunedStats.splits} splits, {prunedStats.leaves} leaves)</div>
+              <div class="text-xs font-black text-emerald-600 uppercase tracking-wide border-t border-emerald-200/30 pt-1 mt-0.5">
+                {$t('dt_pruned_telemetry_reduction')}: {reduction}% {$t('dt_pruned_telemetry_fewer')}
+              </div>
+            </div>
           </div>
           <button
             on:click={triggerTrain}
@@ -1206,24 +1297,22 @@
       {#if trainedTree && predictionResult}
         <div class="mt-4 bg-zinc-50 border border-zinc-200/60 rounded-2xl p-5 flex flex-col gap-2">
           <h4 class="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-1.5">
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><path d="M6 9v12"/></svg>
             {$t('dt_active_rules_path')}
           </h4>
           <p class="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">{$t('dt_rules_simplified')}</p>
           
           {#if simplifiedRulesPath.length > 0}
-            <div class="flex flex-wrap gap-2 mt-1">
+            <div class="flex flex-wrap items-center gap-2.5 mt-2">
               {#each simplifiedRulesPath as rule, index}
-                <div class="flex items-center gap-2">
-                  <span class="bg-indigo-50 border border-indigo-100 text-indigo-700 px-3 py-1.5 rounded-xl text-xs font-mono font-bold shadow-xs">
-                    {rule}
+                <span class="bg-indigo-50 border border-indigo-100/80 text-indigo-700 px-3.5 py-1.5 rounded-xl text-xs font-mono font-bold shadow-xs">
+                  {rule}
+                </span>
+                {#if index < simplifiedRulesPath.length - 1}
+                  <span class="text-[9px] font-black text-indigo-500 bg-indigo-50/50 px-2 py-1 rounded-lg uppercase tracking-wider font-mono">
+                    {$locale === 'pt' ? 'E' : $locale === 'fr' ? 'ET' : 'AND'}
                   </span>
-                  {#if index < simplifiedRulesPath.length - 1}
-                    <span class="text-[9px] font-black text-indigo-400 uppercase tracking-wider font-mono">
-                      {$locale === 'pt' ? 'E' : $locale === 'fr' ? 'ET' : 'AND'}
-                    </span>
-                  {/if}
-                </div>
+                {/if}
               {/each}
               <div class="flex items-center gap-1.5 w-full border-t border-zinc-200/50 pt-2.5 mt-2 text-xs font-semibold text-zinc-600">
                 <span class="text-[10px] font-black text-indigo-500 uppercase tracking-wider">➔</span>

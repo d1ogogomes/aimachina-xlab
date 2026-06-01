@@ -147,7 +147,10 @@ function buildNode(
 
     if (type === 'numerical') {
       // Numerical Split: sort and evaluate midpoints
-      const vals = data.map(d => Number(d[f])).filter(v => !isNaN(v));
+      const vals = data
+        .map(d => d[f])
+        .filter(v => v !== undefined && v !== null && v !== '' && !isNaN(Number(v)))
+        .map(v => Number(v));
       if (vals.length === 0) continue;
       
       const sortedUniqueVals = Array.from(new Set(vals)).sort((a, b) => a - b);
@@ -156,8 +159,8 @@ function buildNode(
         const threshold = (sortedUniqueVals[i] + sortedUniqueVals[i + 1]) / 2;
         
         // Split data
-        const left = data.filter(d => Number(d[f]) <= threshold);
-        const right = data.filter(d => Number(d[f]) > threshold);
+        const left = data.filter(d => d[f] !== undefined && d[f] !== null && d[f] !== '' && !isNaN(Number(d[f])) && Number(d[f]) <= threshold);
+        const right = data.filter(d => d[f] !== undefined && d[f] !== null && d[f] !== '' && !isNaN(Number(d[f])) && Number(d[f]) > threshold);
         
         if (left.length < config.minSamplesLeaf || right.length < config.minSamplesLeaf) continue;
 
@@ -256,14 +259,50 @@ export function postPruneTabularTree(
 ): TabularTreeNode {
   if (node.type === 'leaf') return node;
 
-  // Prune left and right subtrees first
-  node.left = postPruneTabularTree(node.left, trainData, valData, targetName);
-  node.right = postPruneTabularTree(node.right, trainData, valData, targetName);
+  // Partition validation and training data based on the split rule to filter down subtrees
+  let trainLeft: Record<string, any>[] = [];
+  let trainRight: Record<string, any>[] = [];
+  let valLeft: Record<string, any>[] = [];
+  let valRight: Record<string, any>[] = [];
 
-  // If no validation data, do not collapse
+  const goesLeftForMissing = node.left.samples >= node.right.samples;
+
+  if (node.featureType === 'numerical') {
+    const tVal = node.threshold!;
+    const routeRow = (row: Record<string, any>) => {
+      const val = row[node.featureName];
+      if (val === undefined || val === null || val === '' || isNaN(Number(val))) {
+        return goesLeftForMissing;
+      }
+      return Number(val) <= tVal;
+    };
+    trainLeft = trainData.filter(routeRow);
+    trainRight = trainData.filter(row => !routeRow(row));
+    valLeft = valData.filter(routeRow);
+    valRight = valData.filter(row => !routeRow(row));
+  } else {
+    const catVal = String(node.categoryValue);
+    const routeRow = (row: Record<string, any>) => {
+      const val = row[node.featureName];
+      if (val === undefined || val === null || val === '') {
+        return goesLeftForMissing;
+      }
+      return String(val) === catVal;
+    };
+    trainLeft = trainData.filter(routeRow);
+    trainRight = trainData.filter(row => !routeRow(row));
+    valLeft = valData.filter(routeRow);
+    valRight = valData.filter(row => !routeRow(row));
+  }
+
+  // Prune left and right subtrees recursively with their filtered data subsets
+  node.left = postPruneTabularTree(node.left, trainLeft, valLeft, targetName);
+  node.right = postPruneTabularTree(node.right, trainRight, valRight, targetName);
+
+  // If no validation data actually reaches this node, do not prune it (keep the trained structure)
   if (valData.length === 0) return node;
 
-  // 1. Calculate validation accuracy WITH the split
+  // 1. Calculate validation accuracy of the active subtree on the validation subset reaching this node
   const accWithSplit = computeAccuracy(node, valData, targetName);
 
   // 2. Create temporary leaf representing majority class from TRAINING samples in this node
@@ -304,9 +343,16 @@ export function predictTabular(
     const val = row[curr.featureName];
     let goesLeft = false;
 
-    if (curr.featureType === 'numerical') {
+    if (val === undefined || val === null || val === '') {
+      // Missing value fallback: route to the child with more training samples
+      goesLeft = curr.left.samples >= curr.right.samples;
+    } else if (curr.featureType === 'numerical') {
       const numVal = Number(val);
-      goesLeft = !isNaN(numVal) && numVal <= curr.threshold!;
+      if (isNaN(numVal)) {
+        goesLeft = curr.left.samples >= curr.right.samples;
+      } else {
+        goesLeft = numVal <= curr.threshold!;
+      }
     } else {
       goesLeft = String(val) === String(curr.categoryValue);
     }
@@ -452,6 +498,8 @@ export function simplifyPathRules(
   const numericalBounds: Record<string, { min: number; max: number }> = {};
   const categoricalEqualities: Record<string, string> = {};
   const categoricalInequalities: Record<string, Set<string>> = {};
+  const featureOrder: string[] = [];
+  const seenFeatures = new Set<string>();
 
   for (let i = 0; i < path.length - 1; i++) {
     const curr = path[i];
@@ -460,6 +508,12 @@ export function simplifyPathRules(
 
     const goesLeft = curr.left === next;
     const f = curr.featureName;
+
+    // Track chronological feature order based on its first occurrence
+    if (!seenFeatures.has(f)) {
+      seenFeatures.add(f);
+      featureOrder.push(f);
+    }
 
     if (curr.featureType === 'numerical') {
       if (!numericalBounds[f]) {
@@ -485,34 +539,28 @@ export function simplifyPathRules(
   }
 
   const simplifiedRules: string[] = [];
-
-  // 1. Process numerical rules
-  for (const f in numericalBounds) {
-    const { min, max } = numericalBounds[f];
-    if (min !== -Infinity && max !== Infinity) {
-      simplifiedRules.push(`${min} < ${f} <= ${max}`);
-    } else if (max !== Infinity) {
-      simplifiedRules.push(`${f} <= ${max}`);
-    } else if (min !== -Infinity) {
-      simplifiedRules.push(`${f} > ${min}`);
-    }
-  }
-
-  // 2. Process categorical rules
-  for (const f in categoricalEqualities) {
-    simplifiedRules.push(`${f} == "${categoricalEqualities[f]}"`);
-  }
-
   const notInStr = t('dt_rule_not_in', 'NOT IN');
 
-  for (const f in categoricalInequalities) {
-    if (categoricalEqualities[f] !== undefined) continue;
-
-    const items = Array.from(categoricalInequalities[f]);
-    if (items.length === 1) {
-      simplifiedRules.push(`${f} != "${items[0]}"`);
-    } else {
-      simplifiedRules.push(`${f} ${notInStr} [${items.map(x => `"${x}"`).join(', ')}]`);
+  // Build the simplified rules in the exact order they are encountered in the tree (from root to leaf)
+  for (const f of featureOrder) {
+    if (numericalBounds[f]) {
+      const { min, max } = numericalBounds[f];
+      if (min !== -Infinity && max !== Infinity) {
+        simplifiedRules.push(`${min} < ${f} <= ${max}`);
+      } else if (max !== Infinity) {
+        simplifiedRules.push(`${f} <= ${max}`);
+      } else if (min !== -Infinity) {
+        simplifiedRules.push(`${f} > ${min}`);
+      }
+    } else if (categoricalEqualities[f] !== undefined) {
+      simplifiedRules.push(`${f} == "${categoricalEqualities[f]}"`);
+    } else if (categoricalInequalities[f]) {
+      const items = Array.from(categoricalInequalities[f]);
+      if (items.length === 1) {
+        simplifiedRules.push(`${f} != "${items[0]}"`);
+      } else {
+        simplifiedRules.push(`${f} ${notInStr} [${items.map(x => `"${x}"`).join(', ')}]`);
+      }
     }
   }
 

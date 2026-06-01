@@ -180,6 +180,33 @@
       style="display:block; min-width:{svgW + PAD * 2}px; margin: 0 auto;"
       font-family="system-ui, -apple-system, sans-serif"
     >
+      <defs>
+        <!-- Modern Grid Pattern -->
+        <pattern id="dot-grid" width="22" height="22" patternUnits="userSpaceOnUse">
+          <circle cx="11" cy="11" r="0.85" fill="#e2e8f0" />
+        </pattern>
+
+        <!-- Premium Standard Card Shadow -->
+        <filter id="standard-shadow" x="-10%" y="-10%" width="120%" height="120%">
+          <feDropShadow dx="0" dy="4" stdDeviation="4.5" flood-color="#0f172a" flood-opacity="0.04" />
+        </filter>
+
+        <!-- Glowing active path split shadow -->
+        <filter id="active-split-glow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="5" stdDeviation="6" flood-color="#6366f1" flood-opacity="0.22" />
+        </filter>
+
+        <!-- Glowing active path leaf shadows -->
+        {#each targetClasses as cls, i}
+          <filter id="leaf-glow-{i}" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="5" stdDeviation="6" flood-color={color(cls)} flood-opacity="0.22" />
+          </filter>
+        {/each}
+      </defs>
+
+      <!-- Draw Background blueprint dot grid -->
+      <rect x={-PAD} y={-PAD} width={svgW + PAD * 2} height={svgH + PAD * 2} fill="url(#dot-grid)" />
+
       <!-- Draw Connection Edges -->
       {#each edges as edge}
         <!-- Glow backing path for highlighted path -->
@@ -190,7 +217,7 @@
             stroke="#c7d2fe"
             stroke-width="7"
             stroke-linecap="round"
-            opacity="0.6"
+            opacity="0.5"
             class="transition-all duration-300"
           />
         {/if}
@@ -207,26 +234,28 @@
 
         <!-- Edge Split Rule Label Pill -->
         {#if edge.label}
-          {@const textLen = edge.label.length * 6 + 10}
+          {@const textLen = edge.label.length * 6 + 12}
           <g transform="translate({(edge.x1 + edge.x2) / 2}, {(edge.y1 + edge.y2) / 2})">
             <rect
               x={-textLen / 2}
-              y="-9"
+              y="-10"
               width={textLen}
-              height="18"
-              rx="9"
-              fill={edge.isHighlighted ? '#e0e7ff' : '#f1f5f9'}
-              stroke={edge.isHighlighted ? '#818cf8' : '#e2e8f0'}
+              height="20"
+              rx="10"
+              fill={edge.isHighlighted ? '#4f46e5' : '#ffffff'}
+              stroke={edge.isHighlighted ? '#6366f1' : '#e2e8f0'}
               stroke-width="1"
-              class="transition-colors duration-300"
+              filter="url(#standard-shadow)"
+              class="transition-all duration-300"
             />
             <text
               y="1"
-              font-size="9.5"
-              font-weight="700"
-              fill={edge.isHighlighted ? '#4338ca' : '#475569'}
+              font-size="9"
+              font-weight="800"
+              fill={edge.isHighlighted ? '#ffffff' : '#475569'}
               text-anchor="middle"
               dominant-baseline="middle"
+              class="transition-all duration-300 font-mono"
             >
               {edge.label}
             </text>
@@ -251,29 +280,18 @@
             <rect
               width={NODE_W}
               height={NODE_H}
-              rx="12"
+              rx="14"
               fill="#ffffff"
-              stroke={isOnPath ? '#6366f1' : '#e4e4e7'}
+              fill-opacity="0.98"
+              stroke={isOnPath ? '#4f46e5' : '#e2e8f0'}
               stroke-width={isOnPath ? '3' : '1.5'}
-              filter="drop-shadow(0 2px 4px rgba(0,0,0,0.02))"
+              filter={isOnPath ? 'url(#active-split-glow)' : 'url(#standard-shadow)'}
               class="transition-all duration-300"
             />
 
-            <!-- Highlight visual ripple -->
-            {#if isOnPath}
-              <rect
-                width={NODE_W}
-                height={NODE_H}
-                rx="12"
-                fill="none"
-                stroke="#6366f1"
-                stroke-width="6"
-                opacity="0.15"
-              />
-            {/if}
-
-            <!-- Feature Name Tag -->
-            <rect x={NODE_W/2 - 55} y="10" width="110" height="16" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+            <!-- Feature Name Tag (dynamic width based on text length to prevent overflow) -->
+            {@const featureTagW = Math.min(NODE_W - 24, n.featureName.length * 6.5 + 16)}
+            <rect x={NODE_W/2 - featureTagW/2} y="10" width={featureTagW} height="16" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
             <text x={NODE_W/2} y="18"
               font-size="9" font-weight="800" fill="#64748b"
               text-anchor="middle" dominant-baseline="middle" letter-spacing="0.3">
@@ -283,7 +301,7 @@
             <!-- Condition description -->
             <text x={NODE_W/2} y="40"
               font-size="13.5" font-weight="800" fill="#0f172a"
-              text-anchor="middle" dominant-baseline="middle">
+              text-anchor="middle" dominant-baseline="middle" class="font-mono">
               {#if n.featureType === 'numerical'}
                 ≤ {n.threshold}
               {:else}
@@ -308,45 +326,43 @@
                 height={BAR_H}
                 rx={si === 0 ? 3 : (si === bars.length - 1 ? 3 : 0)}
                 fill={color(seg.cls)}
-                opacity="0.9"
+                opacity="0.95"
               />
             {/each}
 
           {:else}
-            <!-- Leaf Card -->
+            <!-- Leaf Card with Left-border Accent Stripe -->
             <rect
               width={NODE_W}
               height={NODE_H}
-              rx="12"
-              fill={bgColor(maj)}
-              stroke={color(maj)}
-              stroke-width={isOnPath ? '4' : '2'}
-              filter="drop-shadow(0 4px 6px rgba(0,0,0,0.03))"
+              rx="14"
+              fill="#ffffff"
+              fill-opacity="0.98"
+              stroke={isOnPath ? color(maj) : '#e2e8f0'}
+              stroke-width={isOnPath ? '3' : '1.5'}
+              filter={isOnPath ? 'url(#leaf-glow-' + targetClasses.indexOf(maj) + ')' : 'url(#standard-shadow)'}
               class="transition-all duration-300"
             />
 
-            <!-- Highlight visual ripple -->
-            {#if isOnPath}
-              <rect
-                width={NODE_W}
-                height={NODE_H}
-                rx="12"
-                fill="none"
-                stroke={color(maj)}
-                stroke-width="7"
-                opacity="0.2"
-              />
-            {/if}
+            <!-- Left border accent stripe -->
+            <rect
+              x="1.5"
+              y="1.5"
+              width="6"
+              height={NODE_H - 3}
+              rx="3"
+              fill={color(maj)}
+            />
 
             <!-- Majority Class Name -->
-            <text x={NODE_W/2} y="22"
-              font-size="13" font-weight="800" fill={color(maj)}
+            <text x={NODE_W/2 + 3} y="22"
+              font-size="13" font-weight="800" fill="#0f172a"
               text-anchor="middle" dominant-baseline="middle">
               {maj}
             </text>
 
             <!-- Confidence Badge -->
-            <rect x={NODE_W/2 - 25} y="32" width="50" height="15" rx="7.5" fill={color(maj)} opacity="0.12"/>
+            <rect x={NODE_W/2 - 26} y="32" width="52" height="15" rx="7.5" fill={bgColor(maj)} stroke={color(maj)} stroke-opacity="0.15" stroke-width="1"/>
             <text x={NODE_W/2} y="39.5"
               font-size="9" font-weight="800" fill={color(maj)}
               text-anchor="middle" dominant-baseline="middle">
