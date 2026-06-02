@@ -66,6 +66,9 @@
 
   async function goTab(tab: "home" | LabTab) {
     activeTab = tab;
+    if (typeof window !== "undefined") {
+      window.scrollTo(0, 0);
+    }
     if (tab === "home") return;
     await tick();
     if (autoTour && !tourSeen(tab)) runTour(tab);
@@ -125,7 +128,7 @@
 </script>
 
 <div
-  class="min-h-screen bg-[#FAF9FC] relative overflow-hidden flex flex-col font-sans text-zinc-900 selection:bg-indigo-500 selection:text-white {activeTab ===
+  class="min-h-screen bg-[#FAF9FC] relative overflow-x-clip flex flex-col font-sans text-zinc-900 selection:bg-indigo-500 selection:text-white {activeTab ===
   'home'
     ? ''
     : 'pb-20'}"
@@ -194,7 +197,7 @@
   {#if activeTab !== "home"}
     <div class="w-full max-w-[85rem] mx-auto px-8 pt-6 sticky top-0 z-50">
       <header
-        class="bg-white/80 backdrop-blur-md rounded-full p-2 grid grid-cols-3 items-center shadow-[0_10px_30px_rgba(79,70,229,0.06)] border border-white/50"
+        class="bg-white/80 backdrop-blur-md rounded-full p-2 grid grid-cols-[1fr_auto_1fr] items-center shadow-[0_10px_30px_rgba(79,70,229,0.06)] border border-white/50"
       >
         <!-- Left: Home Logo and Title -->
         <!-- svelte-ignore a11y-click-events-have-key-events -->
@@ -239,7 +242,7 @@
           >
             <button
               on:click={() => goTab("cv")}
-              class="px-4 py-1.5 text-xs font-bold rounded-full transition-all duration-300 cursor-pointer {activeTab ===
+              class="px-2.5 sm:px-4 py-1.5 text-[10px] sm:text-xs font-bold rounded-full transition-all duration-300 cursor-pointer {activeTab ===
               'cv'
                 ? 'bg-indigo-600 text-white shadow-md scale-[1.02]'
                 : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200/50'}"
@@ -248,7 +251,7 @@
             </button>
             <button
               on:click={() => goTab("llm")}
-              class="px-4 py-1.5 text-xs font-bold rounded-full transition-all duration-300 cursor-pointer {activeTab ===
+              class="px-2.5 sm:px-4 py-1.5 text-[10px] sm:text-xs font-bold rounded-full transition-all duration-300 cursor-pointer {activeTab ===
               'llm'
                 ? 'bg-teal-600 text-white shadow-md scale-[1.02]'
                 : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200/50'}"
@@ -257,7 +260,7 @@
             </button>
             <button
               on:click={() => goTab("dt")}
-              class="px-4 py-1.5 text-xs font-bold rounded-full transition-all duration-300 cursor-pointer {activeTab ===
+              class="px-2.5 sm:px-4 py-1.5 text-[10px] sm:text-xs font-bold rounded-full transition-all duration-300 cursor-pointer {activeTab ===
               'dt'
                 ? 'bg-amber-600 text-white shadow-md scale-[1.02]'
                 : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200/50'}"
@@ -268,13 +271,13 @@
         </div>
 
         <!-- Right: Actions (Language & Export Model) -->
-        <div class="flex items-center justify-end gap-2 mr-1">
+        <div class="flex items-center justify-end gap-1.5 sm:gap-2 mr-1">
           <!-- Launch the active lab's guided tour -->
           <button
             on:click={startCurrentTour}
             title={$t("tour_launch")}
             aria-label={$t("tour_launch")}
-            class="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-zinc-600 bg-zinc-100/70 border border-zinc-200/40 rounded-full hover:bg-zinc-200/80 transition-colors cursor-pointer"
+            class="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold text-zinc-600 bg-zinc-100/70 border border-zinc-200/40 rounded-full hover:bg-zinc-200/80 transition-colors cursor-pointer"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -297,7 +300,7 @@
           <div class="relative">
             <button
               on:click={() => (langOpen = !langOpen)}
-              class="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-zinc-600 bg-zinc-100/70 border border-zinc-200/40 rounded-full hover:bg-zinc-200/80 transition-colors cursor-pointer"
+              class="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold text-zinc-600 bg-zinc-100/70 border border-zinc-200/40 rounded-full hover:bg-zinc-200/80 transition-colors cursor-pointer"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -382,7 +385,7 @@
             <button
               on:click={() => cvLab?.exportModel()}
               disabled={!cvIsModelTrained}
-              class="flex items-center gap-1.5 px-4 py-2 text-xs font-bold border border-zinc-200/50 rounded-full hover:bg-zinc-50 transition-all shadow-sm bg-white/80 disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
+              class="flex items-center gap-1.5 px-2.5 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold border border-zinc-200/50 rounded-full hover:bg-zinc-50 transition-all shadow-sm bg-white/80 disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"

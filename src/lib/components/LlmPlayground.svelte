@@ -21,6 +21,8 @@
       popover: {
         title: $t(`llm_tour_step${n}_title`),
         description: $t(`llm_tour_step${n}_desc`),
+        side: "bottom" as const,
+        align: "center" as const,
       },
     });
     const d = driver({
@@ -29,6 +31,11 @@
       nextBtnText: $t("tour_btn_next"),
       prevBtnText: $t("tour_btn_prev"),
       doneBtnText: $t("tour_btn_done"),
+      onDestroyed: () => {
+        if (typeof window !== "undefined") {
+          window.scrollTo(0, 0);
+        }
+      },
       onNextClick: () => {
         if (d.getActiveIndex() === TOKENIZER_LAST) {
           activeSubTab = "decoding";

@@ -988,6 +988,8 @@
       popover: {
         title: $t(`tour_step${n}_title`),
         description: $t(`tour_step${n}_desc`),
+        side: "bottom" as const,
+        align: "center" as const,
       },
     });
     driver({
@@ -996,6 +998,11 @@
       nextBtnText: $t("tour_btn_next"),
       prevBtnText: $t("tour_btn_prev"),
       doneBtnText: $t("tour_btn_done"),
+      onDestroyed: () => {
+        if (typeof window !== "undefined") {
+          window.scrollTo(0, 0);
+        }
+      },
       steps: [
         step("#cv-step-indicator", 1),
         step("#cv-dataset-actions", 2),
@@ -2228,13 +2235,13 @@
           </button>
         </div>
 
-        <div class="xl:col-span-8 flex flex-col gap-4">
+        <div class="xl:col-span-8 flex flex-col gap-4 min-w-0">
           <h3 class="text-sm font-semibold text-zinc-700">
             {$t("perf_dist")}
           </h3>
 
           {#if confusionMatrix.length > 0}
-            <div class="overflow-hidden border border-zinc-200 rounded-lg">
+            <div class="overflow-x-auto border border-zinc-200 rounded-lg">
               <table class="w-full text-sm text-left">
                 <thead
                   class="bg-zinc-50 text-xs uppercase font-semibold text-zinc-500 border-b border-zinc-200"
@@ -2306,7 +2313,7 @@
 
             <!-- Per-class Metrics Table -->
             {#if classMetrics.length > 0}
-              <div class="overflow-hidden border border-zinc-200 rounded-lg">
+              <div class="border border-zinc-200 rounded-lg overflow-hidden">
                 <div
                   class="px-4 py-3 bg-zinc-50 border-b border-zinc-200 flex items-center justify-between"
                 >
@@ -2329,7 +2336,8 @@
                     </span>
                   </div>
                 </div>
-                <table class="w-full text-sm">
+                <div class="overflow-x-auto">
+                  <table class="w-full text-sm">
                   <thead
                     class="bg-zinc-50/50 text-xs uppercase font-semibold text-zinc-500 border-b border-zinc-200"
                   >
@@ -2448,7 +2456,8 @@
                   </tbody>
                 </table>
               </div>
-            {/if}
+            </div>
+          {/if}
 
             <!-- Sample Inspector -->
             {#if inspectorCell !== null && detailedResults.length > 0}
@@ -2661,7 +2670,7 @@
         </div>
 
         <!-- Right: Tree visualization -->
-        <div class="xl:col-span-8 flex flex-col gap-4">
+        <div class="xl:col-span-8 flex flex-col gap-4 min-w-0">
           {#if decisionTree}
             <DecisionTreeViz
               tree={decisionTree}

@@ -35,6 +35,8 @@
       popover: {
         title: $t(`dt_tour_step${n}_title`),
         description: $t(`dt_tour_step${n}_desc`),
+        side: "bottom" as const,
+        align: "center" as const,
       },
     });
     driver({
@@ -43,6 +45,11 @@
       nextBtnText: $t('tour_btn_next'),
       prevBtnText: $t('tour_btn_prev'),
       doneBtnText: $t('tour_btn_done'),
+      onDestroyed: () => {
+        if (typeof window !== "undefined") {
+          window.scrollTo(0, 0);
+        }
+      },
       steps: [
         step('#ds-select', 1),
         step('#dt-criterion', 2),
@@ -1140,7 +1147,7 @@
   </section>
 
   <!-- RIGHT PANEL: INTERACTIVE DASHBOARD AND VISUALIZER -->
-  <section class="lg:col-span-8 flex flex-col gap-6">
+  <section class="lg:col-span-8 flex flex-col gap-6 min-w-0">
 
     <!-- Intro explanation banner -->
     <div class="bg-gradient-to-r from-amber-500/10 via-indigo-500/5 to-transparent rounded-2xl p-5 border border-amber-500/20 shadow-sm relative overflow-hidden group">
@@ -1278,7 +1285,7 @@
     <!-- Tree Visualizer Canvas / Text Mode -->
     {#if trainedTree}
       {@const activeTree = isPostPrunedApplied && postPrunedTree ? postPrunedTree : trainedTree}
-      <div id="dt-viz" class="bg-white/80 backdrop-blur-md rounded-3xl p-6 border border-zinc-200/50 shadow-sm flex flex-col gap-4">
+      <div id="dt-viz" class="bg-white/80 backdrop-blur-md rounded-3xl p-6 border border-zinc-200/50 shadow-sm flex flex-col gap-4 min-w-0">
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-100 pb-4">
           <h3 class="text-sm font-black text-zinc-950 uppercase tracking-wider flex items-center gap-1.5 shrink-0">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="5" r="3"/><circle cx="6" cy="19" r="3"/><circle cx="18" cy="19" r="3"/><path d="M12 8v8M12 12H6M12 12h6"/></svg>

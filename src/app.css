@@ -1,10 +1,12 @@
 @import "tailwindcss";
 
 @layer base {
-  html {
+  html, body, #app {
     font-family: 'Inter', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overflow-x: clip;
+    width: 100%;
   }
 
   /* Thin scrollbar */
