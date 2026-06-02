@@ -30,6 +30,13 @@
   // the active language. The tree visualizer anchor only exists once a tree
   // has been built, which the lab does automatically on load.
   export function startTour() {
+    const step = (element: string, n: number) => ({
+      element,
+      popover: {
+        title: $t(`dt_tour_step${n}_title`),
+        description: $t(`dt_tour_step${n}_desc`),
+      },
+    });
     driver({
       showProgress: true,
       popoverClass: 'aimachina-tour',
@@ -37,34 +44,13 @@
       prevBtnText: $t('tour_btn_prev'),
       doneBtnText: $t('tour_btn_done'),
       steps: [
-        {
-          element: '#ds-select',
-          popover: {
-            title: $t('dt_tour_step1_title'),
-            description: $t('dt_tour_step1_desc'),
-          },
-        },
-        {
-          element: '#dt-params',
-          popover: {
-            title: $t('dt_tour_step2_title'),
-            description: $t('dt_tour_step2_desc'),
-          },
-        },
-        {
-          element: '#dt-train-btn',
-          popover: {
-            title: $t('dt_tour_step3_title'),
-            description: $t('dt_tour_step3_desc'),
-          },
-        },
-        {
-          element: '#dt-viz',
-          popover: {
-            title: $t('dt_tour_step4_title'),
-            description: $t('dt_tour_step4_desc'),
-          },
-        },
+        step('#ds-select', 1),
+        step('#dt-criterion', 2),
+        step('#dt-pruning', 3),
+        step('#dt-train-btn', 4),
+        step('#dt-metrics', 5),
+        step('#dt-viz', 6),
+        step('#dt-predictor', 7),
       ],
     }).drive();
   }
@@ -865,7 +851,7 @@
         </div>
 
         <!-- Criterion Selector -->
-        <div class="flex flex-col gap-1.5">
+        <div id="dt-criterion" class="flex flex-col gap-1.5">
           <span class="text-xs font-semibold text-zinc-500">{$t('dt_split_criterion_label')}</span>
           <div class="grid grid-cols-2 gap-2">
             <button
@@ -895,7 +881,7 @@
 
         <div class="w-full h-px bg-zinc-100"></div>
 
-        <span class="text-xs font-black text-zinc-400 uppercase tracking-wider">{$t('dt_pre_pruning_params')}</span>
+        <span id="dt-pruning" class="text-xs font-black text-zinc-400 uppercase tracking-wider">{$t('dt_pre_pruning_params')}</span>
 
         <!-- Max Depth Slider -->
         <div class="flex flex-col gap-2">
@@ -1179,7 +1165,7 @@
     </div>
 
     <!-- Overfitting Analysis & Metrics Panel -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div id="dt-metrics" class="grid grid-cols-1 md:grid-cols-3 gap-6">
       
       <!-- Metrics Card 1: Train/Test accuracies -->
       <div class="bg-white/80 backdrop-blur-md rounded-2xl p-6 border border-zinc-200/50 shadow-sm flex flex-col justify-between">
@@ -1377,7 +1363,7 @@
     {/if}
 
     <!-- Interactive Real-time Predictor -->
-    <div class="bg-white/80 backdrop-blur-md rounded-3xl p-6 border border-zinc-200/50 shadow-sm flex flex-col justify-between">
+    <div id="dt-predictor" class="bg-white/80 backdrop-blur-md rounded-3xl p-6 border border-zinc-200/50 shadow-sm flex flex-col justify-between">
       <div class="flex flex-col gap-1">
         <h3 class="text-sm font-black text-zinc-950 uppercase tracking-wider">{$t('dt_step_live_prediction')}</h3>
         <p class="text-xs text-zinc-500 leading-snug">

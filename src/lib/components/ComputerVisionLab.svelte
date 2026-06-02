@@ -983,6 +983,13 @@
   // for switching to the CV tab and awaiting `tick()` first, since the
   // target elements only exist while this lab's template is rendered.
   export function startTour() {
+    const step = (element: string, n: number) => ({
+      element,
+      popover: {
+        title: $t(`tour_step${n}_title`),
+        description: $t(`tour_step${n}_desc`),
+      },
+    });
     driver({
       showProgress: true,
       popoverClass: "aimachina-tour",
@@ -990,41 +997,15 @@
       prevBtnText: $t("tour_btn_prev"),
       doneBtnText: $t("tour_btn_done"),
       steps: [
-        {
-          element: "#cv-step-indicator",
-          popover: {
-            title: $t("tour_step1_title"),
-            description: $t("tour_step1_desc"),
-          },
-        },
-        {
-          element: "#cv-dataset-actions",
-          popover: {
-            title: $t("tour_step2_title"),
-            description: $t("tour_step2_desc"),
-          },
-        },
-        {
-          element: "#cv-classes-container",
-          popover: {
-            title: $t("tour_step3_title"),
-            description: $t("tour_step3_desc"),
-          },
-        },
-        {
-          element: "#cv-train-card",
-          popover: {
-            title: $t("tour_step4_title"),
-            description: $t("tour_step4_desc"),
-          },
-        },
-        {
-          element: "#cv-preview-card",
-          popover: {
-            title: $t("tour_step5_title"),
-            description: $t("tour_step5_desc"),
-          },
-        },
+        step("#cv-step-indicator", 1),
+        step("#cv-dataset-actions", 2),
+        step("#cv-classes-container", 3),
+        step("#cv-input-methods", 4),
+        step("#cv-train-card", 5),
+        step("#cv-input-source", 6),
+        step("#cv-output", 7),
+        step("#cv-diagnostics", 8),
+        step("#cv-dtree", 9),
       ],
     }).drive();
   }
@@ -1295,7 +1276,12 @@
                   <span class="text-sm font-medium text-zinc-500"
                     >{$t("add_image_samples")}</span
                   >
-                  <div class="flex items-center gap-3 w-full max-w-sm">
+                  <div
+                    id={item.id === classes[0]?.id
+                      ? "cv-input-methods"
+                      : undefined}
+                    class="flex items-center gap-3 w-full max-w-sm"
+                  >
                     <button
                       on:click={() => (activeWebcamClass = item.id)}
                       class="flex-1 flex flex-col items-center justify-center gap-2 h-16 bg-blue-50/50 hover:bg-blue-100/50 text-blue-600 rounded-lg border border-blue-100 transition-colors"
@@ -2072,7 +2058,10 @@
     />
   {/if}
 
-  <section class="max-w-[85rem] mx-auto w-full px-8 mt-12 relative z-10">
+  <section
+    id="cv-diagnostics"
+    class="max-w-[85rem] mx-auto w-full px-8 mt-12 relative z-10"
+  >
     <div
       class="bg-white/70 backdrop-blur-md rounded-2xl border border-white/60 shadow-[0_8px_30px_rgba(0,0,0,0.02)] overflow-hidden hover:border-indigo-300/80 transition-all duration-300"
     >
@@ -2629,7 +2618,10 @@
   </section>
 
   <!-- ── Decision Tree Section ───────────────────────────── -->
-  <section class="max-w-[85rem] mx-auto w-full px-8 mt-12 relative z-10">
+  <section
+    id="cv-dtree"
+    class="max-w-[85rem] mx-auto w-full px-8 mt-12 relative z-10"
+  >
     <div
       class="bg-white/70 backdrop-blur-md rounded-2xl border border-white/60 shadow-[0_8px_30px_rgba(0,0,0,0.02)] overflow-hidden hover:border-indigo-300/80 transition-all duration-300"
     >

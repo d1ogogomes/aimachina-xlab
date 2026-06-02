@@ -318,6 +318,7 @@
 >
   <!-- Input Selector -->
   <div
+    id="cv-input-source"
     class="px-5 py-3 flex items-center justify-between bg-white border-b border-zinc-100"
   >
     <span class="text-sm font-medium text-zinc-500">{$t("input_source")}</span>
@@ -436,7 +437,7 @@
   {/if}
 
   <!-- Output Area -->
-  <div class="px-6 py-5 bg-white flex flex-col gap-3">
+  <div id="cv-output" class="px-6 py-5 bg-white flex flex-col gap-3">
     <div
       class="text-sm font-semibold uppercase text-zinc-400 tracking-widest mb-2"
     >

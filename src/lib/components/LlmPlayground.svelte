@@ -1,46 +1,61 @@
 <script lang="ts">
   import { t, locale } from "../i18n";
+  import { tick } from "svelte";
   import { driver } from "driver.js";
   import "driver.js/dist/driver.css";
 
   // Sub-tabs within the LLM Playground
   let activeSubTab: "tokenizer" | "decoding" = "tokenizer";
 
-  // Guided tour for this lab. Steps target the tokenizer view (the default
-  // sub-tab), so we reset to it before launching to guarantee the anchors
-  // exist. Rebuilt on every call so popovers match the active language.
+  // Guided tour for this lab. The first four steps live in the Tokenizer
+  // sub-tab and the last three in the Decoding sub-tab, so the next/prev
+  // handlers flip `activeSubTab` and await `tick()` before driver queries the
+  // target — otherwise it would look for elements that are not mounted yet.
+  // Rebuilt on every call so popovers match the active language.
   export function startTour() {
     activeSubTab = "tokenizer";
-    driver({
+    const TOKENIZER_LAST = 3; // index of #llm-token-stats
+    const DECODING_FIRST = 4; // index of #llm-temp
+    const step = (element: string, n: number) => ({
+      element,
+      popover: {
+        title: $t(`llm_tour_step${n}_title`),
+        description: $t(`llm_tour_step${n}_desc`),
+      },
+    });
+    const d = driver({
       showProgress: true,
       popoverClass: "aimachina-tour",
       nextBtnText: $t("tour_btn_next"),
       prevBtnText: $t("tour_btn_prev"),
       doneBtnText: $t("tour_btn_done"),
+      onNextClick: () => {
+        if (d.getActiveIndex() === TOKENIZER_LAST) {
+          activeSubTab = "decoding";
+          tick().then(() => d.moveNext());
+        } else {
+          d.moveNext();
+        }
+      },
+      onPrevClick: () => {
+        if (d.getActiveIndex() === DECODING_FIRST) {
+          activeSubTab = "tokenizer";
+          tick().then(() => d.movePrevious());
+        } else {
+          d.movePrevious();
+        }
+      },
       steps: [
-        {
-          element: "#llm-subtabs",
-          popover: {
-            title: $t("llm_tour_step1_title"),
-            description: $t("llm_tour_step1_desc"),
-          },
-        },
-        {
-          element: "#llm-tok-mode",
-          popover: {
-            title: $t("llm_tour_step2_title"),
-            description: $t("llm_tour_step2_desc"),
-          },
-        },
-        {
-          element: "#tokInput",
-          popover: {
-            title: $t("llm_tour_step3_title"),
-            description: $t("llm_tour_step3_desc"),
-          },
-        },
+        step("#llm-subtabs", 1),
+        step("#llm-tok-mode", 2),
+        step("#tokInput", 3),
+        step("#llm-token-stats", 4),
+        step("#llm-temp", 5),
+        step("#llm-topp", 6),
+        step("#llm-decode-result", 7),
       ],
-    }).drive();
+    });
+    d.drive();
   }
 
   $: currentLangCode = $locale || "pt";
@@ -1167,7 +1182,7 @@
              technical noise for a first-time reader. The cost intuition
              ("≈ 1 cent per 4 000 tokens") lives inline next to the dollar
              figure so the number stops being abstract. -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div id="llm-token-stats" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div
             class="bg-white border border-zinc-200 rounded-xl px-5 py-4 shadow-xs"
           >
@@ -1236,7 +1251,7 @@
         <div
           class="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs flex flex-col gap-6"
         >
-          <div class="flex flex-col gap-2">
+          <div id="llm-temp" class="flex flex-col gap-2">
             <div class="flex justify-between items-center">
               <span class="text-xs font-bold text-zinc-800"
                 >{$t("dec_temp_label")}</span
@@ -1265,7 +1280,7 @@
             </p>
           </div>
 
-          <div class="flex flex-col gap-2">
+          <div id="llm-topp" class="flex flex-col gap-2">
             <div class="flex justify-between items-center">
               <span class="text-xs font-bold text-zinc-800"
                 >{$t("dec_topp_label")}</span
@@ -1299,6 +1314,7 @@
              chart that follows it is supporting evidence, not the headline. -->
         {#if topCandidate}
           <div
+            id="llm-decode-result"
             class="bg-gradient-to-br from-indigo-50 to-indigo-50/40 border border-indigo-100 rounded-xl px-5 py-4 flex items-center gap-3"
           >
             <div
