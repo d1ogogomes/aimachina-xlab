@@ -21,6 +21,8 @@
     type TreeNode as DTNode,
   } from "../ml/decisionTree";
   import DecisionTreeViz from "./DecisionTreeViz.svelte";
+  import { driver } from "driver.js";
+  import "driver.js/dist/driver.css";
 
   // ─── Props (bridge to App shell) ──────────────────────────
   // `net` / `isReady` are owned by App (which loads the MobileNet backbone
@@ -975,6 +977,58 @@
       .catch((e) => console.error("Export error:", e));
   }
 
+  // Exposed to App so the onboarding flow / help button can launch the
+  // guided tour. Steps are rebuilt on every call so the popovers always
+  // reflect the language active at launch time. The caller is responsible
+  // for switching to the CV tab and awaiting `tick()` first, since the
+  // target elements only exist while this lab's template is rendered.
+  export function startTour() {
+    driver({
+      showProgress: true,
+      popoverClass: "aimachina-tour",
+      nextBtnText: $t("tour_btn_next"),
+      prevBtnText: $t("tour_btn_prev"),
+      doneBtnText: $t("tour_btn_done"),
+      steps: [
+        {
+          element: "#cv-step-indicator",
+          popover: {
+            title: $t("tour_step1_title"),
+            description: $t("tour_step1_desc"),
+          },
+        },
+        {
+          element: "#cv-dataset-actions",
+          popover: {
+            title: $t("tour_step2_title"),
+            description: $t("tour_step2_desc"),
+          },
+        },
+        {
+          element: "#cv-classes-container",
+          popover: {
+            title: $t("tour_step3_title"),
+            description: $t("tour_step3_desc"),
+          },
+        },
+        {
+          element: "#cv-train-card",
+          popover: {
+            title: $t("tour_step4_title"),
+            description: $t("tour_step4_desc"),
+          },
+        },
+        {
+          element: "#cv-preview-card",
+          popover: {
+            title: $t("tour_step5_title"),
+            description: $t("tour_step5_desc"),
+          },
+        },
+      ],
+    }).drive();
+  }
+
   $: totalTestSamples = Object.values(testSamples).reduce(
     (acc, arr) => acc + arr.length,
     0,
@@ -1037,7 +1091,7 @@
   >
     <section class="lg:col-span-8 flex flex-col gap-6">
       <!-- Step indicator -->
-      <div class="flex items-center gap-0">
+      <div id="cv-step-indicator" class="flex items-center gap-0">
         {#each [{ n: 1, label: $t("teach_machine"), active: true }, { n: 2, label: $t("train_button"), active: isModelTrained || isTrainingModel }, { n: 3, label: $t("test_machine"), active: isModelTrained }, { n: 4, label: $t("diagnostics"), active: confusionMatrix.length > 0 && confusionMatrix.some( (row) => row.some((v) => v > 0), ) }, { n: 5, label: $t("dtree_title"), active: decisionTree !== null }] as step, i}
           <div
             class="flex items-center gap-2 {step.active
@@ -1067,7 +1121,7 @@
         <h2 class="text-lg font-semibold tracking-tight">
           {$t("teach_machine")}
         </h2>
-        <div class="flex items-center gap-2 flex-wrap">
+        <div id="cv-dataset-actions" class="flex items-center gap-2 flex-wrap">
           <button
             on:click={() => loadDemoDataset("pets")}
             class="text-sm font-semibold text-indigo-700 bg-white border border-indigo-100 hover:border-indigo-300 hover:bg-indigo-50 px-3 py-1.5 rounded-lg transition-all flex items-center gap-2 shadow-sm"
@@ -1159,7 +1213,7 @@
         </div>
       </div>
 
-      <div class="grid grid-cols-1 gap-4">
+      <div id="cv-classes-container" class="grid grid-cols-1 gap-4">
         {#each classes as item}
           <div
             class="bg-white/70 backdrop-blur-md rounded-2xl border border-white/60 shadow-[0_8px_30px_rgba(0,0,0,0.02)] overflow-hidden group hover:border-indigo-300/80 transition-all duration-300"
@@ -1441,6 +1495,7 @@
       </div>
 
       <div
+        id="cv-train-card"
         class="mt-4 bg-white/70 backdrop-blur-md rounded-2xl border border-white/60 shadow-[0_8px_30px_rgba(0,0,0,0.02)] overflow-hidden hover:border-indigo-300/80 transition-all duration-300"
       >
         {#if trainingError}
@@ -1542,7 +1597,8 @@
       <h2 class="text-lg font-semibold tracking-tight">
         {$t("test_machine")}
       </h2>
-      <PreviewCard
+      <div id="cv-preview-card" class="flex flex-col">
+        <PreviewCard
         {net}
         classifier={customModel}
         {classes}
@@ -1825,6 +1881,7 @@
           {/if}
         </div>
       </PreviewCard>
+      </div>
     </aside>
   </main>
 

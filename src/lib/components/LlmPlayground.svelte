@@ -1,8 +1,47 @@
 <script lang="ts">
   import { t, locale } from "../i18n";
+  import { driver } from "driver.js";
+  import "driver.js/dist/driver.css";
 
   // Sub-tabs within the LLM Playground
   let activeSubTab: "tokenizer" | "decoding" = "tokenizer";
+
+  // Guided tour for this lab. Steps target the tokenizer view (the default
+  // sub-tab), so we reset to it before launching to guarantee the anchors
+  // exist. Rebuilt on every call so popovers match the active language.
+  export function startTour() {
+    activeSubTab = "tokenizer";
+    driver({
+      showProgress: true,
+      popoverClass: "aimachina-tour",
+      nextBtnText: $t("tour_btn_next"),
+      prevBtnText: $t("tour_btn_prev"),
+      doneBtnText: $t("tour_btn_done"),
+      steps: [
+        {
+          element: "#llm-subtabs",
+          popover: {
+            title: $t("llm_tour_step1_title"),
+            description: $t("llm_tour_step1_desc"),
+          },
+        },
+        {
+          element: "#llm-tok-mode",
+          popover: {
+            title: $t("llm_tour_step2_title"),
+            description: $t("llm_tour_step2_desc"),
+          },
+        },
+        {
+          element: "#tokInput",
+          popover: {
+            title: $t("llm_tour_step3_title"),
+            description: $t("llm_tour_step3_desc"),
+          },
+        },
+      ],
+    }).drive();
+  }
 
   $: currentLangCode = $locale || "pt";
 
@@ -1016,6 +1055,7 @@
 
     <!-- Pills tabs -->
     <div
+      id="llm-subtabs"
       class="flex items-center gap-1 bg-zinc-100 p-1.5 rounded-xl self-start md:self-auto border border-zinc-200/50"
     >
       <button
@@ -1055,6 +1095,7 @@
         <!-- Mode toggle: Simple vs BPE. The single most pedagogically
              important interaction on this page. -->
         <div
+          id="llm-tok-mode"
           class="flex items-center gap-2 bg-zinc-100 p-1 rounded-xl self-start border border-zinc-200/40"
         >
           <button

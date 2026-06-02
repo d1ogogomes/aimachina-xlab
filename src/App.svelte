@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
   import { locale, t } from "./lib/i18n";
   import { loadBackbone } from "./lib/ml/tfjs";
   import type * as mobilenet from "@tensorflow-models/mobilenet";
@@ -7,6 +7,7 @@
   import LlmPlayground from "./lib/components/LlmPlayground.svelte";
   import DecisionTreeLab from "./lib/components/DecisionTreeLab.svelte";
   import ComputerVisionLab from "./lib/components/ComputerVisionLab.svelte";
+  import OnboardingModal from "./lib/components/OnboardingModal.svelte";
 
   let activeTab: "home" | "cv" | "llm" | "dt" = "home";
 
@@ -20,12 +21,85 @@
 
   let langOpen = false;
 
-  // ─── CV lab bridge ────────────────────────────────────────
-  // The lab lives in its own component but the shared header shows its
-  // "trained" badge and an Export button. `cvIsModelTrained` is bound from
-  // the lab; `cvLab.exportModel()` triggers the model download.
+  // ─── Lab bridges ──────────────────────────────────────────
+  // Each lab lives in its own component. The shared header reads the CV
+  // "trained" state (badge + Export button) and can launch the active lab's
+  // guided tour. Refs for the LLM / DT labs are only set while their tab is
+  // mounted, which is exactly when their tour can run.
   let cvLab: ComputerVisionLab;
+  let llmLab: LlmPlayground;
+  let dtLab: DecisionTreeLab;
   let cvIsModelTrained = false;
+
+  type LabTab = "cv" | "llm" | "dt";
+
+  // ─── Onboarding & guided tours ────────────────────────────
+  // First visit shows a welcome modal (language + offer a tour). Choosing
+  // the guided path turns on per-lab auto-tours: each lab runs its tour once,
+  // the first time it is opened. "Explore on my own" disables them. Either
+  // way the header Tour button replays the current lab's tour on demand.
+  const ONBOARDING_KEY = "aimachina_onboarding_completed";
+  const AUTOTOUR_KEY = "aimachina_autotour";
+  let showOnboarding = false;
+  let autoTour = false;
+
+  function tourSeen(tab: LabTab): boolean {
+    try {
+      return !!localStorage.getItem("aimachina_tour_" + tab);
+    } catch {
+      return true;
+    }
+  }
+
+  function runTour(tab: LabTab) {
+    try {
+      localStorage.setItem("aimachina_tour_" + tab, "1");
+    } catch {}
+    // The lab markup mounts only when its tab is active, so defer the query
+    // by one frame after the DOM has settled.
+    requestAnimationFrame(() => {
+      if (tab === "cv") cvLab?.startTour();
+      else if (tab === "llm") llmLab?.startTour();
+      else if (tab === "dt") dtLab?.startTour();
+    });
+  }
+
+  async function goTab(tab: "home" | LabTab) {
+    activeTab = tab;
+    if (tab === "home") return;
+    await tick();
+    if (autoTour && !tourSeen(tab)) runTour(tab);
+  }
+
+  function startCurrentTour() {
+    if (activeTab !== "home") runTour(activeTab);
+  }
+
+  function completeOnboarding() {
+    try {
+      localStorage.setItem(ONBOARDING_KEY, "1");
+    } catch {}
+    showOnboarding = false;
+  }
+
+  function persistAutoTour() {
+    try {
+      localStorage.setItem(AUTOTOUR_KEY, autoTour ? "1" : "0");
+    } catch {}
+  }
+
+  function chooseGuided() {
+    autoTour = true;
+    persistAutoTour();
+    completeOnboarding();
+    goTab("cv"); // first CV visit auto-launches its tour
+  }
+
+  function chooseExplore() {
+    autoTour = false;
+    persistAutoTour();
+    completeOnboarding();
+  }
 
   const languages = [
     { code: "pt", label: "Português", short: "PT" },
@@ -34,6 +108,10 @@
   ];
 
   onMount(async () => {
+    try {
+      showOnboarding = !localStorage.getItem(ONBOARDING_KEY);
+      autoTour = localStorage.getItem(AUTOTOUR_KEY) === "1";
+    } catch {}
     try {
       isLoadingModel = true;
       net = await loadBackbone();
@@ -122,7 +200,7 @@
         <!-- svelte-ignore a11y-click-events-have-key-events -->
         <!-- svelte-ignore a11y-no-static-element-interactions -->
         <div
-          on:click={() => (activeTab = "home")}
+          on:click={() => goTab("home")}
           class="flex items-center gap-3 cursor-pointer select-none text-left bg-transparent border-0 outline-none p-0 group ml-1 justify-start"
         >
           <!-- Super clean, elegant minimalist AI gradient logo -->
@@ -160,7 +238,7 @@
             class="flex items-center gap-1 bg-zinc-100/70 p-1 rounded-full border border-zinc-200/50"
           >
             <button
-              on:click={() => (activeTab = "cv")}
+              on:click={() => goTab("cv")}
               class="px-4 py-1.5 text-xs font-bold rounded-full transition-all duration-300 cursor-pointer {activeTab ===
               'cv'
                 ? 'bg-indigo-600 text-white shadow-md scale-[1.02]'
@@ -169,7 +247,7 @@
               {$t("tab_cv")}
             </button>
             <button
-              on:click={() => (activeTab = "llm")}
+              on:click={() => goTab("llm")}
               class="px-4 py-1.5 text-xs font-bold rounded-full transition-all duration-300 cursor-pointer {activeTab ===
               'llm'
                 ? 'bg-teal-600 text-white shadow-md scale-[1.02]'
@@ -178,7 +256,7 @@
               {$t("tab_llm")}
             </button>
             <button
-              on:click={() => (activeTab = "dt")}
+              on:click={() => goTab("dt")}
               class="px-4 py-1.5 text-xs font-bold rounded-full transition-all duration-300 cursor-pointer {activeTab ===
               'dt'
                 ? 'bg-amber-600 text-white shadow-md scale-[1.02]'
@@ -191,6 +269,30 @@
 
         <!-- Right: Actions (Language & Export Model) -->
         <div class="flex items-center justify-end gap-2 mr-1">
+          <!-- Launch the active lab's guided tour -->
+          <button
+            on:click={startCurrentTour}
+            title={$t("tour_launch")}
+            aria-label={$t("tour_launch")}
+            class="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-zinc-600 bg-zinc-100/70 border border-zinc-200/40 rounded-full hover:bg-zinc-200/80 transition-colors cursor-pointer"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              ><circle cx="12" cy="12" r="10"></circle><polygon
+                points="10 8 16 12 10 16 10 8"
+              ></polygon></svg
+            >
+            <span class="hidden lg:inline">{$t("tour_launch")}</span>
+          </button>
+
           <!-- Language Picker -->
           <div class="relative">
             <button
@@ -306,6 +408,13 @@
     </div>
   {/if}
 
+  {#if showOnboarding && !isLoadingModel}
+    <OnboardingModal
+      on:startTour={chooseGuided}
+      on:dismiss={chooseExplore}
+    />
+  {/if}
+
   <ComputerVisionLab
     bind:this={cvLab}
     bind:isModelTrained={cvIsModelTrained}
@@ -315,14 +424,14 @@
   />
 
   {#if activeTab === "home"}
-    <HomeHero on:selectTab={(e) => (activeTab = e.detail)} />
+    <HomeHero on:selectTab={(e) => goTab(e.detail)} />
   {/if}
 
   {#if activeTab === "llm"}
     <main
       class="max-w-[85rem] mx-auto w-full px-8 mt-10 animate-fade-in relative z-10"
     >
-      <LlmPlayground />
+      <LlmPlayground bind:this={llmLab} />
     </main>
   {/if}
 
@@ -330,7 +439,7 @@
     <main
       class="max-w-[85rem] mx-auto w-full px-8 mt-10 animate-fade-in relative z-10"
     >
-      <DecisionTreeLab />
+      <DecisionTreeLab bind:this={dtLab} />
     </main>
   {/if}
 </div>

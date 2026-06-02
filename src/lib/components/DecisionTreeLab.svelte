@@ -23,6 +23,51 @@
     getJsBoilerplate
   } from '../ml/tabularDecisionTree';
   import TabularDecisionTreeViz from './TabularDecisionTreeViz.svelte';
+  import { driver } from 'driver.js';
+  import 'driver.js/dist/driver.css';
+
+  // Guided tour for this lab. Rebuilt on every call so the popovers reflect
+  // the active language. The tree visualizer anchor only exists once a tree
+  // has been built, which the lab does automatically on load.
+  export function startTour() {
+    driver({
+      showProgress: true,
+      popoverClass: 'aimachina-tour',
+      nextBtnText: $t('tour_btn_next'),
+      prevBtnText: $t('tour_btn_prev'),
+      doneBtnText: $t('tour_btn_done'),
+      steps: [
+        {
+          element: '#ds-select',
+          popover: {
+            title: $t('dt_tour_step1_title'),
+            description: $t('dt_tour_step1_desc'),
+          },
+        },
+        {
+          element: '#dt-params',
+          popover: {
+            title: $t('dt_tour_step2_title'),
+            description: $t('dt_tour_step2_desc'),
+          },
+        },
+        {
+          element: '#dt-train-btn',
+          popover: {
+            title: $t('dt_tour_step3_title'),
+            description: $t('dt_tour_step3_desc'),
+          },
+        },
+        {
+          element: '#dt-viz',
+          popover: {
+            title: $t('dt_tour_step4_title'),
+            description: $t('dt_tour_step4_desc'),
+          },
+        },
+      ],
+    }).drive();
+  }
 
   // ─── STATE MANAGEMENT ──────────────────────────────────────────
   let datasets: TabularDataset[] = [];
@@ -799,7 +844,7 @@
 
     {#if activeSubTab === 'train'}
       <!-- Training Parameters Panel -->
-      <div class="bg-white/80 backdrop-blur-md rounded-2xl p-6 border border-zinc-200/50 shadow-sm flex flex-col gap-5">
+      <div id="dt-params" class="bg-white/80 backdrop-blur-md rounded-2xl p-6 border border-zinc-200/50 shadow-sm flex flex-col gap-5">
         <h3 class="text-sm font-black text-zinc-950 uppercase tracking-wider">{$t('dt_step_tree_params')}</h3>
 
         <!-- Split Slider -->
@@ -904,6 +949,7 @@
         </div>
 
         <button
+          id="dt-train-btn"
           on:click={triggerTrain}
           class="w-full mt-2 bg-zinc-950 text-white font-bold py-3 rounded-xl hover:bg-zinc-800 transition-colors shadow-sm cursor-pointer text-xs"
         >
@@ -1246,7 +1292,7 @@
     <!-- Tree Visualizer Canvas / Text Mode -->
     {#if trainedTree}
       {@const activeTree = isPostPrunedApplied && postPrunedTree ? postPrunedTree : trainedTree}
-      <div class="bg-white/80 backdrop-blur-md rounded-3xl p-6 border border-zinc-200/50 shadow-sm flex flex-col gap-4">
+      <div id="dt-viz" class="bg-white/80 backdrop-blur-md rounded-3xl p-6 border border-zinc-200/50 shadow-sm flex flex-col gap-4">
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-100 pb-4">
           <h3 class="text-sm font-black text-zinc-950 uppercase tracking-wider flex items-center gap-1.5 shrink-0">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="5" r="3"/><circle cx="6" cy="19" r="3"/><circle cx="18" cy="19" r="3"/><path d="M12 8v8M12 12H6M12 12h6"/></svg>
