@@ -1,13 +1,14 @@
-// Pure tokenizer used by the LLM Playground's Tokenizer view.
+// Tokenizer used by the LLM Playground's Tokenizer view.
 //
-// Two modes are supported:
-//   - "word":    one token per word / number / punctuation symbol
-//   - "subword": a rule-based simulation of BPE that splits known long words
-//                into subword pieces and prefixes word-initial pieces with
-//                the GPT-style "Ġ" space marker.
+// Two modes:
+//   - "word":    naive split (one token per word / number / punctuation).
+//                The "before" picture: how a person might split text.
+//   - "subword": the REAL GPT-2 byte-level BPE (r50k_base) via gpt-tokenizer.
+//                Real token ids, real merges, real leading-space handling.
 //
-// The logic is intentionally framework-free so it can be unit tested in
-// isolation; the Svelte component only renders the result.
+// The BPE merge table (~1 MB) is loaded lazily the first time subword mode is
+// used, so it never weighs on the initial page load. Call `ensureBpe()` and
+// await it before calling `tokenize(text, "subword")`.
 
 export type TokenizerMode = "word" | "subword";
 
@@ -17,8 +18,9 @@ export type TokenRepresentation = {
   spaceBefore: boolean;
 };
 
-// Deterministic, stable string hash. Used to assign a plausible token id to
-// out-of-vocabulary words and to pick a consistent colour per token.
+// Deterministic, stable string hash. Used by the UI to pick a consistent
+// colour per token, and to assign a plausible id to out-of-vocab words in
+// naive "word" mode.
 export function getStringHash(str: string): number {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
@@ -27,73 +29,14 @@ export function getStringHash(str: string): number {
   return Math.abs(hash);
 }
 
-// Predefined vocabulary for realism (maps common words/subwords to
-// authentic GPT-4-like token IDs).
+// Curated GPT-style ids for common words, used only by naive "word" mode so
+// the ids look authentic. Real BPE mode uses the model's actual ids.
 const VOCAB_MAP: Record<string, number> = {
-  Over: 6439,
-  over: 724,
-  hill: 7329,
-  dale: 31201,
-  Thorough: 44781,
-  thorough: 18274,
-  bush: 14502,
-  brier: 48122,
-  park: 4203,
-  pale: 19483,
-  flood: 12891,
-  fire: 3290,
-  The: 464,
-  the: 262,
-  dog: 5679,
-  was: 373,
-  hungry: 9821,
-  because: 842,
-  it: 366,
-  "hadn't": 1982,
-  eaten: 12903,
-  all: 477,
-  day: 1110,
-  Albert: 13928,
-  Einstein: 22912,
-  scientist: 13812,
-  physicist: 25890,
-  genius: 18921,
-  German: 4920,
-  famous: 6203,
-  FBI: 8493,
-  chasing: 14930,
-  criminal: 9823,
-  on: 319,
-  run: 1004,
-  O: 53,
-  Pedro: 14920,
-  comprou: 38291,
-  um: 429,
-  livro: 21820,
-  e: 259,
-  leu: 19821,
-  "-o": 492,
-  na: 420,
-  biblioteca: 33902,
+  The: 464, the: 262, dog: 5679, was: 373, hungry: 9821, because: 842,
+  it: 366, all: 477, day: 1110, on: 319, run: 1004,
+  O: 53, um: 429, e: 259, na: 420,
 };
 
-// Subword dictionary to split words realistically.
-const SUBWORD_RULES: Record<string, string[]> = {
-  Thorough: ["Thor", "ough"],
-  thorough: ["thor", "ough"],
-  Thoroughly: ["Thor", "ough", "ly"],
-  everywhere: ["every", "where"],
-  Einstein: ["Eins", "tein"],
-  physicist: ["physic", "ist"],
-  comprou: ["com", "prou"],
-  biblioteca: ["biblio", "teca"],
-  University: ["Uni", "ver", "sity"],
-  Texas: ["Tex", "as"],
-  Austin: ["Aus", "tin"],
-};
-
-// Resolve a token id: prefer the curated vocabulary (case-insensitive
-// fallback), otherwise derive a stable pseudo-id from the hash.
 function resolveId(text: string): number {
   return (
     VOCAB_MAP[text] ||
@@ -102,21 +45,13 @@ function resolveId(text: string): number {
   );
 }
 
-// Unicode-aware splitter:
+// Unicode-aware splitter for naive mode:
 //   - \s+              → whitespace runs
-//   - [\p{L}\p{N}_]+   → "word" runs that include accented chars (pública…)
+//   - [\p{L}\p{N}_]+   → word runs incl. accented chars (pública…)
 //   - [^\p{L}\p{N}\s_] → single punctuation/symbol char
-// Without the `u` flag and \p{} classes, \w is ASCII-only and accented
-// letters silently fall into the punctuation branch.
 const WORD_RE = /(\s+|[\p{L}\p{N}_]+|[^\p{L}\p{N}\s_])/gu;
-const IS_PUNCT_RE = /^[^\p{L}\p{N}_]+$/u;
 
-export function tokenize(
-  text: string,
-  mode: TokenizerMode,
-): TokenRepresentation[] {
-  if (!text) return [];
-
+function tokenizeWords(text: string): TokenRepresentation[] {
   const re = new RegExp(WORD_RE.source, WORD_RE.flags);
   const result: TokenRepresentation[] = [];
   let m: RegExpExecArray | null;
@@ -129,50 +64,52 @@ export function tokenize(
       prevWasSpace = true;
       continue;
     }
-    // spaceBefore: was the immediately-preceding text whitespace? Tracked via
-    // a flag (rather than indexOf) so repeated words are handled correctly.
     const spaceBefore = !firstToken && prevWasSpace;
     firstToken = false;
     prevWasSpace = false;
-
-    if (mode === "word") {
-      result.push({ text: w, id: resolveId(w), spaceBefore });
-      continue;
-    }
-
-    // Subword (BPE simulation).
-    const isPunct = IS_PUNCT_RE.test(w);
-    const rules = !isPunct && (SUBWORD_RULES[w] || SUBWORD_RULES[w.toLowerCase()]);
-
-    if (rules) {
-      rules.forEach((sub, subIdx) => {
-        const lead = subIdx === 0 && spaceBefore;
-        result.push({
-          text: lead ? `Ġ${sub}` : sub,
-          id: resolveId(sub),
-          spaceBefore: lead,
-        });
-      });
-    } else if (!isPunct && w.length > 7) {
-      // Fallback split for unknown long words: split in half.
-      const mid = Math.floor(w.length / 2);
-      const part1 = w.slice(0, mid);
-      const part2 = w.slice(mid);
-      result.push({
-        text: spaceBefore ? `Ġ${part1}` : part1,
-        id: resolveId(part1),
-        spaceBefore,
-      });
-      result.push({ text: part2, id: resolveId(part2), spaceBefore: false });
-    } else {
-      const lead = spaceBefore && !isPunct;
-      result.push({
-        text: lead ? `Ġ${w}` : w,
-        id: resolveId(w),
-        spaceBefore: lead,
-      });
-    }
+    result.push({ text: w, id: resolveId(w), spaceBefore });
   }
-
   return result;
+}
+
+// ─── Real GPT-2 BPE (lazy-loaded) ──────────────────────────────
+type Bpe = { encode: (t: string) => number[]; decode: (ids: number[]) => string };
+let bpe: Bpe | null = null;
+let bpePromise: Promise<void> | null = null;
+
+export function isBpeReady(): boolean {
+  return bpe !== null;
+}
+
+// Loads the r50k_base (GPT-2) encoding once and caches it. Safe to call repeatedly.
+export function ensureBpe(): Promise<void> {
+  if (bpe) return Promise.resolve();
+  if (!bpePromise) {
+    bpePromise = import("gpt-tokenizer/encoding/r50k_base").then((m) => {
+      bpe = { encode: m.encode, decode: m.decode };
+    });
+  }
+  return bpePromise;
+}
+
+function tokenizeBpe(text: string): TokenRepresentation[] {
+  if (!bpe) return []; // not loaded yet — caller shows a loading state
+  return bpe.encode(text).map((id) => {
+    const piece = bpe!.decode([id]);
+    const spaceBefore = piece.startsWith(" ");
+    return {
+      // GPT-2 marks a leading space with "Ġ" for display; mirror that here.
+      text: spaceBefore ? "Ġ" + piece.slice(1) : piece,
+      id,
+      spaceBefore,
+    };
+  });
+}
+
+export function tokenize(
+  text: string,
+  mode: TokenizerMode,
+): TokenRepresentation[] {
+  if (!text) return [];
+  return mode === "subword" ? tokenizeBpe(text) : tokenizeWords(text);
 }

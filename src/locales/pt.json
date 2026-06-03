@@ -108,7 +108,7 @@
   "tok_desc": "Um LLM não lê palavras. Divide o teu texto em pedaços chamados <strong>tokens</strong> e converte cada um num número. Como o custo de utilização destas ferramentas é calculado por token, e não por palavra, isto importa muito mais do que parece.",
   "tok_input_placeholder": "Escreva algo para ver como é tokenizado em tempo real...",
   "tok_mode_word": "Palavra-Inteira (Simples)",
-  "tok_mode_subword": "Subpalavras (BPE - Realista)",
+  "tok_mode_subword": "Subpalavras (BPE real)",
   "tok_stats_tokens": "Total de Tokens",
   "tok_stats_cost": "Custo Estimado (GPT-4o Input)",
   "tok_stats_cost_intuition": "≈ 1 cêntimo por cada 4 000 tokens",

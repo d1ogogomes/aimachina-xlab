@@ -14,6 +14,7 @@
     "@tensorflow-models/mobilenet": "^2.1.1",
     "@tensorflow/tfjs": "^4.22.0",
     "driver.js": "^1.4.0",
+    "gpt-tokenizer": "^3.4.0",
     "shaders": "^2.5.124"
   },
   "devDependencies": {

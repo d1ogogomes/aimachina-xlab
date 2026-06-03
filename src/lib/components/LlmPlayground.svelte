@@ -6,19 +6,23 @@
   import {
     tokenize,
     getStringHash,
+    ensureBpe,
     type TokenRepresentation,
   } from "../ml/tokenizer";
 
   // Sub-tabs within the LLM Playground
   let activeSubTab: "tokenizer" | "decoding" = "tokenizer";
 
+  // State for hiding/showing advanced settings (like Top-P)
+  let showAdvancedSettings = false;
+
   // Guided tour for this lab. The first four steps live in the Tokenizer
-  // sub-tab and the last three in the Decoding sub-tab, so the next/prev
-  // handlers flip `activeSubTab` and await `tick()` before driver queries the
-  // target — otherwise it would look for elements that are not mounted yet.
-  // Rebuilt on every call so popovers match the active language.
-  export function startTour() {
+  // sub-tab and the last three in the Decoding sub-tab, so next/prev switch
+  // tabs before Driver looks for the target elements.
+  export async function startTour() {
     activeSubTab = "tokenizer";
+    showAdvancedSettings = true;
+    await tick();
     const TOKENIZER_LAST = 3; // index of #llm-token-stats
     const DECODING_FIRST = 4; // index of #llm-temp
     const step = (element: string, n: number) => ({
@@ -122,689 +126,239 @@
     return colors[hash % colors.length];
   }
 
-  // Reactive tokenization (pure logic lives in ../ml/tokenizer).
-  $: tokens = tokenize(tokenInput, tokenizerMode) as TokenRepresentation[];
+  // The real GPT-2 BPE table loads lazily the first time subword mode is used.
+  let bpeReady = false;
+  let bpeLoading = false;
+  async function loadBpe() {
+    if (bpeReady || bpeLoading) return;
+    bpeLoading = true;
+    try {
+      await ensureBpe();
+      bpeReady = true;
+    } finally {
+      bpeLoading = false;
+    }
+  }
+  $: if (tokenizerMode === "subword") loadBpe();
+
+  // Reactive tokenization (pure logic lives in ../ml/tokenizer). In subword
+  // mode we wait for the BPE table; `bpeReady` is a dep so it recomputes once loaded.
+  $: tokens = (tokenizerMode === "subword" && !bpeReady
+    ? []
+    : tokenize(tokenInput, tokenizerMode)) as TokenRepresentation[];
 
   $: totalTokens = tokens.length;
   $: estimatedCost =
     totalTokens > 0 ? ((totalTokens / 1000000) * 2.5).toFixed(6) : "0.000000";
 
+  type DemoCandidate = { word: string; piece: string; logit: number };
   type PromptPreset = {
-    lang: "en" | "pt" | "fr";
     title: string;
     text: string;
-    candidates: { word: string; logit: number }[];
-    transitions: Record<string, { word: string; logit: number }[]>;
+    candidates: DemoCandidate[];
+    transitions: Record<string, DemoCandidate[]>;
   };
 
-  const PROMPT_PRESETS: PromptPreset[] = [
-    // --- ENGLISH ---
-    {
-      lang: "en",
-      title: "The sky is...",
-      text: "The sky is",
-      candidates: [
-        { word: "blue", logit: 4.8 },
-        { word: "cloudy", logit: 3.5 },
-        { word: "clear", logit: 3.1 },
-        { word: "dark", logit: 2.8 },
-        { word: "falling", logit: 1.8 },
-        { word: "purple", logit: 1.2 },
-        { word: "banana", logit: -2.5 },
-        { word: "running", logit: -3.0 },
-      ],
-      transitions: {
-        blue: [
-          { word: "and", logit: 4.5 },
-          { word: "today", logit: 3.0 },
-          { word: "with", logit: 2.5 },
-        ],
-        cloudy: [
-          { word: "with", logit: 4.8 },
-          { word: "and", logit: 3.2 },
-          { word: "over", logit: 2.0 },
-        ],
-        clear: [
-          { word: "and", logit: 4.6 },
-          { word: "tonight", logit: 3.8 },
-          { word: "with", logit: 2.2 },
-        ],
-        dark: [
-          { word: "and", logit: 4.2 },
-          { word: "as", logit: 3.5 },
-          { word: "outside", logit: 3.0 },
-        ],
-        falling: [
-          { word: "down", logit: 5.0 },
-          { word: "on", logit: 3.2 },
-          { word: "slowly", logit: 2.8 },
-        ],
-        and: [
-          { word: "beautiful", logit: 4.0 },
-          { word: "bright", logit: 3.8 },
-          { word: "windy", logit: 3.5 },
-          { word: "cold", logit: 3.2 },
-        ],
-        with: [
-          { word: "some", logit: 4.2 },
-          { word: "white", logit: 3.8 },
-          { word: "heavy", logit: 3.5 },
-          { word: "clouds", logit: 3.0 },
-        ],
-        tonight: [
-          { word: "in", logit: 4.0 },
-          { word: "after", logit: 3.2 },
-          { word: "across", logit: 2.8 },
-        ],
-        beautiful: [
-          { word: "today", logit: 4.5 },
-          { word: "with", logit: 3.5 },
-          { word: "and", logit: 3.0 },
-          { word: ".", logit: 2.5 },
-        ],
+  const punct = new Set([".", ",", "!", "?", ":", ";"]);
+  const makeCandidate = (word: string, logit: number): DemoCandidate => ({
+    word,
+    piece: punct.has(word) ? word : ` ${word}`,
+    logit,
+  });
+  const c = makeCandidate;
+
+  // A small, reliable classroom language model. It is intentionally curated:
+  // beginners should see coherent probabilities in all supported languages
+  // while still being able to experiment with temperature and top-p.
+  const PROMPT_PRESETS: Record<string, PromptPreset[]> = {
+    en: [
+      {
+        title: "Once upon a time…",
+        text: "Once upon a time, there was a",
+        candidates: [c("young", 5.2), c("small", 4.6), c("brave", 4.1), c("hidden", 3.2), c("strange", 2.8), c("blue", 1.4), c("potato", -1.8), c("because", -2.5)],
+        transitions: {
+          young: [c("inventor", 5.1), c("student", 4.4), c("artist", 3.9), c("traveler", 3.4), c("dragon", 2.8), c(".", 1.3)],
+          small: [c("village", 5.0), c("robot", 4.0), c("garden", 3.7), c("island", 3.1), c("idea", 2.2), c(".", 1.0)],
+          brave: [c("girl", 5.0), c("boy", 4.6), c("team", 3.7), c("explorer", 3.1), c("choice", 2.1), c(".", 1.1)],
+          inventor: [c("who", 5.0), c("with", 3.8), c("from", 3.4), c("and", 3.0), c(".", 2.0)],
+          who: [c("built", 5.1), c("found", 4.2), c("wanted", 3.7), c("learned", 3.2), c("forgot", 1.5)],
+          built: [c("a", 5.0), c("the", 3.5), c("new", 2.7), c("carefully", 1.8)],
+        },
       },
-    },
-    {
-      lang: "en",
-      title: "Albert Einstein was...",
-      text: "Albert Einstein was a",
-      candidates: [
-        { word: "physicist", logit: 5.2 },
-        { word: "genius", logit: 4.5 },
-        { word: "German", logit: 3.8 },
-        { word: "famous", logit: 3.5 },
-        { word: "scientist", logit: 3.2 },
-        { word: "violinist", logit: 1.5 },
-        { word: "skateboarder", logit: -3.5 },
-        { word: "politician", logit: -1.2 },
-      ],
-      transitions: {
-        physicist: [
-          { word: "who", logit: 4.8 },
-          { word: "known", logit: 4.0 },
-          { word: "born", logit: 3.0 },
-        ],
-        genius: [
-          { word: "who", logit: 4.5 },
-          { word: "and", logit: 3.8 },
-          { word: "with", logit: 2.5 },
-        ],
-        German: [
-          { word: "physicist", logit: 5.0 },
-          { word: "scientist", logit: 4.2 },
-          { word: "man", logit: 2.8 },
-        ],
-        famous: [
-          { word: "physicist", logit: 4.8 },
-          { word: "for", logit: 4.5 },
-          { word: "scientist", logit: 4.0 },
-        ],
-        scientist: [
-          { word: "who", logit: 4.8 },
-          { word: "of", logit: 3.5 },
-          { word: "active", logit: 2.5 },
-        ],
-        who: [
-          { word: "discovered", logit: 5.0 },
-          { word: "formulated", logit: 4.8 },
-          { word: "developed", logit: 4.5 },
-          { word: "changed", logit: 4.0 },
-        ],
-        discovered: [
-          { word: "relativity", logit: 5.5 },
-          { word: "the", logit: 4.0 },
-          { word: "photoelectric", logit: 3.8 },
-        ],
-        formulated: [
-          { word: "the", logit: 4.8 },
-          { word: "theory", logit: 4.5 },
-          { word: "equation", logit: 4.0 },
-        ],
-        theory: [
-          { word: "of", logit: 5.2 },
-          { word: "about", logit: 3.0 },
-          { word: ".", logit: 2.5 },
-        ],
-        of: [
-          { word: "relativity", logit: 5.8 },
-          { word: "general", logit: 4.5 },
-          { word: "quantum", logit: 4.0 },
-        ],
-        relativity: [
-          { word: "in", logit: 4.2 },
-          { word: "which", logit: 3.8 },
-          { word: ".", logit: 3.5 },
-        ],
-        for: [
-          { word: "his", logit: 4.8 },
-          { word: "discovering", logit: 4.0 },
-          { word: "the", logit: 3.5 },
-        ],
-        his: [
-          { word: "theory", logit: 4.6 },
-          { word: "equation", logit: 4.2 },
-          { word: "hair", logit: 3.8 },
-          { word: "contributions", logit: 3.5 },
-        ],
+      {
+        title: "The capital of France…",
+        text: "The capital of France is",
+        candidates: [c("Paris", 6.2), c("known", 2.6), c("famous", 2.3), c("beautiful", 1.9), c("London", -1.2), c("blue", -2.4)],
+        transitions: {
+          Paris: [c(".", 5.7), c("and", 3.5), c(",", 3.0), c("because", 1.2)],
+          and: [c("it", 4.8), c("the", 3.2), c("many", 2.1)],
+        },
       },
-    },
-    {
-      lang: "en",
-      title: "Artificial Intelligence...",
-      text: "Artificial Intelligence is",
-      candidates: [
-        { word: "incredible", logit: 4.5 },
-        { word: "powerful", logit: 4.2 },
-        { word: "complex", logit: 3.8 },
-        { word: "useful", logit: 3.5 },
-        { word: "dangerous", logit: 2.8 },
-        { word: "revolutionary", logit: 2.5 },
-        { word: "a", logit: 2.0 },
-        { word: "potato", logit: -3.0 },
-      ],
-      transitions: {
-        incredible: [
-          { word: "and", logit: 4.5 },
-          { word: "because", logit: 3.2 },
-          { word: ".", logit: 2.5 },
-        ],
-        powerful: [
-          { word: "tool", logit: 4.8 },
-          { word: "and", logit: 3.5 },
-          { word: "technology", logit: 3.0 },
-        ],
-        complex: [
-          { word: "to", logit: 4.5 },
-          { word: "and", logit: 3.2 },
-          { word: "for", logit: 2.8 },
-        ],
-        useful: [
-          { word: "for", logit: 4.8 },
-          { word: "in", logit: 3.8 },
-          { word: "and", logit: 3.5 },
-        ],
-        dangerous: [
-          { word: "if", logit: 4.5 },
-          { word: "for", logit: 3.0 },
-          { word: "but", logit: 2.8 },
-        ],
-        and: [
-          { word: "transformative", logit: 4.0 },
-          { word: "fast", logit: 3.8 },
-          { word: "efficient", logit: 3.5 },
-          { word: "can", logit: 3.2 },
-        ],
-        for: [
-          { word: "the", logit: 4.5 },
-          { word: "helping", logit: 4.0 },
-          { word: "automating", logit: 3.8 },
-          { word: "us", logit: 3.5 },
-        ],
-        helping: [
-          { word: "to", logit: 4.5 },
-          { word: "people", logit: 3.8 },
-          { word: "society", logit: 3.5 },
-        ],
-        to: [
-          { word: "create", logit: 4.5 },
-          { word: "solve", logit: 4.2 },
-          { word: "improve", logit: 3.8 },
-        ],
+      {
+        title: "My favorite food…",
+        text: "My favorite food is",
+        candidates: [c("pizza", 4.9), c("rice", 4.0), c("soup", 3.7), c("pasta", 3.5), c("fresh", 2.5), c("running", -2.0)],
+        transitions: {
+          pizza: [c("because", 4.7), c("with", 4.0), c("and", 3.2), c(".", 2.8)],
+          rice: [c("with", 4.6), c("because", 3.8), c("and", 3.0), c(".", 2.3)],
+          because: [c("it", 5.0), c("the", 3.4), c("I", 3.0)],
+          it: [c("is", 5.2), c("tastes", 4.0), c("feels", 2.8)],
+        },
       },
-    },
-    // --- PORTUGUESE ---
-    {
-      lang: "pt",
-      title: "O céu está...",
-      text: "O céu está",
-      candidates: [
-        { word: "azul", logit: 4.8 },
-        { word: "nublado", logit: 3.5 },
-        { word: "limpo", logit: 3.1 },
-        { word: "escuro", logit: 2.8 },
-        { word: "a cair", logit: 1.8 },
-        { word: "roxo", logit: 1.2 },
-        { word: "banana", logit: -2.5 },
-        { word: "a correr", logit: -3.0 },
-      ],
-      transitions: {
-        azul: [
-          { word: "e", logit: 4.5 },
-          { word: "hoje", logit: 3.0 },
-          { word: "com", logit: 2.5 },
-        ],
-        nublado: [
-          { word: "com", logit: 4.8 },
-          { word: "e", logit: 3.2 },
-          { word: "sobre", logit: 2.0 },
-        ],
-        limpo: [
-          { word: "e", logit: 4.6 },
-          { word: "esta noite", logit: 3.8 },
-          { word: "com", logit: 2.2 },
-        ],
-        escuro: [
-          { word: "e", logit: 4.2 },
-          { word: "como", logit: 3.5 },
-          { word: "lá fora", logit: 3.0 },
-        ],
-        "a cair": [
-          { word: "sobre", logit: 5.0 },
-          { word: "em", logit: 3.2 },
-          { word: "lentamente", logit: 2.8 },
-        ],
-        e: [
-          { word: "belo", logit: 4.0 },
-          { word: "brilhante", logit: 3.8 },
-          { word: "frio", logit: 3.5 },
-          { word: "ventoso", logit: 3.2 },
-        ],
-        com: [
-          { word: "algumas", logit: 4.2 },
-          { word: "nuvens", logit: 3.8 },
-          { word: "estrelas", logit: 3.5 },
-          { word: "nevoeiro", logit: 3.0 },
-        ],
-        hoje: [
-          { word: "em", logit: 4.0 },
-          { word: "depois", logit: 3.2 },
-          { word: "por", logit: 2.8 },
-        ],
-        belo: [
-          { word: "hoje", logit: 4.5 },
-          { word: "com", logit: 3.5 },
-          { word: "e", logit: 3.0 },
-          { word: ".", logit: 2.5 },
-        ],
+      {
+        title: "The best way to learn…",
+        text: "The best way to learn is to",
+        candidates: [c("practice", 5.4), c("ask", 4.5), c("experiment", 4.1), c("read", 3.4), c("sleep", 1.2), c("banana", -2.4)],
+        transitions: {
+          practice: [c("every", 4.8), c("with", 4.0), c("and", 3.2), c(".", 2.0)],
+          ask: [c("questions", 5.1), c("for", 3.5), c("why", 3.0)],
+          experiment: [c("with", 4.8), c("and", 3.5), c("until", 2.8)],
+        },
       },
-    },
-    {
-      lang: "pt",
-      title: "Albert Einstein foi...",
-      text: "Albert Einstein foi um",
-      candidates: [
-        { word: "físico", logit: 5.2 },
-        { word: "gênio", logit: 4.5 },
-        { word: "alemão", logit: 3.8 },
-        { word: "famoso", logit: 3.5 },
-        { word: "cientista", logit: 3.2 },
-        { word: "violinista", logit: 1.5 },
-        { word: "skatista", logit: -3.5 },
-        { word: "político", logit: -1.2 },
-      ],
-      transitions: {
-        físico: [
-          { word: "que", logit: 4.8 },
-          { word: "conhecido", logit: 4.0 },
-          { word: "nascido", logit: 3.0 },
-        ],
-        gênio: [
-          { word: "que", logit: 4.5 },
-          { word: "e", logit: 3.8 },
-          { word: "com", logit: 2.5 },
-        ],
-        alemão: [
-          { word: "físico", logit: 5.0 },
-          { word: "cientista", logit: 4.2 },
-          { word: "brilhante", logit: 2.8 },
-        ],
-        famoso: [
-          { word: "físico", logit: 4.8 },
-          { word: "por", logit: 4.5 },
-          { word: "cientista", logit: 4.0 },
-        ],
-        cientista: [
-          { word: "que", logit: 4.8 },
-          { word: "de", logit: 3.5 },
-          { word: "ativo", logit: 2.5 },
-        ],
-        que: [
-          { word: "descobriu", logit: 5.0 },
-          { word: "formulou", logit: 4.8 },
-          { word: "desenvolveu", logit: 4.5 },
-          { word: "mudou", logit: 4.0 },
-        ],
-        descobriu: [
-          { word: "a relatividade", logit: 5.5 },
-          { word: "o", logit: 4.0 },
-          { word: "efeito", logit: 3.8 },
-        ],
-        formulou: [
-          { word: "a", logit: 4.8 },
-          { word: "teoria", logit: 4.5 },
-          { word: "equação", logit: 4.0 },
-        ],
-        teoria: [
-          { word: "da", logit: 5.2 },
-          { word: "sobre", logit: 3.0 },
-          { word: ".", logit: 2.5 },
-        ],
-        da: [
-          { word: "relatividade", logit: 5.8 },
-          { word: "mecânica", logit: 4.5 },
-          { word: "física", logit: 4.0 },
-        ],
-        relatividade: [
-          { word: "em", logit: 4.2 },
-          { word: "que", logit: 3.8 },
-          { word: ".", logit: 3.5 },
-        ],
-        por: [
-          { word: "sua", logit: 4.8 },
-          { word: "descobrir", logit: 4.0 },
-          { word: "ter", logit: 3.5 },
-        ],
-        sua: [
-          { word: "teoria", logit: 4.6 },
-          { word: "equação", logit: 4.2 },
-          { word: "vida", logit: 3.8 },
-        ],
+    ],
+    pt: [
+      {
+        title: "Era uma vez…",
+        text: "Era uma vez, havia um",
+        candidates: [c("jovem", 5.2), c("pequeno", 4.6), c("robô", 4.1), c("castelo", 3.4), c("mistério", 2.9), c("azul", 1.3), c("batata", -1.8), c("porque", -2.4)],
+        transitions: {
+          jovem: [c("inventor", 5.1), c("estudante", 4.4), c("artista", 3.8), c("viajante", 3.2), c(".", 1.3)],
+          pequeno: [c("robô", 4.9), c("dragão", 4.2), c("jardim", 3.6), c("segredo", 3.0), c(".", 1.0)],
+          robô: [c("que", 5.0), c("com", 3.8), c("muito", 3.0), c(".", 2.0)],
+          inventor: [c("que", 5.0), c("com", 3.7), c("da", 3.1), c("e", 2.9), c(".", 1.8)],
+          que: [c("construiu", 5.1), c("descobriu", 4.3), c("queria", 3.8), c("aprendeu", 3.2)],
+          construiu: [c("uma", 4.9), c("um", 4.4), c("a", 3.3), c("com", 2.0)],
+        },
       },
-    },
-    {
-      lang: "pt",
-      title: "Inteligência Artificial...",
-      text: "A Inteligência Artificial é",
-      candidates: [
-        { word: "incrível", logit: 4.5 },
-        { word: "poderosa", logit: 4.2 },
-        { word: "complexa", logit: 3.8 },
-        { word: "útil", logit: 3.5 },
-        { word: "perigosa", logit: 2.8 },
-        { word: "revolucionária", logit: 2.5 },
-        { word: "uma", logit: 2.0 },
-        { word: "batata", logit: -3.0 },
-      ],
-      transitions: {
-        incrível: [
-          { word: "e", logit: 4.5 },
-          { word: "porque", logit: 3.2 },
-          { word: ".", logit: 2.5 },
-        ],
-        poderosa: [
-          { word: "ferramenta", logit: 4.8 },
-          { word: "e", logit: 3.5 },
-          { word: "tecnologia", logit: 3.0 },
-        ],
-        complexa: [
-          { word: "de", logit: 4.5 },
-          { word: "e", logit: 3.2 },
-          { word: "para", logit: 2.8 },
-        ],
-        útil: [
-          { word: "para", logit: 4.8 },
-          { word: "no", logit: 3.8 },
-          { word: "e", logit: 3.5 },
-        ],
-        perigosa: [
-          { word: "se", logit: 4.5 },
-          { word: "para", logit: 3.0 },
-          { word: "mas", logit: 2.8 },
-        ],
-        e: [
-          { word: "transformadora", logit: 4.0 },
-          { word: "rápida", logit: 3.8 },
-          { word: "eficiente", logit: 3.5 },
-          { word: "pode", logit: 3.2 },
-        ],
-        para: [
-          { word: "o", logit: 4.5 },
-          { word: "ajudar", logit: 4.0 },
-          { word: "automatizar", logit: 3.8 },
-          { word: "as", logit: 3.5 },
-        ],
-        ajudar: [
-          { word: "a", logit: 4.5 },
-          { word: "os", logit: 3.8 },
-          { word: "na", logit: 3.5 },
-        ],
-        a: [
-          { word: "sociedade", logit: 4.5 },
-          { word: "humanidade", logit: 4.2 },
-          { word: "criar", logit: 3.8 },
-          { word: "resolver", logit: 3.5 },
-        ],
-        sociedade: [
-          { word: "moderna", logit: 4.5 },
-          { word: "a", logit: 3.0 },
-          { word: ".", logit: 2.5 },
-        ],
+      {
+        title: "A capital de Portugal…",
+        text: "A capital de Portugal é",
+        candidates: [c("Lisboa", 6.2), c("conhecida", 2.7), c("bonita", 2.3), c("importante", 2.0), c("Porto", -0.8), c("azul", -2.5)],
+        transitions: {
+          Lisboa: [c(".", 5.7), c("e", 3.5), c(",", 3.0), c("porque", 1.2)],
+          e: [c("tem", 4.6), c("é", 3.8), c("fica", 3.0)],
+        },
       },
-    },
-    // --- FRENCH ---
-    {
-      lang: "fr",
-      title: "Le ciel est...",
-      text: "Le ciel est",
-      candidates: [
-        { word: "bleu", logit: 4.8 },
-        { word: "nuageux", logit: 3.5 },
-        { word: "dégagé", logit: 3.1 },
-        { word: "sombre", logit: 2.8 },
-        { word: "en train de tomber", logit: 1.8 },
-        { word: "violet", logit: 1.2 },
-        { word: "une banane", logit: -2.5 },
-        { word: "en train de courir", logit: -3.0 },
-      ],
-      transitions: {
-        bleu: [
-          { word: "et", logit: 4.5 },
-          { word: "aujourd'hui", logit: 3.0 },
-          { word: "avec", logit: 2.5 },
-        ],
-        nuageux: [
-          { word: "avec", logit: 4.8 },
-          { word: "et", logit: 3.2 },
-          { word: "au-dessus", logit: 2.0 },
-        ],
-        dégagé: [
-          { word: "et", logit: 4.6 },
-          { word: "ce soir", logit: 3.8 },
-          { word: "avec", logit: 2.2 },
-        ],
-        sombre: [
-          { word: "et", logit: 4.2 },
-          { word: "comme", logit: 3.5 },
-          { word: "dehors", logit: 3.0 },
-        ],
-        et: [
-          { word: "beau", logit: 4.0 },
-          { word: "lumineux", logit: 3.8 },
-          { word: "froid", logit: 3.5 },
-          { word: "venteux", logit: 3.2 },
-        ],
-        avec: [
-          { word: "quelques", logit: 4.2 },
-          { word: "nuages", logit: 3.8 },
-          { word: "étoiles", logit: 3.5 },
-          { word: "brouillard", logit: 3.0 },
-        ],
-        "aujourd'hui": [
-          { word: "en", logit: 4.0 },
-          { word: "après", logit: 3.2 },
-          { word: "par", logit: 2.8 },
-        ],
-        beau: [
-          { word: "aujourd'hui", logit: 4.5 },
-          { word: "avec", logit: 3.5 },
-          { word: "et", logit: 3.0 },
-          { word: ".", logit: 2.5 },
-        ],
+      {
+        title: "A minha comida favorita…",
+        text: "A minha comida favorita é",
+        candidates: [c("pizza", 4.8), c("arroz", 4.2), c("sopa", 3.8), c("massa", 3.5), c("fresca", 2.1), c("correr", -2.0)],
+        transitions: {
+          pizza: [c("porque", 4.8), c("com", 4.0), c("e", 3.1), c(".", 2.8)],
+          arroz: [c("com", 4.6), c("porque", 3.8), c("e", 3.0), c(".", 2.2)],
+          porque: [c("é", 5.0), c("tem", 3.7), c("me", 3.0)],
+          é: [c("simples", 4.7), c("deliciosa", 4.3), c("boa", 3.5)],
+        },
       },
-    },
-    {
-      lang: "fr",
-      title: "Albert Einstein était...",
-      text: "Albert Einstein était un",
-      candidates: [
-        { word: "physicien", logit: 5.2 },
-        { word: "génie", logit: 4.5 },
-        { word: "Allemand", logit: 3.8 },
-        { word: "célèbre", logit: 3.5 },
-        { word: "scientifique", logit: 3.2 },
-        { word: "violoniste", logit: 1.5 },
-        { word: "skateur", logit: -3.5 },
-        { word: "politicien", logit: -1.2 },
-      ],
-      transitions: {
-        physicien: [
-          { word: "qui", logit: 4.8 },
-          { word: "connu", logit: 4.0 },
-          { word: "né", logit: 3.0 },
-        ],
-        génie: [
-          { word: "qui", logit: 4.5 },
-          { word: "et", logit: 3.8 },
-          { word: "avec", logit: 2.5 },
-        ],
-        Allemand: [
-          { word: "physicien", logit: 5.0 },
-          { word: "scientifique", logit: 4.2 },
-          { word: "brillant", logit: 2.8 },
-        ],
-        célèbre: [
-          { word: "physicien", logit: 4.8 },
-          { word: "pour", logit: 4.5 },
-          { word: "scientifique", logit: 4.0 },
-        ],
-        scientifique: [
-          { word: "qui", logit: 4.8 },
-          { word: "de", logit: 3.5 },
-          { word: "actif", logit: 2.5 },
-        ],
-        qui: [
-          { word: "a découvert", logit: 5.0 },
-          { word: "a formulé", logit: 4.8 },
-          { word: "a développé", logit: 4.5 },
-          { word: "a changé", logit: 4.0 },
-        ],
-        "a découvert": [
-          { word: "la relativité", logit: 5.5 },
-          { word: "l'effet", logit: 4.0 },
-          { word: "la", logit: 3.8 },
-        ],
-        "a formulé": [
-          { word: "la", logit: 4.8 },
-          { word: "théorie", logit: 4.5 },
-          { word: "équation", logit: 4.0 },
-        ],
-        théorie: [
-          { word: "de", logit: 5.2 },
-          { word: "sur", logit: 3.0 },
-          { word: ".", logit: 2.5 },
-        ],
-        de: [
-          { word: "la relativité", logit: 5.8 },
-          { word: "générale", logit: 4.5 },
-          { word: "la physique", logit: 4.0 },
-        ],
-        "la relativité": [
-          { word: "en", logit: 4.2 },
-          { word: "qui", logit: 3.8 },
-          { word: ".", logit: 3.5 },
-        ],
-        pour: [
-          { word: "ses", logit: 4.8 },
-          { word: "avoir", logit: 4.0 },
-          { word: "sa", logit: 3.5 },
-        ],
-        ses: [
-          { word: "travaux", logit: 4.6 },
-          { word: "découvertes", logit: 4.2 },
-          { word: "contributions", logit: 3.8 },
-        ],
+      {
+        title: "A melhor forma de aprender…",
+        text: "A melhor forma de aprender é",
+        candidates: [c("praticar", 5.4), c("perguntar", 4.6), c("experimentar", 4.1), c("ler", 3.4), c("dormir", 1.1), c("banana", -2.3)],
+        transitions: {
+          praticar: [c("todos", 4.8), c("com", 4.0), c("e", 3.2), c(".", 2.0)],
+          perguntar: [c("porquê", 4.9), c("sempre", 3.8), c("a", 3.0)],
+          experimentar: [c("com", 4.7), c("e", 3.5), c("até", 2.8)],
+        },
       },
-    },
-    {
-      lang: "fr",
-      title: "L'Intelligence Artificielle...",
-      text: "L'Intelligence Artificielle est",
-      candidates: [
-        { word: "incroyable", logit: 4.5 },
-        { word: "puissante", logit: 4.2 },
-        { word: "complexe", logit: 3.8 },
-        { word: "utile", logit: 3.5 },
-        { word: "dangereuse", logit: 2.8 },
-        { word: "révolutionnaire", logit: 2.5 },
-        { word: "une", logit: 2.0 },
-        { word: "une patate", logit: -3.0 },
-      ],
-      transitions: {
-        incroyable: [
-          { word: "et", logit: 4.5 },
-          { word: "parce que", logit: 3.2 },
-          { word: ".", logit: 2.5 },
-        ],
-        puissante: [
-          { word: "technologie", logit: 4.8 },
-          { word: "et", logit: 3.5 },
-          { word: "ressource", logit: 3.0 },
-        ],
-        complexe: [
-          { word: "à", logit: 4.5 },
-          { word: "et", logit: 3.2 },
-          { word: "pour", logit: 2.8 },
-        ],
-        utile: [
-          { word: "pour", logit: 4.8 },
-          { word: "dans", logit: 3.8 },
-          { word: "et", logit: 3.5 },
-        ],
-        dangereuse: [
-          { word: "si", logit: 4.5 },
-          { word: "pour", logit: 3.0 },
-          { word: "mais", logit: 2.8 },
-        ],
-        et: [
-          { word: "transformatrice", logit: 4.0 },
-          { word: "rapide", logit: 3.8 },
-          { word: "efficace", logit: 3.5 },
-          { word: "peut", logit: 3.2 },
-        ],
-        pour: [
-          { word: "l'avenir", logit: 4.5 },
-          { word: "aider", logit: 4.0 },
-          { word: "automatiser", logit: 3.8 },
-          { word: "les", logit: 3.5 },
-        ],
-        aider: [
-          { word: "à", logit: 4.5 },
-          { word: "les", logit: 3.8 },
-          { word: "la", logit: 3.5 },
-        ],
-        à: [
-          { word: "créer", logit: 4.5 },
-          { word: "résoudre", logit: 4.2 },
-          { word: "améliorer", logit: 3.8 },
-        ],
+    ],
+    fr: [
+      {
+        title: "Il était une fois…",
+        text: "Il était une fois, il y avait un",
+        candidates: [c("jeune", 5.2), c("petit", 4.7), c("robot", 4.2), c("château", 3.3), c("mystère", 2.8), c("bleu", 1.3), c("pomme", -1.8), c("parce", -2.4)],
+        transitions: {
+          jeune: [c("inventeur", 5.1), c("élève", 4.4), c("artiste", 3.8), c("voyageur", 3.2), c(".", 1.3)],
+          petit: [c("robot", 4.9), c("dragon", 4.2), c("jardin", 3.6), c("secret", 3.0), c(".", 1.0)],
+          robot: [c("qui", 5.0), c("avec", 3.8), c("très", 3.0), c(".", 2.0)],
+          inventeur: [c("qui", 5.0), c("avec", 3.7), c("du", 3.1), c("et", 2.9), c(".", 1.8)],
+          qui: [c("construisait", 5.1), c("découvrait", 4.3), c("voulait", 3.8), c("apprenait", 3.2)],
+          construisait: [c("une", 4.9), c("un", 4.4), c("la", 3.3), c("avec", 2.0)],
+        },
       },
-    },
-  ];
+      {
+        title: "La capitale de la France…",
+        text: "La capitale de la France est",
+        candidates: [c("Paris", 6.2), c("connue", 2.7), c("belle", 2.3), c("importante", 2.0), c("Londres", -1.0), c("bleue", -2.5)],
+        transitions: {
+          Paris: [c(".", 5.7), c("et", 3.5), c(",", 3.0), c("parce", 1.2)],
+          et: [c("elle", 4.5), c("la", 3.3), c("beaucoup", 2.1)],
+        },
+      },
+      {
+        title: "Mon plat préféré…",
+        text: "Mon plat préféré est",
+        candidates: [c("la", 4.7), c("une", 4.1), c("le", 3.8), c("simple", 2.5), c("chaud", 2.0), c("courir", -2.0)],
+        transitions: {
+          la: [c("pizza", 5.0), c("soupe", 4.2), c("pâte", 3.0)],
+          le: [c("riz", 4.8), c("pain", 3.8), c("fromage", 3.5)],
+          pizza: [c("parce", 4.8), c("avec", 4.0), c("et", 3.2), c(".", 2.7)],
+          parce: [c("qu'elle", 5.0), c("que", 4.0), c("qu'il", 3.4)],
+        },
+      },
+      {
+        title: "La meilleure façon d'apprendre…",
+        text: "La meilleure façon d'apprendre est",
+        candidates: [c("de", 5.5), c("pratiquer", 4.3), c("expérimenter", 4.0), c("lire", 3.2), c("dormir", 1.1), c("banane", -2.3)],
+        transitions: {
+          de: [c("pratiquer", 5.1), c("poser", 4.0), c("tester", 3.7), c("lire", 3.0)],
+          pratiquer: [c("chaque", 4.8), c("avec", 4.0), c("et", 3.2), c(".", 2.0)],
+          poser: [c("des", 4.9), c("la", 2.8), c("toujours", 2.4)],
+        },
+      },
+    ],
+  };
+
+  const GENERIC_CANDIDATES: Record<string, DemoCandidate[]> = {
+    en: [c("is", 4.5), c("can", 4.0), c("because", 3.5), c("and", 3.2), c("the", 2.8), c(".", 1.2)],
+    pt: [c("é", 4.5), c("pode", 4.0), c("porque", 3.5), c("e", 3.2), c("o", 2.8), c(".", 1.2)],
+    fr: [c("est", 4.5), c("peut", 4.0), c("parce", 3.5), c("et", 3.2), c("le", 2.8), c(".", 1.2)],
+  };
 
   let selectedPresetIdx = 0;
   let temperature = 0.7;
   let topP = 0.9;
 
-  $: filteredPresets = PROMPT_PRESETS.filter((p) => p.lang === currentLangCode);
+  $: filteredPresets = PROMPT_PRESETS[currentLangCode] ?? PROMPT_PRESETS.pt;
 
-  $: {
-    if (currentLangCode) {
-      selectedPresetIdx = 0;
-    }
+  let llmPrompt = "";
+
+  // Seed the prompt from the active preset until the user types their own.
+  let promptTouched = false;
+  $: if (!promptTouched && filteredPresets.length) {
+    if (selectedPresetIdx >= filteredPresets.length) selectedPresetIdx = 0;
+    llmPrompt = (filteredPresets[selectedPresetIdx] || filteredPresets[0]).text;
   }
 
-  // Candidate logits for the currently selected preset.
-  // Without the interactive generator there is no growing prompt to walk
-  // transitions for — we always show the preset's starting candidates so
-  // the Softmax/Top-P chart reflects the initial token decision.
+  // Append a chosen token to build an autoregressive sentence.
+  function appendToken(piece: string) {
+    promptTouched = true;
+    llmPrompt = llmPrompt + piece;
+  }
+
+  function normalizeWord(word: string): string {
+    return word.replace(/^Ġ/, "").trim().toLowerCase();
+  }
+
+  function currentPreset(): PromptPreset {
+    return filteredPresets[selectedPresetIdx] || filteredPresets[0];
+  }
+
   $: activeCandidates = (() => {
-    const preset = filteredPresets[selectedPresetIdx] || filteredPresets[0];
-    if (!preset) return [];
-    return preset.candidates;
+    const preset = currentPreset();
+    if (!preset) return GENERIC_CANDIDATES[currentLangCode] ?? GENERIC_CANDIDATES.pt;
+    if (llmPrompt.startsWith(preset.text)) {
+      const tail = llmPrompt.slice(preset.text.length).trim();
+      if (!tail) return preset.candidates;
+      const parts = tail.match(/[\p{L}\p{N}'’À-ÿ-]+|[.,!?;:]/gu) ?? [];
+      const last = normalizeWord(parts[parts.length - 1] ?? "");
+      return preset.transitions[last] ?? GENERIC_CANDIDATES[currentLangCode] ?? GENERIC_CANDIDATES.pt;
+    }
+    return GENERIC_CANDIDATES[currentLangCode] ?? GENERIC_CANDIDATES.pt;
   })();
 
   type ProcessedCandidate = {
     word: string;
+    piece: string;
     logit: number;
     scaledLogit: number;
     rawProb: number;
@@ -819,9 +373,11 @@
     const tempValue = Math.max(0.01, temperature);
     const scaled = activeCandidates.map((c) => ({
       word: c.word,
+      piece: c.piece,
       logit: c.logit,
       scaledLogit: c.logit / tempValue,
     }));
+    if (scaled.length === 0) return [] as ProcessedCandidate[];
 
     // 2. Raw Softmax probabilities
     const maxScaledLogit = Math.max(...scaled.map((s) => s.scaledLogit)); // numerical stability
@@ -832,6 +388,7 @@
     // Assemble initial array
     let list: ProcessedCandidate[] = scaled.map((s, i) => ({
       word: s.word,
+      piece: s.piece,
       logit: s.logit,
       scaledLogit: s.scaledLogit,
       rawProb: rawProbs[i],
@@ -883,43 +440,37 @@
   // Select Preset Prompt
   function handlePresetChange(idx: number) {
     selectedPresetIdx = idx;
+    promptTouched = false;
+    llmPrompt = (filteredPresets[idx] || filteredPresets[0]).text;
   }
 </script>
 
 <div
   class="bg-sunken rounded-2xl shadow-sm border border-hairline overflow-hidden flex flex-col transition-all duration-200"
 >
-  <!-- Inner Playground sub-navigation -->
+  <!-- Header / Overview Intro Banner -->
   <div
-    class="bg-surface border-b border-hairline px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4"
+    id="llm-subtabs"
+    class="bg-surface border-b border-hairline px-6 py-5 flex flex-col md:flex-row md:items-center justify-between gap-4"
   >
     <div>
-      <h2 class="text-lg font-bold tracking-tight text-ink">
+      <h2 class="text-lg font-bold tracking-tight text-ink font-sans">
         {$t("llm_tab_title")}
       </h2>
       <p class="text-xs text-ink-faint mt-1 max-w-xl">{$t("llm_tab_desc")}</p>
     </div>
-
-    <!-- Pills tabs -->
-    <div
-      id="llm-subtabs"
-      class="flex items-center gap-1 bg-sunken p-1.5 rounded-xl self-start md:self-auto border border-hairline/50"
-    >
+    <div class="flex items-center gap-1.5 bg-sunken p-1 rounded-xl border border-hairline/40 self-start md:self-center">
       <button
+        type="button"
         on:click={() => (activeSubTab = "tokenizer")}
-        class="px-4 py-2 text-xs font-bold rounded-lg transition-all duration-150 {activeSubTab ===
-        'tokenizer'
-          ? 'bg-surface text-brand shadow-sm'
-          : 'text-ink-faint hover:text-ink-muted'}"
+        class="px-4 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer {activeSubTab === 'tokenizer' ? 'bg-surface text-brand shadow-xs' : 'text-ink-faint hover:text-ink-muted'}"
       >
         {$t("tok_title")}
       </button>
       <button
+        type="button"
         on:click={() => (activeSubTab = "decoding")}
-        class="px-4 py-2 text-xs font-bold rounded-lg transition-all duration-150 {activeSubTab ===
-        'decoding'
-          ? 'bg-surface text-brand shadow-sm'
-          : 'text-ink-faint hover:text-ink-muted'}"
+        class="px-4 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer {activeSubTab === 'decoding' ? 'bg-surface text-llm shadow-xs' : 'text-ink-faint hover:text-ink-muted'}"
       >
         {$t("dec_title")}
       </button>
@@ -927,171 +478,182 @@
   </div>
 
   <div class="p-6 md:p-8 flex-1 min-h-[500px]">
-    <!-- ─── SUB-TAB 1: TOKENIZER PLAYGROUND ────────────────────── -->
     {#if activeSubTab === "tokenizer"}
-      <div class="flex flex-col gap-6 animate-fade-in max-w-3xl mx-auto">
-        <!-- Lead: one paragraph, no callouts. The toggle below the input
-             is itself the lesson — we let the user discover the difference
-             between modes by clicking, not by reading three boxes of copy. -->
-        <div class="flex flex-col gap-2">
-          <p class="text-base text-ink-muted leading-relaxed">
+      <div class="animate-fade-in max-w-3xl mx-auto flex flex-col gap-6">
+        <!-- Step 1 Card: How the AI Reads -->
+        <section class="bg-surface border border-hairline/60 rounded-2xl p-5 shadow-xs flex flex-col gap-5">
+          <div class="flex items-center gap-2.5">
+            <span class="w-6 h-6 rounded-full bg-llm text-white font-mono text-xs font-semibold flex items-center justify-center shrink-0">1</span>
+            <div class="leading-tight">
+              <h2 class="text-base font-semibold text-ink">{$locale === "pt" ? "Como a IA lê (Tokenização)" : $locale === "fr" ? "Comment l'IA lit (Tokenisation)" : "How the AI reads (Tokenization)"}</h2>
+              <p class="text-[11px] text-ink-faint">{$locale === "pt" ? "Transforma texto em números (tokens)" : $locale === "fr" ? "Transforme le texte en nombres (tokens)" : "Turns text into numbers (tokens)"}</p>
+            </div>
+          </div>
+
+          <p class="text-xs text-ink-muted leading-relaxed">
             {@html $t("tok_desc")}
           </p>
-        </div>
 
-        <!-- Mode toggle: Simple vs BPE. The single most pedagogically
-             important interaction on this page. -->
-        <div
-          id="llm-tok-mode"
-          class="flex items-center gap-2 bg-sunken p-1 rounded-xl self-start border border-hairline/40"
-        >
-          <button
-            on:click={() => (tokenizerMode = "word")}
-            class="px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all {tokenizerMode ===
-            'word'
-              ? 'bg-surface text-brand shadow-xs'
-              : 'text-ink-faint hover:text-ink-muted'}"
-          >
-            {$t("tok_mode_word")}
-          </button>
-          <button
-            on:click={() => (tokenizerMode = "subword")}
-            class="px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all {tokenizerMode ===
-            'subword'
-              ? 'bg-surface text-llm shadow-xs'
-              : 'text-ink-faint hover:text-ink-muted'}"
-          >
-            {$t("tok_mode_subword")}
-          </button>
-        </div>
-
-        <textarea
-          id="tokInput"
-          bind:value={tokenInput}
-          placeholder={$t("tok_input_placeholder")}
-          rows="3"
-          class="w-full p-4 text-sm border border-hairline rounded-xl outline-none focus:border-brand/50 focus:ring-2 focus:ring-brand/50 transition-all font-sans bg-surface shadow-xs resize-none"
-        ></textarea>
-
-        <!-- Visualizer: the centerpiece. Token chips, no header, no hint
-             text. The interaction is self-evident. -->
-        {#if tokens.length > 0}
-          <div
-            class="flex flex-wrap gap-x-1.5 gap-y-2 p-5 rounded-xl bg-surface border border-hairline shadow-xs"
-          >
-            {#each tokens as tok, idx}
-              <!-- svelte-ignore a11y-mouse-events-have-key-events -->
-              <!-- svelte-ignore a11y-no-static-element-interactions -->
-              <span
-                on:mouseover={() => (hoveredTokenIdx = idx)}
-                on:mouseleave={() => (hoveredTokenIdx = null)}
-                class="px-2 py-1 text-sm font-semibold font-mono rounded border transition-all cursor-default shrink-0 select-none
-                       {getTokenBgClass(tok.text)}
-                       {hoveredTokenIdx === idx
-                  ? 'ring-2 ring-brand scale-105 shadow-xs'
-                  : ''}"
+          <!-- Word vs Subword Toggle -->
+          <div class="flex flex-col gap-1.5">
+            <span class="text-xs font-semibold text-ink-muted">{$locale === "pt" ? "Modo de Divisão:" : $locale === "fr" ? "Mode de Division :" : "Splitting Mode:"}</span>
+            <div id="llm-tok-mode" class="flex items-center gap-1.5 bg-sunken p-1 rounded-xl border border-hairline/40 self-start">
+              <button
+                type="button"
+                on:click={() => (tokenizerMode = "word")}
+                class="px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer {tokenizerMode === 'word' ? 'bg-surface text-brand shadow-xs' : 'text-ink-faint hover:text-ink-muted'}"
               >
-                {tok.text}
-              </span>
-            {/each}
+                {$t("tok_mode_word")}
+              </button>
+              <button
+                type="button"
+                on:click={() => (tokenizerMode = "subword")}
+                class="px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer {tokenizerMode === 'subword' ? 'bg-surface text-llm shadow-xs' : 'text-ink-faint hover:text-ink-muted'}"
+              >
+                {$t("tok_mode_subword")}
+              </button>
+            </div>
           </div>
-          <!-- BPE-only legend: the "Ġ" prefix is jarring without context.
-               Only show it in subword mode where it actually appears. -->
-          {#if tokenizerMode === "subword"}
-            <p class="text-[11px] text-ink-faint leading-relaxed -mt-3">
-              {@html $t("tok_g_legend")}
-            </p>
+
+          <!-- Input Textarea -->
+          <div class="flex flex-col gap-1.5">
+            <label for="tokInput" class="text-xs font-semibold text-ink-muted">{$locale === "pt" ? "Texto de Entrada:" : $locale === "fr" ? "Texte d'Entrée :" : "Input Text:"}</label>
+            <textarea
+              id="tokInput"
+              bind:value={tokenInput}
+              placeholder={$t("tok_input_placeholder")}
+              rows="3"
+              class="w-full p-3.5 text-sm border border-hairline rounded-xl outline-none focus:border-brand/50 focus:ring-2 focus:ring-brand/40 transition-all font-sans bg-surface shadow-xs resize-none"
+            ></textarea>
+          </div>
+
+          <!-- Token Visualizer -->
+          {#if tokens.length > 0}
+            <div class="flex flex-col gap-2">
+              <span class="text-xs font-semibold text-ink-muted">{$locale === "pt" ? "Visualização dos Tokens:" : $locale === "fr" ? "Visualisation des Tokens :" : "Token Visualization:"}</span>
+              <div class="flex flex-wrap gap-x-1.5 gap-y-2 p-4 rounded-xl bg-sunken/45 border border-hairline/50 shadow-xs">
+                {#each tokens as tok, idx}
+                  <!-- svelte-ignore a11y-mouse-events-have-key-events -->
+                  <!-- svelte-ignore a11y-no-static-element-interactions -->
+                  <span
+                    on:mouseover={() => (hoveredTokenIdx = idx)}
+                    on:mouseleave={() => (hoveredTokenIdx = null)}
+                    title={`id ${tok.id}`}
+                    class="px-2 py-0.5 text-xs font-semibold font-mono rounded border transition-all cursor-default shrink-0 select-none
+                           {getTokenBgClass(tok.text)}
+                           {hoveredTokenIdx === idx ? 'ring-2 ring-llm scale-105 shadow-xs' : ''}"
+                  >
+                    {tok.text}
+                  </span>
+                {/each}
+              </div>
+
+              <!-- Hover readout -->
+              <div class="flex items-center gap-1.5 text-[11px] font-mono min-h-[1.5rem] bg-sunken px-2.5 py-1.5 rounded-lg border border-hairline/50">
+                {#if hoveredTokenIdx !== null && tokens[hoveredTokenIdx]}
+                  <span class="px-1.5 py-0.5 rounded bg-surface border border-hairline text-ink">{tokens[hoveredTokenIdx].spaceBefore ? "␣" : ""}{tokens[hoveredTokenIdx].text.replace(/^Ġ/, "")}</span>
+                  <span class="text-ink-faint">→ id</span>
+                  <span class="font-semibold text-llm">{tokens[hoveredTokenIdx].id}</span>
+                  {#if tokenizerMode === "subword"}
+                    <span class="text-ink-faint">/ 50257 {$locale === "pt" ? "(vocabulário real)" : $locale === "fr" ? "(vocabulaire réel)" : "(real vocabulary)"}</span>
+                  {/if}
+                {:else}
+                  <span class="text-ink-faint italic">{$locale === "pt" ? "Passa o rato para ver o id real." : $locale === "fr" ? "Survole pour voir le vrai id." : "Hover to see real id."}</span>
+                {/if}
+              </div>
+
+              <!-- BPE-only legend -->
+              {#if tokenizerMode === "subword"}
+                <p class="text-[10px] text-ink-faint leading-normal mt-0.5">
+                  {@html $t("tok_g_legend")}
+                </p>
+              {/if}
+            </div>
+          {:else if tokenizerMode === "subword" && !bpeReady && tokenInput}
+            <div class="h-28 rounded-xl border border-dashed border-hairline flex items-center justify-center gap-2.5 text-xs text-ink-faint bg-sunken">
+              <svg class="animate-spin h-3.5 w-3.5 text-llm" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+              {$locale === "pt" ? "A carregar o tokenizer BPE real…" : $locale === "fr" ? "Chargement du vrai tokenizer BPE…" : "Loading the real BPE tokenizer…"}
+            </div>
+          {:else}
+            <div class="h-24 rounded-xl border border-dashed border-hairline flex items-center justify-center text-xs text-ink-faint italic bg-sunken">
+              {$locale === "pt" ? "Escreve algo acima para ver a tokenização..." : $locale === "fr" ? "Écris quelque chose ci-dessus..." : "Write something above..."}
+            </div>
           {/if}
-        {:else}
-          <div
-            class="h-28 rounded-xl border border-dashed border-hairline flex items-center justify-center text-sm text-ink-faint italic bg-surface"
-          >
-            {$t("tok_input_placeholder")}
-          </div>
-        {/if}
 
-        <!-- Two stats only: count and cost. Characters and chars/token are
-             technical noise for a first-time reader. The cost intuition
-             ("≈ 1 cent per 4 000 tokens") lives inline next to the dollar
-             figure so the number stops being abstract. -->
-        <div id="llm-token-stats" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div
-            class="bg-surface border border-hairline rounded-xl px-5 py-4 shadow-xs"
-          >
-            <span
-              class="text-[10px] font-bold uppercase tracking-wider text-ink-faint"
-              >{$t("tok_stats_tokens")}</span
-            >
-            <div
-              class="text-3xl font-bold tracking-tight text-ink mt-1 tabular-nums"
-            >
-              {totalTokens}
+          <!-- Token count and Cost Metrics -->
+          <div id="llm-token-stats" class="grid grid-cols-2 gap-3.5 border-t border-hairline/60 pt-4">
+            <div class="bg-sunken border border-hairline/60 rounded-xl px-4 py-3 shadow-xs">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-ink-faint">{$t("tok_stats_tokens")}</span>
+              <div class="text-2xl font-bold tracking-tight text-ink mt-0.5 tabular-nums">{totalTokens}</div>
+            </div>
+            <div class="bg-sunken border border-hairline/60 rounded-xl px-4 py-3 shadow-xs">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-ink-faint">{$t("tok_stats_cost")}</span>
+              <div class="text-2xl font-bold tracking-tight text-success mt-0.5 tabular-nums">${estimatedCost}</div>
+              <div class="text-[9px] text-ink-faint mt-0.5 leading-tight">{$t("tok_stats_cost_intuition")}</div>
             </div>
           </div>
-          <div
-            class="bg-surface border border-hairline rounded-xl px-5 py-4 shadow-xs"
-          >
-            <span
-              class="text-[10px] font-bold uppercase tracking-wider text-ink-faint"
-              >{$t("tok_stats_cost")}</span
-            >
-            <div
-              class="text-3xl font-bold tracking-tight text-success mt-1 tabular-nums"
-            >
-              ${estimatedCost}
-            </div>
-            <div class="text-[11px] text-ink-faint mt-1">
-              {$t("tok_stats_cost_intuition")}
-            </div>
-          </div>
-        </div>
+        </section>
+
       </div>
-    {/if}
+    {:else}
+      <div class="animate-fade-in max-w-3xl mx-auto flex flex-col gap-6">
 
-    <!-- ─── SUB-TAB 2: DECODING PLAYGROUND ────────────────────── -->
-    {#if activeSubTab === "decoding"}
-      <div class="flex flex-col gap-6 animate-fade-in max-w-3xl mx-auto">
-        <!-- Lead. -->
-        <div class="flex flex-col gap-2">
-          <p class="text-base text-ink-muted leading-relaxed">
+        <!-- Step 2 Card: Starting Prompt -->
+        <section class="bg-surface border border-hairline/60 rounded-2xl p-5 shadow-xs flex flex-col gap-4">
+          <div class="flex items-center gap-2.5">
+            <span class="w-6 h-6 rounded-full bg-llm text-white font-mono text-xs font-semibold flex items-center justify-center shrink-0">2</span>
+            <div class="leading-tight">
+              <h2 class="text-base font-semibold text-ink">{$locale === "pt" ? "Define o Ponto de Partida" : $locale === "fr" ? "Définir le Point de Départ" : "Set the Starting Point"}</h2>
+              <p class="text-[11px] text-ink-faint">{$locale === "pt" ? "Escreve um prompt ou escolhe um preset" : $locale === "fr" ? "Écris un prompt ou choisis un preset" : "Write a prompt or pick a preset"}</p>
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <span class="text-xs font-semibold text-ink-muted">{$t("dec_prompt_label")}</span>
+            <div class="flex flex-wrap gap-1.5">
+              {#each filteredPresets as preset, idx}
+                <button
+                  type="button"
+                  on:click={() => handlePresetChange(idx)}
+                  class="px-3.5 py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer
+                         {selectedPresetIdx === idx
+                    ? 'bg-llm text-white border-llm shadow-sm'
+                    : 'bg-sunken text-llm border-hairline hover:border-llm/40 hover:bg-raised'}"
+                >
+                  {preset.title}
+                </button>
+              {/each}
+            </div>
+
+            <!-- Prompt editor -->
+            <textarea
+              bind:value={llmPrompt}
+              on:input={() => (promptTouched = true)}
+              rows="2"
+              class="w-full p-3.5 text-sm border border-hairline rounded-xl outline-none focus:border-llm/50 focus:ring-2 focus:ring-llm/40 transition-all font-mono bg-surface shadow-xs resize-none mt-1"
+            ></textarea>
+          </div>
+        </section>
+
+        <!-- Step 3 Card: Creativity Settings -->
+        <section class="bg-surface border border-hairline/60 rounded-2xl p-5 shadow-xs flex flex-col gap-4">
+          <div class="flex items-center gap-2.5">
+            <span class="w-6 h-6 rounded-full bg-llm text-white font-mono text-xs font-semibold flex items-center justify-center shrink-0">3</span>
+            <div class="leading-tight">
+              <h2 class="text-base font-semibold text-ink">{$locale === "pt" ? "Ajustes de Criatividade" : $locale === "fr" ? "Réglages de Créativité" : "Creativity Settings"}</h2>
+              <p class="text-[11px] text-ink-faint">{$locale === "pt" ? "Decide quão ousado ou focado deve ser o modelo" : $locale === "fr" ? "Décide du niveau d'audace du modèle" : "Decide how bold or focused the model should be"}</p>
+            </div>
+          </div>
+
+          <p class="text-xs text-ink-muted leading-relaxed">
             {@html $t("dec_desc")}
           </p>
-        </div>
 
-        <!-- Prompt presets. -->
-        <div class="flex flex-col gap-2">
-          <span class="text-xs font-bold text-ink-muted"
-            >{$t("dec_prompt_label")}</span
-          >
-          <div class="flex flex-wrap gap-2">
-            {#each filteredPresets as preset, idx}
-              <button
-                on:click={() => handlePresetChange(idx)}
-                class="px-3.5 py-2 text-xs font-bold rounded-lg border transition-all
-                       {selectedPresetIdx === idx
-                  ? 'bg-brand text-white border-brand shadow-sm'
-                  : 'bg-surface text-brand border-hairline hover:border-brand/50 hover:bg-brand-wash/50'}"
-              >
-                {preset.title}
-              </button>
-            {/each}
-          </div>
-        </div>
-
-        <!-- Sliders: kept compact. End-anchors give intuition; the small
-             one-line description below each slider is enough for context. -->
-        <div
-          class="bg-surface border border-hairline rounded-2xl p-5 shadow-xs flex flex-col gap-6"
-        >
-          <div id="llm-temp" class="flex flex-col gap-2">
+          <!-- Temperature Control (Visible by default) -->
+          <div id="llm-temp" class="flex flex-col gap-2 bg-sunken/30 border border-hairline/40 p-4 rounded-xl">
             <div class="flex justify-between items-center">
-              <span class="text-xs font-bold text-ink-muted"
-                >{$t("dec_temp_label")}</span
-              >
-              <span
-                class="px-2 py-0.5 text-xs font-mono font-bold bg-brand-wash border border-brand/30 text-brand rounded tabular-nums"
-                >T = {temperature.toFixed(2)}</span
-              >
+              <span class="text-xs font-bold text-ink-muted">{$t("dec_temp_label")}</span>
+              <span class="px-2 py-0.5 text-xs font-mono font-bold bg-brand-wash border border-brand/30 text-brand rounded tabular-nums">T = {temperature.toFixed(2)}</span>
             </div>
             <input
               type="range"
@@ -1101,127 +663,116 @@
               step="0.05"
               class="w-full accent-indigo-600 h-1.5 bg-sunken rounded-lg cursor-pointer"
             />
-            <div
-              class="flex justify-between text-[10px] font-semibold text-ink-faint uppercase tracking-wider px-0.5"
-            >
+            <div class="flex justify-between text-[9px] font-bold text-ink-faint uppercase tracking-wider px-0.5">
               <span>← {$t("dec_temp_anchor_low")}</span>
               <span>{$t("dec_temp_anchor_high")} →</span>
             </div>
-            <p class="text-[11px] text-ink-faint leading-normal">
+            <p class="text-[11px] text-ink-faint leading-normal mt-0.5">
               {$t("dec_temp_desc")}
             </p>
           </div>
 
-          <div id="llm-topp" class="flex flex-col gap-2">
-            <div class="flex justify-between items-center">
-              <span class="text-xs font-bold text-ink-muted"
-                >{$t("dec_topp_label")}</span
-              >
-              <span
-                class="px-2 py-0.5 text-xs font-mono font-bold bg-llm-wash border border-llm/30 text-llm rounded tabular-nums"
-                >P = {topP.toFixed(2)}</span
-              >
-            </div>
-            <input
-              type="range"
-              bind:value={topP}
-              min="0.1"
-              max="1.0"
-              step="0.05"
-              class="w-full accent-teal-600 h-1.5 bg-sunken rounded-lg cursor-pointer"
-            />
-            <div
-              class="flex justify-between text-[10px] font-semibold text-ink-faint uppercase tracking-wider px-0.5"
-            >
-              <span>← {$t("dec_topp_anchor_low")}</span>
-              <span>{$t("dec_topp_anchor_high")} →</span>
-            </div>
-            <p class="text-[11px] text-ink-faint leading-normal">
-              {$t("dec_topp_desc")}
-            </p>
-          </div>
-        </div>
-
-        <!-- Result card: surface the most-likely word in plain text. The
-             chart that follows it is supporting evidence, not the headline. -->
-        {#if topCandidate}
-          <div
-            id="llm-decode-result"
-            class="bg-llm-wash border border-llm/30 rounded-xl px-5 py-4 flex items-center gap-3"
+          <!-- Advanced Toggle Link -->
+          <button
+            type="button"
+            on:click={() => (showAdvancedSettings = !showAdvancedSettings)}
+            class="flex items-center gap-1 text-xs font-semibold text-llm hover:text-llm-ink cursor-pointer select-none self-start transition-colors"
           >
-            <div
-              class="w-9 h-9 rounded-full bg-llm flex items-center justify-center text-white shrink-0"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="15"
-                height="15"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.5"><polyline points="9 18 15 12 9 6" /></svg
-              >
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="transition-transform duration-200 {showAdvancedSettings ? 'rotate-90' : ''}"><polyline points="9 18 15 12 9 6"/></svg>
+            {showAdvancedSettings ? ($locale === "pt" ? "Ocultar Configurações Avançadas" : $locale === "fr" ? "Masquer les Paramètres Avancés" : "Hide Advanced Settings") : ($locale === "pt" ? "Mostrar Configurações Avançadas" : $locale === "fr" ? "Afficher les Paramètres Avancés" : "Show Advanced Settings")}
+          </button>
+
+          <!-- Top-P Control (Hidden by default) -->
+          {#if showAdvancedSettings}
+            <div id="llm-topp" class="flex flex-col gap-2 bg-sunken/30 border border-hairline/40 p-4 rounded-xl animate-fade-in">
+              <div class="flex justify-between items-center">
+                <span class="text-xs font-bold text-ink-muted">{$t("dec_topp_label")}</span>
+                <span class="px-2 py-0.5 text-xs font-mono font-bold bg-llm-wash border border-llm/30 text-llm rounded tabular-nums">P = {topP.toFixed(2)}</span>
+              </div>
+              <input
+                type="range"
+                bind:value={topP}
+                min="0.1"
+                max="1.0"
+                step="0.05"
+                class="w-full accent-teal-600 h-1.5 bg-sunken rounded-lg cursor-pointer"
+              />
+              <div class="flex justify-between text-[9px] font-bold text-ink-faint uppercase tracking-wider px-0.5">
+                <span>← {$t("dec_topp_anchor_low")}</span>
+                <span>{$t("dec_topp_anchor_high")} →</span>
+              </div>
+              <p class="text-[11px] text-ink-faint leading-normal mt-0.5">
+                {$t("dec_topp_desc")}
+              </p>
             </div>
-            <div class="flex-1 min-w-0">
-              <div
-                class="text-[10px] font-bold uppercase tracking-widest text-llm"
-              >
-                {$t("dec_winner_label")}
-              </div>
-              <div
-                class="text-lg font-bold text-ink truncate font-mono mt-0.5"
-              >
-                "{topCandidate.word}"
-                <span class="text-sm font-semibold text-llm tabular-nums"
-                  >· {Math.round(topCandidate.normProb * 100)}%</span
-                >
-              </div>
+          {/if}
+        </section>
+
+        <!-- Step 4 Card: Next Word Prediction -->
+        <section class="bg-surface border border-hairline/60 rounded-2xl p-5 shadow-xs flex flex-col gap-4">
+          <div class="flex items-center gap-2.5">
+            <span class="w-6 h-6 rounded-full bg-llm text-white font-mono text-xs font-semibold flex items-center justify-center shrink-0">4</span>
+            <div class="leading-tight">
+              <h2 class="text-base font-semibold text-ink">{$locale === "pt" ? "Previsão do Próximo Token" : $locale === "fr" ? "Prédiction du Prochain Token" : "Next Token Prediction"}</h2>
+              <p class="text-[11px] text-ink-faint">{$locale === "pt" ? "Clica num token para construir a frase interativamente" : $locale === "fr" ? "Clique sur un token pour construire la phrase" : "Click a token to build the sentence interactively"}</p>
             </div>
           </div>
-        {/if}
 
-        <!-- Probability bars: simplified. No raw logits, no math toggle.
-             Filtered (Top-P excluded) bars are visibly muted so the user
-             still sees the cut. -->
-        <div
-          class="bg-surface border border-hairline rounded-2xl p-5 shadow-xs flex flex-col gap-3"
-        >
-          {#each computedCandidates as cand}
-            <div class="flex items-center gap-3 w-full">
-              <div class="w-32 shrink-0 text-right">
-                <span
-                  class="text-sm font-semibold font-mono {cand.filtered
-                    ? 'text-ink-faint line-through'
-                    : 'text-ink-muted'}"
-                >
-                  "{cand.word}"
-                </span>
+          <!-- Winner Card -->
+          {#if topCandidate}
+            <div id="llm-decode-result" class="bg-llm-wash/60 border border-llm/25 rounded-2xl p-4 flex items-center gap-3">
+              <div class="w-8 h-8 rounded-full bg-llm flex items-center justify-center text-white shrink-0 shadow-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
               </div>
-              <div
-                class="flex-1 h-6 bg-sunken rounded-md overflow-hidden relative border border-hairline/40"
-              >
-                <div
-                  class="h-full rounded-l-md transition-all duration-300
-                         {cand.filtered
-                    ? 'bg-line'
-                    : 'bg-llm'}"
-                  style="width: {(cand.filtered
-                    ? cand.rawProb
-                    : cand.normProb) * 100}%"
-                ></div>
-                <span
-                  class="absolute inset-y-0 right-3 flex items-center text-[10px] font-mono font-bold tabular-nums {cand.filtered
-                    ? 'text-ink-faint'
-                    : 'text-llm'}"
-                >
-                  {Math.round(
-                    (cand.filtered ? cand.rawProb : cand.normProb) * 100,
-                  )}%
-                </span>
+              <div class="flex-1 min-w-0">
+                <div class="text-[10px] font-bold uppercase tracking-wider text-llm-ink">{$t("dec_winner_label")}</div>
+                <div class="text-base font-bold text-ink truncate font-mono mt-0.5">
+                  "{topCandidate.word}"
+                  <span class="text-xs font-semibold text-llm-ink tabular-nums">· {Math.round(topCandidate.normProb * 100)}%</span>
+                </div>
               </div>
             </div>
-          {/each}
-        </div>
+          {/if}
+
+          <!-- Candidate token bars list -->
+          {#if computedCandidates.length > 0}
+            <div class="flex flex-col gap-2.5">
+              <p class="text-[11px] text-ink-faint">
+                {$locale === "pt" ? "Escolhe uma palavra para continuar a escrever:" : $locale === "fr" ? "Choisis un mot pour continuer :" : "Pick a word to continue writing:"}
+              </p>
+              <div class="bg-sunken/45 border border-hairline/60 rounded-2xl p-4 flex flex-col gap-2">
+                {#each computedCandidates as cand}
+                  <button
+                    type="button"
+                    on:click={() => appendToken(cand.piece)}
+                    title={$locale === "pt" ? "Acrescentar este token" : $locale === "fr" ? "Ajouter ce token" : "Append this token"}
+                    class="flex items-center gap-3.5 w-full text-left rounded-lg p-1 hover:bg-surface/85 hover:shadow-xs border border-transparent hover:border-hairline/40 transition-all cursor-pointer group"
+                  >
+                    <div class="w-24 shrink-0 text-right">
+                      <span class="text-xs font-semibold font-mono group-hover:text-llm transition-colors {cand.filtered ? 'text-ink-faint line-through' : 'text-ink-muted'}">
+                        "{cand.word}"
+                      </span>
+                    </div>
+                    <div class="flex-1 h-5 bg-sunken/60 rounded-md overflow-hidden relative border border-hairline/30">
+                      <div
+                        class="h-full rounded-l-md transition-all duration-300 {cand.filtered ? 'bg-line/60' : 'bg-llm'}"
+                        style="width: {(cand.filtered ? cand.rawProb : cand.normProb) * 100}%"
+                      ></div>
+                      <span class="absolute inset-y-0 right-2.5 flex items-center text-[9px] font-mono font-bold tabular-nums {cand.filtered ? 'text-ink-faint' : 'text-llm'}">
+                        {Math.round((cand.filtered ? cand.rawProb : cand.normProb) * 100)}%
+                      </span>
+                    </div>
+                  </button>
+                {/each}
+              </div>
+            </div>
+          {:else}
+            <div class="bg-sunken border border-dashed border-hairline rounded-2xl p-5 h-28 flex items-center justify-center text-xs text-ink-faint gap-2.5">
+              {$locale === "pt" ? "Escreve um prompt para calcular as probabilidades." : $locale === "fr" ? "Écris une amorce pour calculer les probabilités." : "Write a prompt to compute probabilities."}
+            </div>
+          {/if}
+        </section>
+
       </div>
     {/if}
   </div>

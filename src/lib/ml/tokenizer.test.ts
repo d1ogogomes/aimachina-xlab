@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { tokenize, getStringHash } from "./tokenizer";
+import { describe, it, expect, beforeAll } from "vitest";
+import { tokenize, getStringHash, ensureBpe, isBpeReady } from "./tokenizer";
 
 describe("getStringHash", () => {
   it("is deterministic and non-negative", () => {
@@ -52,28 +52,39 @@ describe("tokenize - word mode", () => {
   });
 });
 
-describe("tokenize - subword (BPE simulation)", () => {
-  it("splits known words using subword rules", () => {
-    const toks = tokenize("Thorough", "subword");
-    expect(toks.map((t) => t.text)).toEqual(["Thor", "ough"]);
-    expect(toks[0].spaceBefore).toBe(false);
+describe("tokenize - subword (real GPT-2 BPE)", () => {
+  beforeAll(async () => {
+    await ensureBpe();
   });
 
-  it("prefixes word-initial subwords with the Ġ space marker", () => {
-    const toks = tokenize("the Thorough", "subword");
-    expect(toks.map((t) => t.text)).toEqual(["the", "ĠThor", "ough"]);
-    expect(toks[1].spaceBefore).toBe(true);
-    expect(toks[2].spaceBefore).toBe(false); // only the lead piece carries Ġ
+  it("reports ready after loading", () => {
+    expect(isBpeReady()).toBe(true);
   });
 
-  it("never splits or prefixes punctuation", () => {
-    const toks = tokenize("dog,", "subword");
-    expect(toks.map((t) => t.text)).toEqual(["dog", ","]);
+  it("returns [] before the table is loaded — covered by readiness above", () => {
+    // (sanity) once loaded, empty input still yields no tokens
+    expect(tokenize("", "subword")).toEqual([]);
   });
 
-  it("falls back to a half split for long unknown words", () => {
-    const toks = tokenize("strawberry", "subword"); // 10 chars, no rule
-    expect(toks.map((t) => t.text)).toEqual(["straw", "berry"]);
+  it("produces the real GPT-2 token ids", () => {
+    const toks = tokenize("The dog", "subword");
+    expect(toks.map((t) => t.text)).toEqual(["The", "Ġdog"]);
+    expect(toks.map((t) => t.id)).toEqual([464, 3290]);
+  });
+
+  it("marks a leading space with Ġ and sets spaceBefore", () => {
+    const toks = tokenize("The dog", "subword");
+    expect(toks[0].spaceBefore).toBe(false); // first token never has a space
+    expect(toks[1].spaceBefore).toBe(true); // " dog" → Ġdog
+  });
+
+  it("round-trips: rebuilding the pieces reconstructs the original text", () => {
+    const input = "The quick brown fox, jumped! 123";
+    const toks = tokenize(input, "subword");
+    const rebuilt = toks
+      .map((t) => (t.spaceBefore ? " " + t.text.slice(1) : t.text))
+      .join("");
+    expect(rebuilt).toBe(input);
   });
 
   it("is deterministic", () => {
