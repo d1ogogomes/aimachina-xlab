@@ -16,8 +16,6 @@
     computeAccuracy,
     countNodes,
     type TabularTreeNode,
-    exportTreeToRulesText,
-    simplifyPathRules,
     computeFeatureImportance,
     getPythonBoilerplate,
     getJsBoilerplate,
@@ -58,7 +56,6 @@
         step('#ds-select', 1),
         step('#dt-criterion', 2),
         step('#dt-pruning', 3),
-        step('#dt-train-btn', 4),
         step('#dt-metrics', 5),
         step('#dt-viz', 6),
         step('#dt-predictor', 7),
@@ -117,12 +114,30 @@
   let highlightPath: TabularTreeNode[] = [];
   let isTranslatingDataset = false;
   let showTreeTextMode = false;
-  let simplifiedRulesPath: string[] = [];
 
   // Feature Importance & Exporter state
   let featureImportance: Record<string, number> = {};
   let codeExportTab: 'graph' | 'rules' | 'python' | 'js' = 'graph';
   let copyFeedback = false;
+
+  // Localized connectors for the plain-language rules and "Why?" view.
+  $: ruleIfWord = $locale === 'pt' ? 'Se ' : $locale === 'fr' ? 'Si ' : 'If ';
+  $: ruleAndWord = $locale === 'pt' ? 'e' : $locale === 'fr' ? 'et' : 'and';
+  $: ruleThenLead =
+    $locale === 'pt' ? `, então ${activeDataset.targetName} é `
+    : $locale === 'fr' ? `, alors ${activeDataset.targetName} est `
+    : `, then ${activeDataset.targetName} is `;
+  $: ruleAlwaysLead =
+    $locale === 'pt' ? `${activeDataset.targetName} é sempre `
+    : $locale === 'fr' ? `${activeDataset.targetName} est toujours `
+    : `${activeDataset.targetName} is always `;
+  $: ruleConfidenceWord =
+    $locale === 'pt' ? 'de confiança' : $locale === 'fr' ? 'de confiance' : 'confidence';
+  $: ruleExampleWord = $locale === 'pt' ? 'exemplo' : $locale === 'fr' ? 'exemple' : 'example';
+  $: ruleExamplesWord = $locale === 'pt' ? 'exemplos' : $locale === 'fr' ? 'exemples' : 'examples';
+
+  // Plain-language explanation for the live prediction ("Why?").
+  $: whyPath = naturalizePath(highlightPath, $locale);
 
   // UI tabs within the lab
   let activeSubTab: 'train' | 'data' = 'train';
@@ -733,7 +748,6 @@
     const { predictedClass, path } = predictTabular(treeToUse, predictorInputs);
     predictionResult = predictedClass;
     highlightPath = path;
-    simplifiedRulesPath = naturalizePath(path, $locale);
 
     // Get leaf node confidence
     const finalLeaf = path[path.length - 1];
@@ -755,389 +769,440 @@
       .join(andWord);
   }
 </script>
+<div class="w-full max-w-[88rem] mx-auto px-5 sm:px-8 mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6 relative z-10">
 
-<div class="w-full max-w-[85rem] mx-auto px-8 mt-6 grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10">
-  
-  <!-- LEFT PANEL: DATASETS & CONFIGURATIONS -->
-  <section class="lg:col-span-4 flex flex-col gap-6">
+  <!-- ═══ LEFT: data + live controls ═══════════════════════════ -->
+  <div class="lg:col-span-5 flex flex-col gap-5">
 
-    <!-- Dataset Selector Card -->
-    <div class="bg-surface backdrop-blur-md rounded-2xl p-6 border border-hairline/50 shadow-sm flex flex-col gap-4">
-      <div class="flex items-center justify-between gap-4">
-        <h3 class="text-sm font-black text-ink uppercase tracking-wider leading-snug">{$t('dt_step_select_dataset')}</h3>
-        <div class="flex items-center gap-1.5 shrink-0">
-          <!-- Upload Button -->
-          <label 
-            class="text-xs font-bold text-dt bg-dt-wash hover:bg-dt-wash hover:text-dt-ink px-3 py-1.5 rounded-xl border border-dt/20 transition-all cursor-pointer inline-flex items-center justify-center gap-1.5 whitespace-nowrap shadow-xs"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    <!-- Intro -->
+    <div class="bg-dt-wash rounded-2xl p-4 border border-dt/20">
+      <div class="flex items-start gap-3">
+        <div class="w-9 h-9 bg-dt/10 rounded-xl flex items-center justify-center text-dt shrink-0 mt-0.5">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275Z"/></svg>
+        </div>
+        <div class="flex flex-col gap-1">
+          <h4 class="text-sm font-semibold text-ink">
+            {$locale === 'pt' ? 'O que é uma Árvore de Decisão?' : $locale === 'fr' ? 'Qu\'est-ce qu\'un Arbre de Décision ?' : 'What is a Decision Tree?'}
+          </h4>
+          <p class="text-xs text-ink-muted leading-relaxed">
+            {$locale === 'pt'
+              ? 'Uma sequência de perguntas simples (ex: "Está a chover?") que leva a uma decisão. Mexe nos controlos e vê a árvore mudar ao lado, em tempo real.'
+              : $locale === 'fr'
+              ? 'Une suite de questions simples (ex : "Pleut-il ?") qui mène à une décision. Touche aux réglages et vois l\'arbre changer à côté, en temps réel.'
+              : 'A sequence of simple questions (e.g. "Is it raining?") leading to a decision. Move the controls and watch the tree change beside you, in real time.'}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Data -->
+    <section class="bg-surface rounded-2xl border border-hairline/60 shadow-sm p-5 flex flex-col gap-3.5">
+      <div class="flex items-center gap-2.5">
+        <span class="w-6 h-6 rounded-full bg-dt text-white font-mono text-xs font-semibold flex items-center justify-center shrink-0">1</span>
+        <h2 class="text-base text-ink">{$locale === 'pt' ? 'Os dados' : $locale === 'fr' ? 'Les données' : 'The data'}</h2>
+      </div>
+
+      {#if isEditingCustom}
+        <div class="flex flex-col gap-3">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-dt">{$t('dt_create_dataset_title')}</h3>
+            <button on:click={() => isEditingCustom = false} class="text-xs text-ink-faint font-semibold hover:text-ink-muted cursor-pointer">{$t('dt_back_btn')}</button>
+          </div>
+          <div class="flex flex-col gap-1">
+            <label for="ds-name-inp" class="text-xs font-semibold text-ink-faint">{$t('dt_dataset_name_label')}</label>
+            <input id="ds-name-inp" type="text" bind:value={customDatasetName} class="bg-sunken border border-hairline rounded-lg px-2.5 py-1.5 text-xs text-ink-muted outline-none focus:border-dt" />
+          </div>
+          <div class="flex flex-col gap-1">
+            <label for="ds-target-inp" class="text-xs font-semibold text-ink-faint">{$t('dt_target_column_label')}</label>
+            <input id="ds-target-inp" type="text" value={customTargetName} on:input={(e) => updateTargetName((e.target as HTMLInputElement).value)} class="bg-sunken border border-hairline rounded-lg px-2.5 py-1.5 text-xs text-ink-muted outline-none font-bold focus:border-dt" />
+          </div>
+          <div class="flex items-center justify-between text-xs font-bold text-ink-muted mt-1">
+            <span>{$t('dt_features_label')}</span>
+            <button on:click={addFeatureColumn} class="text-brand hover:text-brand-ink cursor-pointer">{$t('dt_add_column_btn')}</button>
+          </div>
+          <div class="flex flex-col gap-2 max-h-[150px] overflow-y-auto pr-1">
+            {#each customFeatures as f, idx}
+              <div class="flex items-center gap-2 bg-sunken border border-hairline p-2 rounded-lg">
+                <input type="text" value={f} on:input={(e) => updateFeatureName(idx, (e.target as HTMLInputElement).value)} class="bg-surface border border-hairline rounded px-1.5 py-0.5 text-[11px] font-semibold text-ink-muted outline-none flex-1" />
+                <select value={customFeatureTypes[f]} on:change={(e) => updateFeatureType(f, (e.target as HTMLSelectElement).value as 'categorical' | 'numerical')} class="bg-surface border border-hairline rounded px-1.5 py-0.5 text-[10px] font-bold text-ink-muted">
+                  <option value="categorical">{$t('dt_categorical_type')}</option>
+                  <option value="numerical">{$t('dt_numerical_type')}</option>
+                </select>
+                <button on:click={() => removeFeatureColumn(f)} class="text-xs text-danger hover:text-danger-ink px-1 cursor-pointer">×</button>
+              </div>
+            {/each}
+          </div>
+          <div class="flex items-center justify-between text-xs font-bold text-ink-muted mt-1 border-t border-hairline pt-2">
+            <span>{$t('dt_rows_samples_label')} ({customData.length})</span>
+            <button on:click={addRow} class="text-brand hover:text-brand-ink cursor-pointer">{$t('dt_add_row_btn')}</button>
+          </div>
+          <div class="overflow-x-auto border border-hairline rounded-lg max-h-[220px] overflow-y-auto">
+            <table class="w-full text-left border-collapse text-[11px]">
+              <thead>
+                <tr class="bg-sunken border-b border-hairline text-ink-faint">
+                  <th class="p-2 border-r border-hairline">#</th>
+                  {#each customFeatures as f}<th class="p-2 border-r border-hairline">{f}</th>{/each}
+                  <th class="p-2 border-r border-hairline text-dt font-bold">{customTargetName}</th>
+                  <th class="p-2 text-center"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each customData as row, rIdx}
+                  <tr class="border-b border-hairline/50 hover:bg-sunken/50">
+                    <td class="p-2 text-ink-faint font-mono text-[10px] border-r border-hairline/50 bg-sunken/20">{rIdx + 1}</td>
+                    {#each customFeatures as f}
+                      <td class="p-1 border-r border-hairline/50">
+                        {#if customFeatureTypes[f] === 'numerical'}
+                          <input type="number" bind:value={row[f]} on:input={() => customData = customData} class="w-full bg-transparent border-0 outline-none p-1" />
+                        {:else}
+                          <input type="text" bind:value={row[f]} on:input={() => customData = customData} class="w-full bg-transparent border-0 outline-none p-1" />
+                        {/if}
+                      </td>
+                    {/each}
+                    <td class="p-1 border-r border-hairline/50 font-bold">
+                      <input type="text" bind:value={row[customTargetName]} on:input={() => customData = customData} class="w-full bg-transparent border-0 outline-none p-1 text-dt font-bold" />
+                    </td>
+                    <td class="p-1 text-center">
+                      <button on:click={() => deleteRow(rIdx)} class="text-danger hover:text-danger-ink font-bold font-mono">×</button>
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+          <button on:click={saveDataset} class="w-full bg-dt text-white font-bold py-2.5 rounded-xl hover:bg-dt-ink transition-colors shadow-sm cursor-pointer text-xs">{$t('dt_save_dataset_btn')}</button>
+        </div>
+      {:else}
+        <div class="flex flex-col gap-1.5">
+          <label for="ds-select" class="text-xs font-semibold text-ink-faint">{$t('dt_active_dataset_label')}</label>
+          <select id="ds-select" bind:value={selectedDatasetId} on:change={handleDatasetChange} class="w-full bg-sunken border border-hairline rounded-xl px-3.5 py-2.5 text-sm font-semibold text-ink-muted outline-none focus:border-dt transition-all cursor-pointer">
+            {#each datasets as ds}
+              <option value={ds.id}>{ds.name} {ds.id.startsWith('custom_') ? $t('dt_localstorage_label') : $t('dt_default_label')}</option>
+            {/each}
+          </select>
+        </div>
+
+        <div class="flex items-center gap-2 bg-sunken rounded-xl p-2.5 border border-hairline text-xs text-ink-muted leading-snug">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" class="text-dt shrink-0" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+          <span><strong class="text-ink">{activeDataset.data.length}</strong> {$t('dt_dataset_samples')} · <strong class="text-ink">{activeDataset.features.length}</strong> {$t('dt_dataset_features')}</span>
+        </div>
+
+        <details class="group">
+          <summary class="flex items-center gap-1.5 text-xs font-semibold text-ink-muted cursor-pointer select-none list-none hover:text-ink py-1">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="transition-transform group-open:rotate-90"><polyline points="9 18 15 12 9 6"/></svg>
+            {$locale === 'pt' ? `Ver os dados (${activeDataset.data.length})` : $locale === 'fr' ? `Voir les données (${activeDataset.data.length})` : `See the data (${activeDataset.data.length})`}
+          </summary>
+          <div class="overflow-x-auto border border-hairline rounded-xl max-h-[300px] mt-3">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="bg-sunken border-b border-hairline text-ink-faint">
+                  <th class="p-2.5 font-bold">#</th>
+                  {#each activeDataset.features as f}<th class="p-2.5 font-bold">{f}</th>{/each}
+                  <th class="p-2.5 font-bold text-dt bg-dt-wash/50">{activeDataset.targetName}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each activeDataset.data as row, idx}
+                  <tr class="border-b border-hairline/50 hover:bg-sunken/50">
+                    <td class="p-2.5 text-ink-faint font-mono text-[10px]">{idx + 1}</td>
+                    {#each activeDataset.features as f}<td class="p-2.5 text-ink-muted font-medium">{row[f]}</td>{/each}
+                    <td class="p-2.5 font-bold text-dt bg-dt-wash/10">{row[activeDataset.targetName]}</td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        </details>
+
+        <div class="flex flex-wrap items-center gap-2 border-t border-hairline/60 pt-3">
+          <label class="text-xs font-semibold text-ink-muted bg-sunken hover:bg-raised hover:text-ink px-2.5 py-1.5 rounded-lg border border-hairline transition-colors cursor-pointer inline-flex items-center gap-1.5">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
             {$t('dt_import_btn')}
-            <input
-              type="file"
-              accept=".csv,.json"
-              on:change={handleImportDataset}
-              class="hidden"
-            />
+            <input type="file" accept=".csv,.json" on:change={handleImportDataset} class="hidden" />
           </label>
-        </div>
-      </div>
-
-      <div class="flex flex-col gap-1.5">
-        <label for="ds-select" class="text-xs font-semibold text-ink-faint">{$t('dt_active_dataset_label')}</label>
-        <select
-          id="ds-select"
-          bind:value={selectedDatasetId}
-          on:change={handleDatasetChange}
-          class="w-full bg-sunken border border-hairline rounded-xl px-3.5 py-2.5 text-xs font-semibold text-ink-muted outline-none focus:border-dt transition-all cursor-pointer"
-        >
-          {#each datasets as ds}
-            <option value={ds.id}>
-              {ds.name} {ds.id.startsWith('custom_') ? $t('dt_localstorage_label') : $t('dt_default_label')}
-            </option>
-          {/each}
-        </select>
-      </div>
-
-      {#if selectedDatasetId.startsWith('custom_')}
-        <button
-          on:click={() => handleDeleteCustom(selectedDatasetId)}
-          class="w-full text-xs font-bold text-danger hover:bg-danger-wash py-2 rounded-xl border border-danger/30 transition-colors cursor-pointer"
-        >
-          {$t('dt_delete_custom_btn')}
-        </button>
-      {/if}
-      
-      <div class="flex items-center gap-1.5 bg-sunken rounded-xl p-3 border border-hairline text-[11px] text-ink-faint leading-snug">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-dt shrink-0"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
-        <span>
-          {$t('dt_dataset_contains')} <strong>{activeDataset.data.length} {$t('dt_dataset_samples')}</strong> {$t('dt_dataset_and')} <strong>{activeDataset.features.length} {$t('dt_dataset_features')}</strong>.
-        </span>
-      </div>
-
-      <!-- Translate Dataset Button (Google Translate API) -->
-      <button
-        on:click={translateActiveDataset}
-        disabled={isTranslatingDataset}
-        class="w-full text-xs font-bold bg-dt-wash border border-dt/20 text-dt hover:bg-dt-wash py-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {#if isTranslatingDataset}
-          <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-dt" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>
-          {$locale === 'pt' ? 'A traduzir com o Google...' : $locale === 'fr' ? 'Traduction avec Google...' : 'Translating with Google...'}
-        {:else}
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m5 8 6 6M4 14l6-6M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6"/></svg>
-          {$locale === 'pt' ? 'Traduzir Dataset (Google)' : $locale === 'fr' ? 'Traduire le Dataset (Google)' : 'Translate Dataset (Google)'}
-        {/if}
-      </button>
-    </div>
-
-    <!-- Mode Subtabs Switcher -->
-    <div class="flex bg-sunken p-1 rounded-xl border border-hairline/50 shadow-inner">
-      <button 
-        on:click={() => activeSubTab = 'train'}
-        class="flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer {activeSubTab === 'train' ? 'bg-surface text-ink shadow-sm' : 'text-ink-faint hover:text-ink-muted'}"
-      >
-        {$t('dt_subtab_train_prune')}
-      </button>
-      <button 
-        on:click={() => activeSubTab = 'data'}
-        class="flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer {activeSubTab === 'data' ? 'bg-surface text-ink shadow-sm' : 'text-ink-faint hover:text-ink-muted'}"
-      >
-        {$t('dt_subtab_dataset_data')}
-      </button>
-    </div>
-
-    {#if activeSubTab === 'train'}
-      <!-- Training Parameters Panel -->
-      <div id="dt-params" class="bg-surface backdrop-blur-md rounded-2xl p-6 border border-hairline/50 shadow-sm flex flex-col gap-5">
-        <h3 class="text-sm font-semibold text-ink uppercase tracking-wider leading-snug">{$t('dt_step_tree_params')}</h3>
-
-        <!-- Split Slider -->
-        <div class="flex flex-col gap-2">
-          <div class="flex items-center justify-between text-xs">
-            <span class="font-semibold text-ink-faint">{$t('dt_split_ratio_label')}</span>
-            <span class="font-bold text-warning-ink bg-warning-wash px-2 py-0.5 rounded font-mono">{(trainRatio * 100).toFixed(0)}% / {((1 - trainRatio) * 100).toFixed(0)}%</span>
-          </div>
-          <input
-            type="range"
-            min="0.5"
-            max="0.9"
-            step="0.05"
-            bind:value={trainRatio}
-            on:input={triggerTrain}
-            class="w-full accent-warning cursor-pointer"
-          />
-        </div>
-
-        <!-- Criterion Selector -->
-        <div id="dt-criterion" class="flex flex-col gap-1.5">
-          <span class="text-xs font-semibold text-ink-faint">{$t('dt_split_criterion_label')}</span>
-          <div class="grid grid-cols-2 gap-2">
-            <button
-              on:click={() => { splittingCriterion = 'gini'; triggerTrain(); }}
-              class="py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer {splittingCriterion === 'gini' ? 'bg-warning border-warning-ink text-white shadow-sm' : 'bg-sunken border-hairline text-ink-muted hover:bg-sunken'}"
-            >
-              {$t('dt_gini_impurity')}
-            </button>
-            <button
-              on:click={() => { splittingCriterion = 'entropy'; triggerTrain(); }}
-              class="py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer {splittingCriterion === 'entropy' ? 'bg-warning border-warning-ink text-white shadow-sm' : 'bg-sunken border-hairline text-ink-muted hover:bg-sunken'}"
-            >
-              {$t('dt_entropy_gain')}
-            </button>
-          </div>
-          <!-- Simple dynamic explanation banner based on the active criterion -->
-          <div class="mt-1 p-2.5 bg-sunken rounded-xl border border-hairline text-[11px] text-ink-faint leading-normal font-medium">
-            {#if splittingCriterion === 'gini'}
-              <strong class="text-ink-muted block mb-0.5">{$t('dt_gini_impurity')}:</strong>
-              {$t('dt_gini_desc')}
+          <button on:click={openCustomDatasetBuilder} class="text-xs font-semibold text-ink-muted bg-sunken hover:bg-raised hover:text-ink px-2.5 py-1.5 rounded-lg border border-hairline transition-colors cursor-pointer inline-flex items-center gap-1.5">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+            {$locale === 'pt' ? 'Criar' : $locale === 'fr' ? 'Créer' : 'Create'}
+          </button>
+          <button on:click={translateActiveDataset} disabled={isTranslatingDataset} class="text-xs font-semibold text-ink-muted bg-sunken hover:bg-raised hover:text-ink px-2.5 py-1.5 rounded-lg border border-hairline transition-colors cursor-pointer inline-flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed">
+            {#if isTranslatingDataset}
+              <svg class="animate-spin h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>
+              {$locale === 'pt' ? 'A traduzir…' : $locale === 'fr' ? 'Traduction…' : 'Translating…'}
             {:else}
-              <strong class="text-ink-muted block mb-0.5">{$t('dt_entropy_gain')}:</strong>
-              {$t('dt_entropy_desc')}
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m5 8 6 6M4 14l6-6M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6"/></svg>
+              {$locale === 'pt' ? 'Traduzir' : $locale === 'fr' ? 'Traduire' : 'Translate'}
             {/if}
-          </div>
+          </button>
+          {#if selectedDatasetId.startsWith('custom_')}
+            <button on:click={() => handleDeleteCustom(selectedDatasetId)} class="text-xs font-semibold text-danger bg-danger-wash/60 hover:bg-danger-wash px-2.5 py-1.5 rounded-lg border border-danger/30 transition-colors cursor-pointer ml-auto">{$t('dt_delete_custom_btn')}</button>
+          {/if}
         </div>
+      {/if}
+    </section>
 
-        <div class="w-full h-px bg-sunken"></div>
-
-        <span id="dt-pruning" class="text-xs font-black text-ink-faint uppercase tracking-wider">{$t('dt_pre_pruning_params')}</span>
-
-        <!-- Max Depth Slider -->
-        <div class="flex flex-col gap-2">
-          <div class="flex items-center justify-between text-xs">
-            <span class="font-semibold text-ink-faint">{$t('dt_max_depth_label')}</span>
-            <span class="font-bold text-warning-ink font-mono">{maxDepth}</span>
-          </div>
-          <input
-            type="range"
-            min="1"
-            max="10"
-            step="1"
-            bind:value={maxDepth}
-            on:input={triggerTrain}
-            class="w-full accent-warning cursor-pointer"
-          />
+    <!-- Live controls -->
+    <section class="bg-surface rounded-2xl border border-hairline/60 shadow-sm p-5 flex flex-col gap-5">
+      <div class="flex items-center gap-2.5">
+        <span class="w-6 h-6 rounded-full bg-dt text-white font-mono text-xs font-semibold flex items-center justify-center shrink-0">2</span>
+        <div class="leading-tight">
+          <h2 class="text-base text-ink">{$locale === 'pt' ? 'Ajusta a árvore' : $locale === 'fr' ? 'Ajuste l\'arbre' : 'Adjust the tree'}</h2>
+          <p class="text-[11px] text-ink-faint">{$locale === 'pt' ? 'Move e a árvore atualiza-se ao vivo →' : $locale === 'fr' ? 'Bouge et l\'arbre se met à jour en direct →' : 'Move it and the tree updates live →'}</p>
         </div>
-
-        <!-- Min Samples Split -->
-        <div class="flex flex-col gap-2">
-          <div class="flex items-center justify-between text-xs">
-            <span class="font-semibold text-ink-faint">{$t('dt_min_samples_split')}</span>
-            <span class="font-bold text-warning-ink font-mono">{minSamplesSplit}</span>
-          </div>
-          <input
-            type="range"
-            min="2"
-            max="20"
-            step="1"
-            bind:value={minSamplesSplit}
-            on:input={triggerTrain}
-            class="w-full accent-warning cursor-pointer"
-          />
-        </div>
-
-        <!-- Min Samples Leaf -->
-        <div class="flex flex-col gap-2">
-          <div class="flex items-center justify-between text-xs">
-            <span class="font-semibold text-ink-faint">{$t('dt_min_samples_leaf')}</span>
-            <span class="font-bold text-warning-ink font-mono">{minSamplesLeaf}</span>
-          </div>
-          <input
-            type="range"
-            min="1"
-            max="10"
-            step="1"
-            bind:value={minSamplesLeaf}
-            on:input={triggerTrain}
-            class="w-full accent-warning cursor-pointer"
-          />
-        </div>
-
-        <button
-          id="dt-train-btn"
-          on:click={triggerTrain}
-          class="w-full mt-2 bg-ink text-white font-bold py-3 rounded-xl hover:bg-ink transition-colors shadow-sm cursor-pointer text-xs"
-        >
-          {$t('dt_train_tree_btn')}
-        </button>
       </div>
-    {:else}
-      <!-- Raw Data Grid Display & Custom Grid Editor -->
-      <div class="bg-surface backdrop-blur-md rounded-2xl p-6 border border-hairline/50 shadow-sm flex flex-col gap-4">
-        {#if isEditingCustom}
-          <div class="flex flex-col gap-3">
-            <div class="flex items-center justify-between">
-              <h3 class="text-sm font-black text-ink uppercase tracking-wider text-warning">{$t('dt_create_dataset_title')}</h3>
-              <button 
-                on:click={() => isEditingCustom = false} 
-                class="text-xs text-ink-faint font-semibold hover:text-ink-muted cursor-pointer"
-              >
-                {$t('dt_back_btn')}
-              </button>
-            </div>
 
-            <div class="flex flex-col gap-1">
-              <label for="ds-name-inp" class="text-xs font-semibold text-ink-faint">{$t('dt_dataset_name_label')}</label>
-              <input 
-                id="ds-name-inp"
-                type="text" 
-                bind:value={customDatasetName} 
-                class="bg-sunken border border-hairline rounded-lg px-2.5 py-1.5 text-xs text-ink-muted outline-none"
-              />
-            </div>
+      <!-- Train/test split -->
+      <div class="flex flex-col gap-1.5">
+        <div class="flex items-center justify-between text-xs">
+          <span class="font-semibold text-ink-muted">{$t('dt_split_ratio_label')}</span>
+          <span class="font-bold text-dt bg-dt-wash px-2 py-0.5 rounded font-mono">{(trainRatio * 100).toFixed(0)}% / {((1 - trainRatio) * 100).toFixed(0)}%</span>
+        </div>
+        <input type="range" min="0.5" max="0.9" step="0.05" bind:value={trainRatio} on:input={triggerTrain} class="w-full accent-[var(--color-dt)] cursor-pointer" />
+        <p class="text-[10px] text-ink-faint leading-snug">{$locale === 'pt' ? 'Quantos exemplos servem para treinar (o resto testa).' : $locale === 'fr' ? 'Combien d\'exemples servent à entraîner (le reste teste).' : 'How many examples are used to train (the rest test).'}</p>
+      </div>
 
-            <div class="flex flex-col gap-1">
-              <label for="ds-target-inp" class="text-xs font-semibold text-ink-faint">{$t('dt_target_column_label')}</label>
-              <input 
-                id="ds-target-inp"
-                type="text" 
-                value={customTargetName} 
-                on:input={(e) => updateTargetName((e.target as HTMLInputElement).value)}
-                class="bg-sunken border border-hairline rounded-lg px-2.5 py-1.5 text-xs text-ink-muted outline-none font-bold"
-              />
-            </div>
+      <!-- Max depth -->
+      <div class="flex flex-col gap-1.5">
+        <div class="flex items-center justify-between text-xs">
+          <span class="font-semibold text-ink-muted">{$t('dt_max_depth_label')}</span>
+          <span class="font-bold text-dt font-mono">{maxDepth}</span>
+        </div>
+        <input type="range" min="1" max="10" step="1" bind:value={maxDepth} on:input={triggerTrain} class="w-full accent-[var(--color-dt)] cursor-pointer" />
+        <p class="text-[10px] text-ink-faint leading-snug">{$locale === 'pt' ? 'Até quantas perguntas seguidas a árvore pode fazer.' : $locale === 'fr' ? 'Combien de questions d\'affilée l\'arbre peut poser.' : 'How many questions in a row the tree may ask.'}</p>
+      </div>
 
-            <div class="flex items-center justify-between text-xs font-bold text-ink-muted mt-2">
-              <span>{$t('dt_features_label')}</span>
-              <button on:click={addFeatureColumn} class="text-dt hover:text-dt-ink cursor-pointer">{$t('dt_add_column_btn')}</button>
-            </div>
+      <!-- Criterion -->
+      <div id="dt-criterion" class="flex flex-col gap-1.5">
+        <span class="text-xs font-semibold text-ink-muted">{$t('dt_split_criterion_label')}</span>
+        <div class="grid grid-cols-2 gap-2">
+          <button on:click={() => { splittingCriterion = 'gini'; triggerTrain(); }} class="py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer {splittingCriterion === 'gini' ? 'bg-dt border-dt text-white shadow-sm' : 'bg-sunken border-hairline text-ink-muted hover:bg-raised'}">{$t('dt_gini_impurity')}</button>
+          <button on:click={() => { splittingCriterion = 'entropy'; triggerTrain(); }} class="py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer {splittingCriterion === 'entropy' ? 'bg-dt border-dt text-white shadow-sm' : 'bg-sunken border-hairline text-ink-muted hover:bg-raised'}">{$t('dt_entropy_gain')}</button>
+        </div>
+        <div class="p-2.5 bg-sunken rounded-xl border border-hairline text-[11px] text-ink-faint leading-normal font-medium">
+          {#if splittingCriterion === 'gini'}
+            <strong class="text-ink-muted block mb-0.5">{$t('dt_gini_impurity')}:</strong>{$t('dt_gini_desc')}
+          {:else}
+            <strong class="text-ink-muted block mb-0.5">{$t('dt_entropy_gain')}:</strong>{$t('dt_entropy_desc')}
+          {/if}
+        </div>
+      </div>
 
-            <!-- Features list editing -->
-            <div class="flex flex-col gap-2 max-h-[150px] overflow-y-auto pr-1">
-              {#each customFeatures as f, idx}
-                <div class="flex items-center gap-2 bg-sunken border border-hairline p-2 rounded-lg">
-                  <input 
-                    type="text" 
-                    value={f} 
-                    on:input={(e) => updateFeatureName(idx, (e.target as HTMLInputElement).value)}
-                    class="bg-surface border border-hairline rounded px-1.5 py-0.5 text-[11px] font-semibold text-ink-muted outline-none flex-1"
-                  />
-                  <select 
-                    value={customFeatureTypes[f]} 
-                    on:change={(e) => updateFeatureType(f, (e.target as HTMLSelectElement).value as 'categorical' | 'numerical')}
-                    class="bg-surface border border-hairline rounded px-1.5 py-0.5 text-[10px] font-bold text-ink-muted"
-                  >
-                    <option value="categorical">{$t('dt_categorical_type')}</option>
-                    <option value="numerical">{$t('dt_numerical_type')}</option>
-                  </select>
-                  <button 
-                    on:click={() => removeFeatureColumn(f)} 
-                    class="text-xs text-danger hover:text-danger-ink px-1 cursor-pointer"
-                  >
-                    ×
-                  </button>
+      <!-- More tuning -->
+      <details id="dt-pruning" class="group border-t border-hairline/60 pt-3">
+        <summary class="flex items-center gap-1.5 text-xs font-semibold text-ink-muted cursor-pointer select-none list-none hover:text-ink py-1">
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="transition-transform group-open:rotate-90"><polyline points="9 18 15 12 9 6"/></svg>
+          {$t('dt_pre_pruning_params')}
+        </summary>
+        <div class="flex flex-col gap-4 mt-3">
+          <div class="flex flex-col gap-1.5">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-semibold text-ink-muted">{$t('dt_min_samples_split')}</span>
+              <span class="font-bold text-dt font-mono">{minSamplesSplit}</span>
+            </div>
+            <input type="range" min="2" max="20" step="1" bind:value={minSamplesSplit} on:input={triggerTrain} class="w-full accent-[var(--color-dt)] cursor-pointer" />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-semibold text-ink-muted">{$t('dt_min_samples_leaf')}</span>
+              <span class="font-bold text-dt font-mono">{minSamplesLeaf}</span>
+            </div>
+            <input type="range" min="1" max="10" step="1" bind:value={minSamplesLeaf} on:input={triggerTrain} class="w-full accent-[var(--color-dt)] cursor-pointer" />
+          </div>
+        </div>
+      </details>
+    </section>
+  </div>
+
+  <!-- ═══ RIGHT: tree (sticky) + prediction ════════════════════ -->
+  <div class="lg:col-span-7 flex flex-col gap-5 min-w-0">
+
+    <div class="flex flex-col gap-4">
+      <!-- Compact metrics -->
+      <div id="dt-metrics" class="bg-surface rounded-2xl border border-hairline/60 shadow-sm px-5 py-3.5 flex flex-wrap items-center gap-x-5 gap-y-2">
+        <div class="flex items-baseline gap-1.5">
+          <span class="text-2xl font-semibold text-success font-mono nums">{(testAccuracy * 100).toFixed(0)}%</span>
+          <span class="text-xs text-ink-faint leading-tight">{$locale === 'pt' ? 'em exemplos novos' : $locale === 'fr' ? 'sur exemples nouveaux' : 'on new examples'}</span>
+        </div>
+        <div class="h-7 w-px bg-hairline"></div>
+        <span class="text-xs text-ink-muted">{$t('dt_train_accuracy_label')} <strong class="font-mono text-ink">{(trainAccuracy * 100).toFixed(0)}%</strong></span>
+        {#if trainedTree}
+          <span class="text-xs text-ink-muted font-mono nums hidden sm:inline">· {countNodes(trainedTree).splits} {$t('dt_stats_splits')} · {countNodes(trainedTree).leaves} {$t('dt_stats_leaves')} · {$t('dt_depth_label')} {countNodes(trainedTree).maxDepth}</span>
+        {/if}
+        {#if !isPostPrunedApplied}
+          <button on:click={applyPostPruning} title={$t('dt_post_pruning_desc')} class="ml-auto text-[11px] font-semibold text-dt bg-dt-wash border border-dt/25 hover:bg-dt hover:text-white px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer">{$t('dt_run_post_pruning_btn')}</button>
+        {:else}
+          <button on:click={triggerTrain} class="ml-auto text-[11px] font-semibold text-ink-muted bg-sunken border border-hairline hover:bg-raised px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer">{$t('dt_remove_pruning_btn')}</button>
+        {/if}
+      </div>
+
+      <!-- Overfitting alert -->
+      {#if unprunedTrainAccuracy === 1 && unprunedTestAccuracy < 0.75}
+        <div class="bg-danger-wash rounded-xl px-4 py-3 border border-danger/30 flex items-start gap-2.5">
+          <span class="w-2 h-2 rounded-full bg-danger animate-pulse mt-1.5 shrink-0"></span>
+          <p class="text-xs text-danger-ink leading-relaxed">
+            <strong class="text-danger">{$t('dt_overfitting_alert_title')}:</strong>
+            {$locale === 'pt'
+              ? `decorou o treino (100%) mas só acerta ${(unprunedTestAccuracy * 100).toFixed(0)}% em exemplos novos. Tenta reduzir a profundidade ou usar a poda.`
+              : $locale === 'fr'
+              ? `il a mémorisé l'entraînement (100%) mais ne réussit que ${(unprunedTestAccuracy * 100).toFixed(0)}% sur de nouveaux exemples. Réduis la profondeur ou utilise l'élagage.`
+              : `it memorized training (100%) but only gets ${(unprunedTestAccuracy * 100).toFixed(0)}% on new examples. Try reducing depth or using pruning.`}
+          </p>
+        </div>
+      {/if}
+
+      <!-- Tree -->
+      {#if trainedTree}
+        {@const activeTree = isPostPrunedApplied && postPrunedTree ? postPrunedTree : trainedTree}
+        <div id="dt-viz" class="bg-surface rounded-2xl border border-hairline/60 shadow-sm p-5 flex flex-col gap-4 min-w-0">
+          <div class="flex items-center bg-sunken p-0.5 rounded-lg border border-hairline gap-0.5 self-start overflow-x-auto max-w-full whitespace-nowrap">
+            <button on:click={() => codeExportTab = 'graph'} class="px-2.5 py-1 text-[11px] font-medium rounded-md cursor-pointer transition-all {codeExportTab === 'graph' ? 'bg-surface text-dt shadow-xs' : 'text-ink-faint hover:text-ink-muted'}">{$t('dt_view_graph')}</button>
+            <button on:click={() => codeExportTab = 'rules'} class="px-2.5 py-1 text-[11px] font-medium rounded-md cursor-pointer transition-all {codeExportTab === 'rules' ? 'bg-surface text-dt shadow-xs' : 'text-ink-faint hover:text-ink-muted'}">{$t('dt_rules_tab')}</button>
+            <button on:click={() => codeExportTab = 'python'} class="px-2.5 py-1 text-[11px] font-mono font-medium rounded-md cursor-pointer transition-all {codeExportTab === 'python' ? 'bg-surface text-dt shadow-xs' : 'text-ink-faint hover:text-ink-muted'}">{$t('dt_export_python')}</button>
+            <button on:click={() => codeExportTab = 'js'} class="px-2.5 py-1 text-[11px] font-mono font-medium rounded-md cursor-pointer transition-all {codeExportTab === 'js' ? 'bg-surface text-dt shadow-xs' : 'text-ink-faint hover:text-ink-muted'}">{$t('dt_export_js')}</button>
+          </div>
+
+          {#if codeExportTab === 'graph'}
+            <div class="relative overflow-hidden">
+              <TabularDecisionTreeViz tree={activeTree} targetClasses={activeDataset.targetClasses} highlightPath={highlightPath} />
+            </div>
+          {:else if codeExportTab === 'rules'}
+            {@const naturalRules = extractNaturalRules(activeTree, $locale)}
+            <div class="flex flex-col gap-3 max-h-[520px] overflow-y-auto pr-1">
+              <p class="text-xs text-ink-faint leading-relaxed">
+                {$locale === 'pt'
+                  ? `Cada regra é um caminho da árvore, escrito por palavras. A árvore lê as condições de cima para baixo e prevê ${activeDataset.targetName}.`
+                  : $locale === 'fr'
+                    ? `Chaque règle est un chemin de l'arbre, écrit en toutes lettres. L'arbre lit les conditions de haut en bas et prédit ${activeDataset.targetName}.`
+                    : `Each rule is one path through the tree, written out in words. The tree reads the conditions top to bottom and predicts ${activeDataset.targetName}.`}
+              </p>
+              {#each naturalRules as rule, i}
+                <div class="bg-surface border border-hairline rounded-xl p-4 flex gap-3.5">
+                  <span class="font-mono text-[11px] font-semibold text-dt bg-dt-wash border border-dt/20 rounded-md px-2 py-1 h-fit shrink-0">R{i + 1}</span>
+                  <div class="flex flex-col gap-2 min-w-0">
+                    <p class="text-sm text-ink leading-relaxed">
+                      {#if rule.conditions.length === 0}
+                        <span class="text-ink-muted">{ruleAlwaysLead}</span><span class="font-semibold text-ink">"{rule.predictedClass}"</span>.
+                      {:else}
+                        <span class="text-ink-muted">{ruleIfWord}</span>{#each rule.conditions as cond, ci}<span class="font-medium text-ink">{cond}</span>{#if ci < rule.conditions.length - 1}<span class="text-ink-muted">{ci === rule.conditions.length - 2 ? ` ${ruleAndWord} ` : ', '}</span>{/if}{/each}<span class="text-ink-muted">{ruleThenLead}</span><span class="font-semibold text-ink">"{rule.predictedClass}"</span>.
+                      {/if}
+                    </p>
+                    <p class="text-[11px] text-ink-faint font-mono nums">{rule.confidence}% {ruleConfidenceWord} · {rule.samples} {rule.samples === 1 ? ruleExampleWord : ruleExamplesWord}</p>
+                  </div>
                 </div>
               {/each}
             </div>
-
-            <div class="flex items-center justify-between text-xs font-bold text-ink-muted mt-2 border-t border-hairline pt-2">
-              <span>{$t('dt_rows_samples_label')} ({customData.length})</span>
-              <button on:click={addRow} class="text-dt hover:text-dt-ink cursor-pointer">{$t('dt_add_row_btn')}</button>
+          {:else if codeExportTab === 'python'}
+            {@const pythonCode = getPythonBoilerplate(activeTree, activeDataset.targetName, $locale)}
+            <div class="flex flex-col gap-3">
+              <div class="flex justify-between items-center bg-sunken border border-hairline/50 rounded-xl px-4 py-2.5 text-xs text-ink-muted">
+                <span class="font-semibold">{$t('dt_code_exporter_desc')}</span>
+                <button on:click={() => copyToClipboard(pythonCode)} class="bg-dt hover:bg-dt-ink text-white font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer text-[10px] flex items-center gap-1 shadow-xs shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                  {copyFeedback ? $t('dt_copied_success') : $t('dt_copy_btn')}
+                </button>
+              </div>
+              <div class="bg-ink rounded-2xl p-6 font-mono text-xs text-white/85 overflow-x-auto leading-relaxed shadow-inner max-h-[500px] border border-line/40"><pre class="whitespace-pre">{pythonCode}</pre></div>
             </div>
-
-            <!-- Spreadsheet Grid Editor -->
-            <div class="overflow-x-auto border border-hairline rounded-lg max-h-[220px] overflow-y-auto">
-              <table class="w-full text-left border-collapse text-[11px]">
-                <thead>
-                  <tr class="bg-sunken border-b border-hairline text-ink-faint">
-                    <th class="p-2 border-r border-hairline">#</th>
-                    {#each customFeatures as f}
-                      <th class="p-2 border-r border-hairline">{f}</th>
-                    {/each}
-                    <th class="p-2 border-r border-hairline text-dt font-bold">{customTargetName}</th>
-                    <th class="p-2 text-center"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {#each customData as row, rIdx}
-                    <tr class="border-b border-hairline/50 hover:bg-sunken/50">
-                      <td class="p-2 text-ink-faint font-mono text-[10px] border-r border-hairline/50 bg-sunken/20">{rIdx + 1}</td>
-                      {#each customFeatures as f}
-                        <td class="p-1 border-r border-hairline/50">
-                          {#if customFeatureTypes[f] === 'numerical'}
-                            <input 
-                              type="number" 
-                              bind:value={row[f]} 
-                              on:input={() => customData = customData}
-                              class="w-full bg-transparent border-0 outline-none p-1"
-                            />
-                          {:else}
-                            <input 
-                              type="text" 
-                              bind:value={row[f]} 
-                              on:input={() => customData = customData}
-                              class="w-full bg-transparent border-0 outline-none p-1"
-                            />
-                          {/if}
-                        </td>
-                      {/each}
-                      <td class="p-1 border-r border-hairline/50 font-bold">
-                        <input 
-                           type="text" 
-                          bind:value={row[customTargetName]} 
-                          on:input={() => customData = customData}
-                          class="w-full bg-transparent border-0 outline-none p-1 text-dt-ink font-bold"
-                        />
-                      </td>
-                      <td class="p-1 text-center">
-                        <button on:click={() => deleteRow(rIdx)} class="text-danger hover:text-danger-ink font-bold font-mono">×</button>
-                      </td>
-                    </tr>
-                  {/each}
-                </tbody>
-              </table>
+          {:else if codeExportTab === 'js'}
+            {@const jsCode = getJsBoilerplate(activeTree, activeDataset.targetName, $locale)}
+            <div class="flex flex-col gap-3">
+              <div class="flex justify-between items-center bg-sunken border border-hairline/50 rounded-xl px-4 py-2.5 text-xs text-ink-muted">
+                <span class="font-semibold">{$t('dt_code_exporter_desc')}</span>
+                <button on:click={() => copyToClipboard(jsCode)} class="bg-dt hover:bg-dt-ink text-white font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer text-[10px] flex items-center gap-1 shadow-xs shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                  {copyFeedback ? $t('dt_copied_success') : $t('dt_copy_btn')}
+                </button>
+              </div>
+              <div class="bg-ink rounded-2xl p-6 font-mono text-xs text-white/85 overflow-x-auto leading-relaxed shadow-inner max-h-[500px] border border-line/40"><pre class="whitespace-pre">{jsCode}</pre></div>
             </div>
+          {/if}
+        </div>
+      {/if}
+    </div>
 
-            <button 
-              on:click={saveDataset} 
-              class="w-full bg-warning text-white font-bold py-2.5 rounded-xl hover:bg-warning-ink transition-colors shadow-sm cursor-pointer text-xs"
-            >
-              {$t('dt_save_dataset_btn')}
-            </button>
+    <!-- Prediction -->
+    {#if trainedTree}
+      <section id="dt-predictor" class="bg-surface rounded-2xl border border-hairline/60 shadow-sm p-5 flex flex-col gap-4">
+        <div class="flex items-center gap-2.5">
+          <span class="w-6 h-6 rounded-full bg-dt text-white font-mono text-xs font-semibold flex items-center justify-center shrink-0">3</span>
+          <div class="leading-tight">
+            <h2 class="text-base text-ink">{$locale === 'pt' ? 'Experimenta uma previsão' : $locale === 'fr' ? 'Essaie une prédiction' : 'Try a prediction'}</h2>
+            <p class="text-[11px] text-ink-faint">{$t('dt_live_prediction_desc')}</p>
           </div>
-        {:else}
-          <div class="flex flex-col gap-3">
-            <h3 class="text-sm font-semibold text-ink uppercase tracking-wider leading-snug">{$t('dt_dataset_samples_title')}</h3>
-            
-            <div class="overflow-x-auto border border-hairline rounded-xl max-h-[350px]">
-              <table class="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr class="bg-sunken border-b border-hairline text-ink-faint">
-                    <th class="p-2.5 font-bold">#</th>
-                    {#each activeDataset.features as f}
-                      <th class="p-2.5 font-bold">{f}</th>
-                    {/each}
-                    <th class="p-2.5 font-bold text-warning-ink bg-warning-wash/50">{activeDataset.targetName}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {#each activeDataset.data as row, idx}
-                    <tr class="border-b border-hairline/50 hover:bg-sunken/50">
-                      <td class="p-2.5 text-ink-faint font-mono text-[10px]">{idx + 1}</td>
-                      {#each activeDataset.features as f}
-                        <td class="p-2.5 text-ink-muted font-medium">{row[f]}</td>
-                      {/each}
-                      <td class="p-2.5 font-bold text-warning-ink bg-warning-wash/10">{row[activeDataset.targetName]}</td>
-                    </tr>
-                  {/each}
-                </tbody>
-              </table>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {#each activeDataset.features as f}
+            <div class="flex flex-col gap-1.5">
+              <div class="flex items-center justify-between text-xs font-semibold">
+                <span class="text-ink-muted">{f}:</span>
+                <span class="text-ink font-bold font-mono">{predictorInputs[f] !== undefined ? predictorInputs[f] : ''}</span>
+              </div>
+              {#if activeDataset.featureTypes[f] === 'numerical'}
+                {@const minVal = Math.min(...activeDataset.data.map(d => Number(d[f])))}
+                {@const maxVal = Math.max(...activeDataset.data.map(d => Number(d[f])))}
+                <div class="flex items-center gap-3">
+                  <span class="text-[10px] text-ink-faint font-bold font-mono">{minVal}</span>
+                  <input type="range" min={minVal} max={maxVal} step={Math.round((maxVal - minVal) / 20 * 100) / 100 || 0.1} value={predictorInputs[f] || minVal} on:input={(e) => handlePredictorInput(f, (e.target as HTMLInputElement).value)} class="flex-1 accent-[var(--color-dt)] cursor-pointer h-1 bg-sunken rounded-lg appearance-none" />
+                  <span class="text-[10px] text-ink-faint font-bold font-mono">{maxVal}</span>
+                </div>
+              {:else}
+                {@const uniqueCats = Array.from(new Set(activeDataset.data.map(d => String(d[f]))))}
+                <select value={predictorInputs[f] || ''} on:change={(e) => handlePredictorInput(f, (e.target as HTMLSelectElement).value)} class="bg-sunken border border-hairline rounded-xl px-3 py-2 text-xs font-semibold text-ink-muted outline-none cursor-pointer focus:border-dt">
+                  {#each uniqueCats as cat}<option value={cat}>{cat}</option>{/each}
+                </select>
+              {/if}
             </div>
+          {/each}
+        </div>
+
+        <div class="bg-dt-wash border border-dt/30 rounded-2xl p-4 flex items-center justify-between">
+          <div class="flex flex-col">
+            <span class="text-[10px] font-semibold text-dt uppercase tracking-wider">{$t('dt_prediction_result_label')}</span>
+            <span class="text-base font-semibold text-ink mt-0.5">{predictionResult || $t('dt_prediction_none')}</span>
+          </div>
+          <div class="flex flex-col text-right">
+            <span class="text-[10px] font-semibold text-ink-faint uppercase tracking-wider">{$t('dt_leaf_confidence_label')}</span>
+            <span class="text-base font-semibold text-dt mt-0.5 font-mono">{predictionConfidence}%</span>
+          </div>
+        </div>
+
+        {#if predictionResult}
+          <div class="bg-sunken border border-hairline/60 rounded-2xl p-5 flex flex-col gap-2.5">
+            <h4 class="text-sm font-semibold text-ink flex items-center gap-1.5">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-dt"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+              {$locale === 'pt' ? 'Porquê?' : $locale === 'fr' ? 'Pourquoi ?' : 'Why?'}
+            </h4>
+            {#if whyPath.length > 0}
+              <p class="text-sm text-ink leading-relaxed">
+                {$locale === 'pt' ? 'A previsão é ' : $locale === 'fr' ? 'La prédiction est ' : 'The prediction is '}<strong class="font-semibold">"{predictionResult}"</strong>{$locale === 'pt' ? ' porque ' : $locale === 'fr' ? ' parce que ' : ' because '}{#each whyPath as cond, i}<span class="font-medium">{cond}</span>{#if i < whyPath.length - 1}<span class="text-ink-muted">{i === whyPath.length - 2 ? ` ${ruleAndWord} ` : ', '}</span>{/if}{/each}.
+              </p>
+              <p class="text-xs text-ink-muted leading-relaxed border-t border-hairline/60 pt-2.5">
+                {$locale === 'pt'
+                  ? `Seguindo estas condições, a árvore chega a um grupo de exemplos onde ${predictionConfidence}% são "${predictionResult}".`
+                  : $locale === 'fr'
+                    ? `En suivant ces conditions, l'arbre atteint un groupe d'exemples où ${predictionConfidence}% sont "${predictionResult}".`
+                    : `Following these conditions, the tree reaches a group of examples where ${predictionConfidence}% are "${predictionResult}".`}
+              </p>
+            {:else}
+              <p class="text-sm text-ink leading-relaxed">
+                {$locale === 'pt'
+                  ? `A árvore prevê sempre "${predictionResult}" — não há condições a verificar.`
+                  : $locale === 'fr'
+                    ? `L'arbre prédit toujours "${predictionResult}" — il n'y a aucune condition à vérifier.`
+                    : `The tree always predicts "${predictionResult}" — there are no conditions to check.`}
+              </p>
+            {/if}
           </div>
         {/if}
 
-        {#if trainedTree && Object.keys(featureImportance).length > 0}
-          <div class="mt-6 bg-surface backdrop-blur-md rounded-3xl p-6 border border-hairline/50 shadow-sm flex flex-col gap-4">
-            <div>
-              <h3 class="text-sm font-black text-ink uppercase tracking-wider flex items-center gap-1.5">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-dt"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
-                {$t('dt_feature_importance')}
-              </h3>
-              <p class="text-[10px] text-ink-faint font-semibold leading-relaxed mt-1">
-                {$t('dt_feature_importance_desc')}
-              </p>
-            </div>
-
-            <div class="flex flex-col gap-3 mt-1">
+        {#if Object.keys(featureImportance).length > 0}
+          <details class="group border-t border-hairline/60 pt-3">
+            <summary class="flex items-center gap-1.5 text-xs font-semibold text-ink-muted cursor-pointer select-none list-none hover:text-ink py-1">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="transition-transform group-open:rotate-90"><polyline points="9 18 15 12 9 6"/></svg>
+              {$t('dt_feature_importance')}
+            </summary>
+            <div class="flex flex-col gap-3 mt-3">
+              <p class="text-[11px] text-ink-faint leading-relaxed">{$t('dt_feature_importance_desc')}</p>
               {#each Object.entries(featureImportance).sort((a, b) => b[1] - a[1]) as [feat, val]}
                 {@const pct = Math.round(val * 100)}
                 <div class="flex flex-col gap-1">
@@ -1146,393 +1211,14 @@
                     <span class="text-dt">{pct}%</span>
                   </div>
                   <div class="w-full h-2 bg-sunken rounded-full overflow-hidden border border-hairline/30">
-                    <div class="h-full bg-gradient-to-r from-violet-500 to-dt rounded-full transition-all duration-500" style="width: {pct}%"></div>
+                    <div class="h-full bg-dt rounded-full transition-all duration-500" style="width: {pct}%"></div>
                   </div>
                 </div>
               {/each}
             </div>
-          </div>
+          </details>
         {/if}
-      </div>
+      </section>
     {/if}
-  </section>
-
-  <!-- RIGHT PANEL: INTERACTIVE DASHBOARD AND VISUALIZER -->
-  <section class="lg:col-span-8 flex flex-col gap-6 min-w-0">
-
-    <!-- Intro explanation banner -->
-    <div class="bg-gradient-to-r from-warning/10 via-dt/5 to-transparent rounded-2xl p-5 border border-warning/20 shadow-sm relative overflow-hidden group">
-      <div class="absolute -right-8 -bottom-8 w-24 h-24 bg-warning rounded-full blur-[35px] pointer-events-none opacity-20"></div>
-      <div class="flex items-start gap-3 relative z-10">
-        <div class="w-10 h-10 bg-warning-wash/10 rounded-xl flex items-center justify-center text-warning shrink-0 mt-0.5">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275Z"/></svg>
-        </div>
-        <div class="flex flex-col gap-1">
-          <h4 class="text-sm font-black text-ink">
-            {$locale === 'pt' ? 'O que é uma Árvore de Decisão?' : $locale === 'fr' ? 'Qu\'est-ce qu\'un Arbre de Décision ?' : 'What is a Decision Tree?'}
-          </h4>
-          <p class="text-xs text-ink-muted leading-relaxed font-semibold">
-            {$locale === 'pt' 
-              ? 'É uma sequência de perguntas simples (ex: "Está a chover? Sim ou Não") para chegar a uma decisão final. O computador cria estas regras automaticamente a partir do dataset!' 
-              : $locale === 'fr' 
-              ? 'C\'est une suite de questions simples (ex : "Pleut-il ? Oui ou Non") pour arriver à une décision. L\'ordinateur crée ces règles automatiquement à partir de votre dataset !' 
-              : 'It is a sequence of simple questions (e.g., "Is it raining? Yes or No") to reach a final decision. The computer builds these rules automatically from your dataset!'}
-          </p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Overfitting Analysis & Metrics Panel -->
-    <div id="dt-metrics" class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      
-      <!-- Metrics Card 1: Train/Test accuracies -->
-      <div class="bg-surface backdrop-blur-md rounded-2xl p-6 border border-hairline/50 shadow-sm flex flex-col justify-between">
-        <span class="text-[10px] font-black text-ink-faint uppercase tracking-widest">{$t('dt_model_accuracy_label')}</span>
-        <div class="flex items-baseline gap-2 mt-2">
-          <span class="text-3xl font-black text-success">{(testAccuracy * 100).toFixed(0)}%</span>
-          <span class="text-xs text-ink-faint">{$t('dt_on_test_label')}</span>
-        </div>
-        
-        <div class="mt-4 flex items-center justify-between text-xs border-t border-hairline pt-3">
-          <span class="text-ink-faint font-semibold">{$t('dt_train_accuracy_label')}</span>
-          <span class="font-bold text-ink-muted font-mono">{(trainAccuracy * 100).toFixed(0)}%</span>
-        </div>
-      </div>
-
-      <!-- Metrics Card 2: Overfitting warning checker -->
-      {#if unprunedTrainAccuracy === 1 && unprunedTestAccuracy < 0.75}
-        <div class="bg-rose-50/80 backdrop-blur-md rounded-2xl p-6 border border-rose-200/50 shadow-sm flex flex-col justify-between relative overflow-hidden group">
-          <!-- Ambient overlay glow -->
-          <div class="absolute -right-8 -top-8 w-24 h-24 bg-rose-200 rounded-full blur-[35px] pointer-events-none opacity-40"></div>
-          
-          <div class="flex items-center gap-1.5">
-            <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
-            <span class="text-[10px] font-black text-rose-500 uppercase tracking-widest">{$t('dt_overfitting_alert_title')}</span>
-          </div>
-          
-          <p class="text-xs text-rose-950/80 leading-relaxed font-semibold mt-2.5">
-            {$t('dt_overfitting_alert_text_start')} <strong class="text-rose-600">100%</strong> {$t('dt_overfitting_alert_text_mid')} <strong class="text-rose-600">{(unprunedTestAccuracy * 100).toFixed(0)}%</strong>{$t('dt_overfitting_alert_text_end')}
-          </p>
-
-          <div class="mt-3 p-2 bg-rose-100/40 rounded-lg border border-rose-200/30 text-[10px] text-rose-900 leading-snug font-medium">
-            <strong>{$locale === 'pt' ? 'Decorar vs Aprender' : $locale === 'fr' ? 'Mémoriser vs Apprendre' : 'Memorize vs Learn'}:</strong>
-            {$locale === 'pt' 
-              ? 'O modelo decorou as perguntas do treino. Ao mudar a pergunta no teste real, ele falha porque não percebeu as regras gerais!' 
-              : $locale === 'fr' 
-              ? 'Le modèle a mémorisé par cœur. Si on change un chiffre à l\'examen réel, il échoue car il n\'a pas compris la règle générale !' 
-              : 'The model memorized the training questions. When asked new questions in the real test, it fails because it didn\'t learn the general rules!'}
-          </div>
-        </div>
-      {:else}
-        <div class="bg-dt-wash/80 backdrop-blur-md rounded-2xl p-6 border border-dt/30 shadow-sm flex flex-col justify-between relative overflow-hidden">
-          <div class="absolute -right-8 -top-8 w-24 h-24 bg-dt/20 rounded-full blur-[35px] pointer-events-none opacity-30"></div>
-          <span class="text-[10px] font-black text-dt uppercase tracking-widest">{$t('dt_physical_stats_title')}</span>
-          <div class="grid grid-cols-2 gap-4 mt-2">
-            <div>
-              <span class="text-2xl font-black text-ink">{trainedTree ? countNodes(trainedTree).splits : 0}</span>
-              <p class="text-[9px] font-bold text-dt uppercase tracking-wider">{$t('dt_stats_splits')}</p>
-            </div>
-            <div>
-              <span class="text-2xl font-black text-ink">{trainedTree ? countNodes(trainedTree).leaves : 0}</span>
-              <p class="text-[9px] font-bold text-dt uppercase tracking-wider">{$t('dt_stats_leaves')}</p>
-            </div>
-          </div>
-          <div class="text-[10px] font-bold text-dt-ink mt-2">
-            {$t('dt_depth_label')}: {trainedTree ? countNodes(trainedTree).maxDepth : 0} {$t('dt_levels_label')}
-          </div>
-        </div>
-      {/if}
-
-      <!-- Metrics Card 3: Post-Pruning Actions -->
-      <div class="bg-surface backdrop-blur-md rounded-2xl p-6 border border-hairline/50 shadow-sm flex flex-col justify-between">
-        <span class="text-[10px] font-black text-ink-faint uppercase tracking-widest">{$t('dt_post_pruning_title')}</span>
-        
-        {#if !isPostPrunedApplied}
-          <p class="text-xs text-ink-faint leading-snug mt-2">
-            {$t('dt_post_pruning_desc')}
-          </p>
-          <div class="mt-2 text-[10px] text-ink-faint leading-snug font-medium">
-            <strong>{$locale === 'pt' ? 'O que é a Poda?' : $locale === 'fr' ? 'Qu\'est-ce que l\'élagage ?' : 'What is Pruning?'}:</strong>
-            {$locale === 'pt' 
-              ? 'Corta os ramos desnecessários ou inúteis para simplificar a árvore, tornando-a melhor a adivinhar novas situações.' 
-              : $locale === 'fr' 
-              ? 'Coupe les branches inutiles pour simplifier l\'arbre et le rendre meilleur pour de nouvelles situations.' 
-              : 'Trims unnecessary branches to simplify the tree, making it better at predicting new situations.'}
-          </div>
-          <button
-            on:click={applyPostPruning}
-            class="w-full mt-3 bg-warning hover:bg-warning-ink text-white font-extrabold py-2 rounded-xl text-xs transition-colors shadow-sm cursor-pointer"
-          >
-            {$t('dt_run_post_pruning_btn')}
-          </button>
-        {:else}
-          {@const unprunedTotal = unprunedStats.splits + unprunedStats.leaves}
-          {@const prunedTotal = prunedStats.splits + prunedStats.leaves}
-          {@const reduction = unprunedTotal > 0 ? Math.round((1 - prunedTotal / unprunedTotal) * 100) : 0}
-          <div class="mt-2 text-xs text-success-ink bg-success-wash border border-success/20 p-2.5 rounded-xl font-medium leading-tight flex flex-col gap-1.5 shadow-xs">
-            <span class="font-extrabold flex items-center gap-1">
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-              {$t('dt_post_pruning_success')}
-            </span>
-            <div class="text-[10px] text-success-ink/90 font-bold border-t border-success/30 pt-1.5 flex flex-col gap-1 font-mono">
-              <div>{$t('dt_pruned_telemetry_original')}: {unprunedTotal} {$t('dt_pruned_telemetry_nodes')} ({unprunedStats.splits} splits, {unprunedStats.leaves} leaves)</div>
-              <div>{$t('dt_pruned_telemetry_pruned')}: {prunedTotal} {$t('dt_pruned_telemetry_nodes')} ({prunedStats.splits} splits, {prunedStats.leaves} leaves)</div>
-              <div class="text-xs font-black text-success uppercase tracking-wide border-t border-success/20 pt-1 mt-0.5">
-                {$t('dt_pruned_telemetry_reduction')}: {reduction}% {$t('dt_pruned_telemetry_fewer')}
-              </div>
-            </div>
-          </div>
-          <button
-            on:click={triggerTrain}
-            class="w-full mt-3 bg-sunken hover:bg-sunken text-ink-muted font-extrabold py-2 rounded-xl text-xs transition-colors border border-hairline cursor-pointer"
-          >
-            {$t('dt_remove_pruning_btn')}
-          </button>
-        {/if}
-      </div>
-
-    </div>
-
-    <!-- Tree Visualizer Canvas / Text Mode -->
-    {#if trainedTree}
-      {@const activeTree = isPostPrunedApplied && postPrunedTree ? postPrunedTree : trainedTree}
-      <div id="dt-viz" class="bg-surface backdrop-blur-md rounded-3xl p-6 border border-hairline/50 shadow-sm flex flex-col gap-4 min-w-0">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-hairline pb-4">
-          <h3 class="text-sm font-black text-ink uppercase tracking-wider flex items-center gap-1.5 shrink-0">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="5" r="3"/><circle cx="6" cy="19" r="3"/><circle cx="18" cy="19" r="3"/><path d="M12 8v8M12 12H6M12 12h6"/></svg>
-            {$t('dt_decision_rules_title')}
-          </h3>
-          <div class="flex items-center bg-sunken p-0.5 rounded-lg border border-hairline gap-0.5 self-start md:self-auto overflow-x-auto max-w-full whitespace-nowrap shrink-0">
-            <button
-              on:click={() => codeExportTab = 'graph'}
-              class="px-2.5 py-1 text-[10px] font-extrabold rounded-md cursor-pointer transition-all {codeExportTab === 'graph' ? 'bg-surface text-dt shadow-xs' : 'text-ink-faint hover:text-ink-muted'}"
-            >
-              {$t('dt_view_graph')}
-            </button>
-            <button
-              on:click={() => codeExportTab = 'rules'}
-              class="px-2.5 py-1 text-[10px] font-extrabold rounded-md cursor-pointer transition-all {codeExportTab === 'rules' ? 'bg-surface text-dt shadow-xs' : 'text-ink-faint hover:text-ink-muted'}"
-            >
-              {$t('dt_rules_tab')}
-            </button>
-            <button
-              on:click={() => codeExportTab = 'python'}
-              class="px-2.5 py-1 text-[10px] font-extrabold rounded-md cursor-pointer transition-all {codeExportTab === 'python' ? 'bg-surface text-dt shadow-xs' : 'text-ink-faint hover:text-ink-muted'}"
-            >
-              {$t('dt_export_python')}
-            </button>
-            <button
-              on:click={() => codeExportTab = 'js'}
-              class="px-2.5 py-1 text-[10px] font-extrabold rounded-md cursor-pointer transition-all {codeExportTab === 'js' ? 'bg-surface text-dt shadow-xs' : 'text-ink-faint hover:text-ink-muted'}"
-            >
-              {$t('dt_export_js')}
-            </button>
-          </div>
-        </div>
-
-        {#if codeExportTab === 'graph'}
-          <div class="relative group overflow-hidden">
-            <TabularDecisionTreeViz 
-              tree={activeTree} 
-              targetClasses={activeDataset.targetClasses}
-              highlightPath={highlightPath}
-            />
-          </div>
-        {:else if codeExportTab === 'rules'}
-          <div class="bg-sunken rounded-2xl p-6 shadow-inner max-h-[500px] overflow-y-auto flex flex-col gap-3 border border-hairline/60 font-sans">
-            {#each extractNaturalRules(activeTree, $locale) as rule, ruleIndex}
-              <div class="flex items-start gap-3.5 p-3.5 bg-surface border border-hairline/50 rounded-xl transition-all hover:bg-raised shadow-xs">
-                <span class="w-5.5 h-5.5 rounded-full bg-dt-wash text-dt text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
-                  {ruleIndex + 1}
-                </span>
-                <div class="text-xs leading-relaxed">
-                  <div class="text-ink-muted">
-                    {#if rule.conditions.length > 0}
-                      <span>
-                        {#if $locale === 'pt'}
-                          Se {@html formatConditionsHtml(rule.conditions, $locale)}, então a previsão é
-                        {:else if $locale === 'fr'}
-                          Si {@html formatConditionsHtml(rule.conditions, $locale)}, alors la prévision est
-                        {:else}
-                          If {@html formatConditionsHtml(rule.conditions, $locale)}, then the prediction is
-                        {/if}
-                      </span>
-                    {:else}
-                      <span>
-                        {#if $locale === 'pt'}
-                          A previsão é sempre
-                        {:else if $locale === 'fr'}
-                          La prévision est toujours
-                        {:else}
-                          The prediction is always
-                        {/if}
-                      </span>
-                    {/if}
-                    <span class="bg-dt-wash border border-dt/20 text-dt-ink px-2 py-0.5 rounded-md font-bold mx-1 whitespace-nowrap">
-                      "{rule.predictedClass}"
-                    </span>
-                  </div>
-                  <div class="text-ink-faint text-[10px] font-medium font-mono mt-1">
-                    {#if $locale === 'pt'}
-                      Confiança: {rule.confidence}% · Amostras: {rule.samples}
-                    {:else if $locale === 'fr'}
-                      Confiance : {rule.confidence}% · Échantillons : {rule.samples}
-                    {:else}
-                      Confidence: {rule.confidence}% · Samples: {rule.samples}
-                    {/if}
-                  </div>
-                </div>
-              </div>
-            {/each}
-          </div>
-        {:else if codeExportTab === 'python'}
-          {@const pythonCode = getPythonBoilerplate(activeTree, activeDataset.targetName, $locale)}
-          <div class="flex flex-col gap-3">
-            <div class="flex justify-between items-center bg-sunken border border-hairline/50 rounded-xl px-4 py-2.5 text-xs text-ink-muted">
-              <span class="font-semibold">{$t('dt_code_exporter_desc')}</span>
-              <button
-                on:click={() => copyToClipboard(pythonCode)}
-                class="bg-dt hover:bg-dt-ink text-white font-extrabold px-3 py-1.5 rounded-lg transition-colors cursor-pointer text-[10px] flex items-center gap-1 shadow-xs shrink-0"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-                {copyFeedback ? $t('dt_copied_success') : $t('dt_copy_btn')}
-              </button>
-            </div>
-            <div class="bg-ink rounded-2xl p-6 font-mono text-xs text-white/85 overflow-x-auto leading-relaxed shadow-inner max-h-[500px] border border-hairline/40">
-              <pre class="whitespace-pre">{pythonCode}</pre>
-            </div>
-          </div>
-        {:else if codeExportTab === 'js'}
-          {@const jsCode = getJsBoilerplate(activeTree, activeDataset.targetName, $locale)}
-          <div class="flex flex-col gap-3">
-            <div class="flex justify-between items-center bg-sunken border border-hairline/50 rounded-xl px-4 py-2.5 text-xs text-ink-muted">
-              <span class="font-semibold">{$t('dt_code_exporter_desc')}</span>
-              <button
-                on:click={() => copyToClipboard(jsCode)}
-                class="bg-dt hover:bg-dt-ink text-white font-extrabold px-3 py-1.5 rounded-lg transition-colors cursor-pointer text-[10px] flex items-center gap-1 shadow-xs shrink-0"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-                {copyFeedback ? $t('dt_copied_success') : $t('dt_copy_btn')}
-              </button>
-            </div>
-            <div class="bg-ink rounded-2xl p-6 font-mono text-xs text-white/85 overflow-x-auto leading-relaxed shadow-inner max-h-[500px] border border-hairline/40">
-              <pre class="whitespace-pre">{jsCode}</pre>
-            </div>
-          </div>
-        {/if}
-      </div>
-    {/if}
-
-    <!-- Interactive Real-time Predictor -->
-    <div id="dt-predictor" class="bg-surface backdrop-blur-md rounded-3xl p-6 border border-hairline/50 shadow-sm flex flex-col justify-between">
-      <div class="flex flex-col gap-1">
-        <h3 class="text-sm font-semibold text-ink uppercase tracking-wider leading-snug">{$t('dt_step_live_prediction')}</h3>
-        <p class="text-xs text-ink-faint leading-snug">
-          {$t('dt_live_prediction_desc')}
-        </p>
-      </div>
-
-      <div class="flex flex-col gap-4 mt-6">
-        {#each activeDataset.features as f}
-          <div class="flex flex-col gap-1.5">
-            <div class="flex items-center justify-between text-xs font-semibold">
-              <span class="text-ink-muted">{f}:</span>
-              <span class="text-ink font-bold font-mono">{predictorInputs[f] !== undefined ? predictorInputs[f] : ''}</span>
-            </div>
-            
-            {#if activeDataset.featureTypes[f] === 'numerical'}
-              <!-- Numerical Slider -->
-              {@const minVal = Math.min(...activeDataset.data.map(d => Number(d[f])))}
-              {@const maxVal = Math.max(...activeDataset.data.map(d => Number(d[f])))}
-              <div class="flex items-center gap-3">
-                <span class="text-[10px] text-ink-faint font-bold font-mono">{minVal}</span>
-                <input
-                  type="range"
-                  min={minVal}
-                  max={maxVal}
-                  step={Math.round((maxVal - minVal) / 20 * 100) / 100 || 0.1}
-                  value={predictorInputs[f] || minVal}
-                  on:input={(e) => handlePredictorInput(f, (e.target as HTMLInputElement).value)}
-                  class="flex-1 accent-dt cursor-pointer h-1 bg-sunken rounded-lg appearance-none"
-                />
-                <span class="text-[10px] text-ink-faint font-bold font-mono">{maxVal}</span>
-              </div>
-            {:else}
-              <!-- Categorical Dropdown -->
-              {@const uniqueCats = Array.from(new Set(activeDataset.data.map(d => String(d[f]))))}
-              <select
-                value={predictorInputs[f] || ''}
-                on:change={(e) => handlePredictorInput(f, (e.target as HTMLSelectElement).value)}
-                class="bg-sunken border border-hairline rounded-xl px-3 py-2 text-xs font-semibold text-ink-muted outline-none cursor-pointer"
-              >
-                {#each uniqueCats as cat}
-                  <option value={cat}>{cat}</option>
-                {/each}
-              </select>
-            {/if}
-          </div>
-        {/each}
-      </div>
-
-      <!-- Resulting Live Decision Card -->
-      <div class="mt-6 bg-gradient-to-r from-dt/10 to-teal-500/10 border border-dt/20 rounded-2xl p-4 flex items-center justify-between">
-        <div class="flex flex-col">
-          <span class="text-[10px] font-black text-dt uppercase tracking-wider">{$t('dt_prediction_result_label')}</span>
-          <span class="text-base font-black text-ink mt-0.5">{predictionResult || $t('dt_prediction_none')}</span>
-        </div>
-        <div class="flex flex-col text-right">
-          <span class="text-[10px] font-black text-teal-600 uppercase tracking-wider">{$t('dt_leaf_confidence_label')}</span>
-          <span class="text-base font-black text-teal-800 mt-0.5 font-mono">{predictionConfidence}%</span>
-        </div>
-      </div>
-
-      <!-- Simplified Active Prediction Rules Path -->
-      {#if trainedTree && predictionResult}
-        <div class="mt-4 bg-sunken border border-hairline/60 rounded-2xl p-5 flex flex-col gap-2">
-          <h4 class="text-[10px] font-black text-dt uppercase tracking-widest flex items-center gap-1.5">
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><path d="M6 9v12"/></svg>
-            {#if $locale === 'pt'}
-              Porquê? (Caminho de Decisão)
-            {:else if $locale === 'fr'}
-              Pourquoi ? (Chemin de Décision)
-            {:else}
-              Why? (Decision Path)
-            {/if}
-          </h4>
-          <p class="text-[9px] font-bold text-ink-faint uppercase tracking-wider">
-            {#if $locale === 'pt'}
-              Regras simplificadas em linguagem natural
-            {:else if $locale === 'fr'}
-              Règles simplifiées en langage naturel
-            {:else}
-              Simplified rules in natural language
-            {/if}
-          </p>
-          
-          {#if simplifiedRulesPath.length > 0}
-            <div class="flex flex-wrap items-center gap-2.5 mt-2">
-              {#each simplifiedRulesPath as rule, index}
-                <span class="bg-dt-wash border border-dt/15 text-dt-ink px-3.5 py-1.5 rounded-xl text-xs font-sans font-semibold shadow-xs">
-                  {@html formatConditionsHtml([rule], $locale)}
-                </span>
-                {#if index < simplifiedRulesPath.length - 1}
-                  <span class="text-[9px] font-black text-dt bg-dt-wash/50 px-2 py-1 rounded-lg uppercase tracking-wider font-sans">
-                    {$locale === 'pt' ? 'E' : $locale === 'fr' ? 'ET' : 'AND'}
-                  </span>
-                {/if}
-              {/each}
-              <div class="flex items-center gap-1.5 w-full border-t border-hairline/50 pt-2.5 mt-2 text-xs font-semibold text-ink-muted">
-                <span class="text-[10px] font-black text-dt uppercase tracking-wider">➔</span>
-                {$locale === 'pt' ? 'Previsão:' : $locale === 'fr' ? 'Prévision :' : 'Prediction:'}
-                <strong class="text-ink font-extrabold">{predictionResult}</strong>
-                <span class="text-[10px] text-ink-faint">({predictionConfidence}% {$locale === 'pt' ? 'de confiança' : $locale === 'fr' ? 'de confiance' : 'confidence'})</span>
-              </div>
-            </div>
-          {:else}
-            <p class="text-xs text-ink-faint font-medium italic mt-1">{$t('dt_rule_path_none')}</p>
-          {/if}
-        </div>
-      {/if}
-    </div>
-  </section>
+  </div>
 </div>
