@@ -169,7 +169,7 @@
   "dt_subtab_train_prune": "Treino e Poda",
   "dt_subtab_dataset_data": "Dados do Dataset",
   "dt_step_tree_params": "2. Parâmetros da Árvore",
-  "dt_split_ratio_label": "Train/Test Split Ratio:",
+  "dt_split_ratio_label": "Proporção Treino/Teste:",
   "dt_split_criterion_label": "Critério de Divisão:",
   "dt_gini_impurity": "Impureza Gini",
   "dt_entropy_gain": "Entropia (Ganho Info)",
@@ -323,5 +323,6 @@
   "dt_tour_step6_title": "Visualiza e exporta",
   "dt_tour_step6_desc": "Vê a árvore como grafo, lê as regras em texto IF/ELSE, ou exporta o modelo como código Python/JavaScript. Podes ainda aplicar pós-poda para simplificar a árvore.",
   "dt_tour_step7_title": "Preditor interativo",
-  "dt_tour_step7_desc": "Preenche os valores das características e vê a previsão em tempo real, com o caminho de decisão a iluminar-se na árvore."
+  "dt_tour_step7_desc": "Preenche os valores das características e vê a previsão em tempo real, com o caminho de decisão a iluminar-se na árvore.",
+  "dtree_fit": "Ajustar"
 }

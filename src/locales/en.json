@@ -323,5 +323,6 @@
   "dt_tour_step6_title": "Visualize and export",
   "dt_tour_step6_desc": "View the tree as a graph, read the rules as IF/ELSE text, or export the model as Python/JavaScript code. You can also apply post-pruning to simplify the tree.",
   "dt_tour_step7_title": "Interactive predictor",
-  "dt_tour_step7_desc": "Fill in the feature values and watch the prediction update in real time, with the decision path lighting up on the tree."
+  "dt_tour_step7_desc": "Fill in the feature values and watch the prediction update in real time, with the decision path lighting up on the tree.",
+  "dtree_fit": "Fit"
 }

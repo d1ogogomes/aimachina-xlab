@@ -107,17 +107,22 @@
 
   const PAD = 30;
   $: vb = `${-PAD} ${-PAD} ${svgW + PAD * 2} ${svgH + PAD * 2}`;
+  $: aspect = (svgW + PAD * 2) / (svgH + PAD * 2);
 
   let scrollEl: HTMLDivElement;
 
-  // Drag-to-pan controls
+  // Default: scale the whole tree to fit the panel (no scrolling). The user
+  // can switch to 1:1 to inspect a large tree, where drag-to-pan kicks in.
+  let fitView = true;
+
+  // Drag-to-pan controls (1:1 mode only)
   let isDragging = false;
   let dragStartX = 0;
   let dragStartScrollLeft = 0;
 
   function onPointerDown(e: PointerEvent) {
-    // Only drag with left click
-    if (e.button !== 0) return;
+    // Only drag with left click, and only when not fitted to view
+    if (fitView || e.button !== 0) return;
     isDragging = true;
     dragStartX = e.clientX;
     dragStartScrollLeft = scrollEl.scrollLeft;
@@ -142,30 +147,48 @@
 
   let _centeredForTree: TabularTreeNode | null = null;
   afterUpdate(() => {
-    if (tree === _centeredForTree || !scrollEl) return;
+    if (fitView || tree === _centeredForTree || !scrollEl) return;
     _centeredForTree = tree;
     const center = svgW / 2 - scrollEl.clientWidth / 2;
     if (center > 0) scrollEl.scrollLeft = center;
   });
 </script>
 
-<div class="border border-zinc-200 rounded-2xl shadow-sm bg-white overflow-hidden relative">
+<div class="border border-hairline rounded-2xl shadow-sm bg-surface overflow-hidden relative">
 
   <!-- Legend Header Bar -->
-  <div class="px-6 py-4 border-b border-zinc-100 flex flex-wrap items-center justify-between gap-4 bg-zinc-50/50">
+  <div class="px-6 py-4 border-b border-hairline flex flex-wrap items-center justify-between gap-4 bg-sunken/50">
     <div class="flex items-center gap-2">
-      <span class="w-2.5 h-2.5 bg-indigo-600 rounded-full animate-pulse"></span>
-      <span class="text-sm font-bold text-zinc-800">{$t('dtree_title')}</span>
+      <span class="w-2.5 h-2.5 bg-brand rounded-full animate-pulse"></span>
+      <span class="text-sm font-bold text-ink-muted">{$t('dtree_title')}</span>
     </div>
     
     <div class="flex flex-wrap items-center gap-3">
-      <span class="text-xs text-zinc-400 font-medium">Classes:</span>
+      <span class="text-xs text-ink-faint font-medium">Classes:</span>
       {#each targetClasses as cls (cls)}
-        <div class="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-full border border-zinc-200/60 shadow-sm text-xs font-semibold">
+        <div class="flex items-center gap-1.5 bg-surface px-2.5 py-1 rounded-full border border-hairline/60 shadow-sm text-xs font-semibold">
           <span class="w-2.5 h-2.5 rounded-full" style="background:{color(cls)}"></span>
-          <span class="text-zinc-600">{cls}</span>
+          <span class="text-ink-muted">{cls}</span>
         </div>
       {/each}
+
+      <!-- Fit / 1:1 zoom toggle -->
+      <div class="flex items-center gap-0.5 bg-sunken p-0.5 rounded-lg border border-hairline ml-1">
+        <button
+          on:click={() => (fitView = true)}
+          aria-pressed={fitView}
+          class="px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors cursor-pointer {fitView ? 'bg-surface text-ink shadow-xs' : 'text-ink-faint hover:text-ink'}"
+        >
+          {$t('dtree_fit', 'Fit')}
+        </button>
+        <button
+          on:click={() => (fitView = false)}
+          aria-pressed={!fitView}
+          class="px-2.5 py-1 text-[11px] font-mono font-medium rounded-md transition-colors cursor-pointer {!fitView ? 'bg-surface text-ink shadow-xs' : 'text-ink-faint hover:text-ink'}"
+        >
+          1:1
+        </button>
+      </div>
     </div>
   </div>
 
@@ -174,8 +197,12 @@
     bind:this={scrollEl}
     role="region"
     aria-label={$t('dtree_title')}
-    class="overflow-x-auto bg-[#fafafd] min-h-[400px] flex items-center select-none"
-    style="will-change: scroll-position; cursor:{isDragging ? 'grabbing' : 'grab'}; touch-action:none;"
+    class="bg-[var(--color-paper)] flex items-center justify-center select-none {fitView
+      ? 'overflow-hidden w-full'
+      : 'overflow-x-auto min-h-[400px]'}"
+    style={fitView
+      ? `aspect-ratio:${aspect}; max-height:72vh;`
+      : `min-height:400px; will-change:scroll-position; cursor:${isDragging ? 'grabbing' : 'grab'}; touch-action:none;`}
     on:pointerdown={onPointerDown}
     on:pointermove={onPointerMove}
     on:pointerup={onPointerUp}
@@ -184,25 +211,26 @@
   >
     <svg
       viewBox={vb}
-      width={svgW + PAD * 2}
-      height={svgH + PAD * 2}
-      style="display:block; min-width:{svgW + PAD * 2}px; margin: 0 auto;"
+      width={fitView ? '100%' : svgW + PAD * 2}
+      height={fitView ? '100%' : svgH + PAD * 2}
+      preserveAspectRatio="xMidYMid meet"
+      style="display:block; {fitView ? 'max-height:72vh;' : `min-width:${svgW + PAD * 2}px; margin:0 auto;`}"
       font-family="system-ui, -apple-system, sans-serif"
     >
       <defs>
         <!-- Modern Grid Pattern -->
         <pattern id="dot-grid" width="22" height="22" patternUnits="userSpaceOnUse">
-          <circle cx="11" cy="11" r="0.85" fill="#e2e8f0" />
+          <circle cx="11" cy="11" r="0.85" fill="var(--color-hairline)" />
         </pattern>
 
         <!-- Premium Standard Card Shadow -->
         <filter id="standard-shadow" x="-10%" y="-10%" width="120%" height="120%">
-          <feDropShadow dx="0" dy="4" stdDeviation="4.5" flood-color="#0f172a" flood-opacity="0.04" />
+          <feDropShadow dx="0" dy="4" stdDeviation="4.5" flood-color="var(--color-ink)" flood-opacity="0.04" />
         </filter>
 
         <!-- Glowing active path split shadow -->
         <filter id="active-split-glow" x="-20%" y="-20%" width="140%" height="140%">
-          <feDropShadow dx="0" dy="5" stdDeviation="6" flood-color="#6366f1" flood-opacity="0.22" />
+          <feDropShadow dx="0" dy="5" stdDeviation="6" flood-color="var(--color-dt)" flood-opacity="0.22" />
         </filter>
 
         <!-- Glowing active path leaf shadows -->
@@ -223,7 +251,7 @@
           <path
             d="M{edge.x1},{edge.y1} C{edge.x1},{edge.y1 + 25} {edge.x2},{edge.y2 - 25} {edge.x2},{edge.y2}"
             fill="none"
-            stroke="#c7d2fe"
+            stroke="var(--color-dt-wash)"
             stroke-width="7"
             stroke-linecap="round"
             opacity="0.5"
@@ -234,7 +262,7 @@
         <path
           d="M{edge.x1},{edge.y1} C{edge.x1},{edge.y1 + 25} {edge.x2},{edge.y2 - 25} {edge.x2},{edge.y2}"
           fill="none"
-          stroke={edge.isHighlighted ? '#6366f1' : '#cbd5e1'}
+          stroke={edge.isHighlighted ? 'var(--color-dt)' : 'var(--color-line)'}
           stroke-width={edge.isHighlighted ? '3.5' : '1.8'}
           stroke-linecap="round"
           stroke-dasharray={edge.isHighlighted ? 'none' : '4,4'}
@@ -251,8 +279,8 @@
               width={textLen}
               height="20"
               rx="10"
-              fill={edge.isHighlighted ? '#4f46e5' : '#ffffff'}
-              stroke={edge.isHighlighted ? '#6366f1' : '#e2e8f0'}
+              fill={edge.isHighlighted ? 'var(--color-dt)' : 'var(--color-surface)'}
+              stroke={edge.isHighlighted ? 'var(--color-dt)' : 'var(--color-hairline)'}
               stroke-width="1"
               filter="url(#standard-shadow)"
               class="transition-all duration-300"
@@ -261,7 +289,7 @@
               y="1"
               font-size="9"
               font-weight="800"
-              fill={edge.isHighlighted ? '#ffffff' : '#475569'}
+              fill={edge.isHighlighted ? 'var(--color-surface)' : 'var(--color-ink-muted)'}
               text-anchor="middle"
               dominant-baseline="middle"
               class="transition-all duration-300 font-mono"
@@ -290,9 +318,9 @@
               width={NODE_W}
               height={NODE_H}
               rx="14"
-              fill="#ffffff"
+              fill="var(--color-surface)"
               fill-opacity="0.98"
-              stroke={isOnPath ? '#4f46e5' : '#e2e8f0'}
+              stroke={isOnPath ? 'var(--color-dt)' : 'var(--color-hairline)'}
               stroke-width={isOnPath ? '3' : '1.5'}
               filter={isOnPath ? 'url(#active-split-glow)' : 'url(#standard-shadow)'}
               class="transition-all duration-300"
@@ -300,16 +328,16 @@
 
             <!-- Feature Name Tag (dynamic width based on text length to prevent overflow) -->
             {@const featureTagW = Math.min(NODE_W - 24, n.featureName.length * 6.5 + 16)}
-            <rect x={NODE_W/2 - featureTagW/2} y="10" width={featureTagW} height="16" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+            <rect x={NODE_W/2 - featureTagW/2} y="10" width={featureTagW} height="16" rx="8" fill="var(--color-paper)" stroke="var(--color-hairline)" stroke-width="1"/>
             <text x={NODE_W/2} y="18"
-              font-size="9" font-weight="800" fill="#64748b"
+              font-size="9" font-weight="800" fill="var(--color-ink-muted)"
               text-anchor="middle" dominant-baseline="middle" letter-spacing="0.3">
               {n.featureName.toUpperCase()}
             </text>
 
             <!-- Condition description -->
             <text x={NODE_W/2} y="40"
-              font-size="13.5" font-weight="800" fill="#0f172a"
+              font-size="13.5" font-weight="800" fill="var(--color-ink)"
               text-anchor="middle" dominant-baseline="middle" class="font-mono">
               {#if n.featureType === 'numerical'}
                 ≤ {typeof n.threshold === 'number' ? Math.round(n.threshold * 1000) / 1000 : n.threshold}
@@ -320,13 +348,13 @@
 
             <!-- Stats footer -->
             <text x={NODE_W/2} y="56"
-              font-size="9" font-weight="600" fill="#94a3b8"
+              font-size="9" font-weight="600" fill="var(--color-ink-faint)"
               text-anchor="middle" dominant-baseline="middle">
               n={n.samples} · gini={n.gini}
             </text>
 
             <!-- Dist Bar backing -->
-            <rect x={BAR_X} y={BAR_Y} width={BAR_W} height={BAR_H} rx="3" fill="#f1f5f9"/>
+            <rect x={BAR_X} y={BAR_Y} width={BAR_W} height={BAR_H} rx="3" fill="var(--color-sunken)"/>
             {#each bars as seg, si (seg.cls)}
               <rect
                 x={BAR_X + BAR_W * seg.offset / 100}
@@ -346,9 +374,9 @@
               width={NODE_W}
               height={NODE_H}
               rx="14"
-              fill="#ffffff"
+              fill="var(--color-surface)"
               fill-opacity="0.98"
-              stroke={isOnPath && classIdx >= 0 ? color(maj) : '#e2e8f0'}
+              stroke={isOnPath && classIdx >= 0 ? color(maj) : 'var(--color-hairline)'}
               stroke-width={isOnPath ? '3' : '1.5'}
               filter={isOnPath && classIdx >= 0 ? 'url(#leaf-glow-' + classIdx + ')' : 'url(#standard-shadow)'}
               class="transition-all duration-300"
@@ -366,7 +394,7 @@
 
             <!-- Majority Class Name -->
             <text x={NODE_W/2 + 3} y="22"
-              font-size="13" font-weight="800" fill="#0f172a"
+              font-size="13" font-weight="800" fill="var(--color-ink)"
               text-anchor="middle" dominant-baseline="middle">
               {maj}
             </text>
@@ -381,13 +409,13 @@
 
             <!-- Sample count and impurity -->
             <text x={NODE_W/2} y="56"
-              font-size="9" font-weight="600" fill="#64748b"
+              font-size="9" font-weight="600" fill="var(--color-ink-muted)"
               text-anchor="middle" dominant-baseline="middle">
               n={n.samples} · gini={n.gini}
             </text>
 
             <!-- Dist Bar backing -->
-            <rect x={BAR_X} y={BAR_Y} width={BAR_W} height={BAR_H} rx="3" fill="#00000010"/>
+            <rect x={BAR_X} y={BAR_Y} width={BAR_W} height={BAR_H} rx="3" fill="var(--color-ink)10"/>
             {#each bars as seg, si (seg.cls)}
               <rect
                 x={BAR_X + BAR_W * seg.offset / 100}
@@ -405,11 +433,13 @@
     </svg>
   </div>
 
-  <!-- Drag / Centering controls bottom right overlay -->
-  <div class="absolute bottom-4 right-4 flex items-center bg-white/90 backdrop-blur-md px-3 py-1.5 border border-zinc-200 rounded-full shadow-sm gap-2 text-[10px] text-zinc-500 font-bold pointer-events-none">
-    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg>
-    {$t('dtree_scroll_hint').toUpperCase()}
-    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
-  </div>
+  <!-- Drag hint, shown only in 1:1 mode where panning applies -->
+  {#if !fitView}
+    <div class="absolute bottom-4 right-4 flex items-center bg-surface px-3 py-1.5 border border-hairline rounded-full shadow-sm gap-2 text-[10px] text-ink-faint font-bold pointer-events-none">
+      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg>
+      {$t('dtree_scroll_hint').toUpperCase()}
+      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+    </div>
+  {/if}
 
 </div>

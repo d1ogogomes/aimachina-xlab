@@ -567,6 +567,115 @@ export function simplifyPathRules(
   return simplifiedRules;
 }
 
+// ─── Natural-language rules (for non-programmers) ──────────────
+// Turns each root-to-leaf path into a plain sentence, localized to the
+// active UI language, so the rules read like prose rather than code.
+
+export type NaturalRule = {
+  conditions: string[];   // already-localized condition clauses
+  predictedClass: string;
+  confidence: number;
+  samples: number;
+};
+
+function formatNum(n: number): string {
+  return Number.isInteger(n) ? String(n) : parseFloat(n.toFixed(3)).toString();
+}
+
+function naturalConditions(path: TabularTreeNode[], lang: string): string[] {
+  const numericalBounds: Record<string, { min: number; max: number }> = {};
+  const categoricalEqualities: Record<string, string> = {};
+  const categoricalInequalities: Record<string, Set<string>> = {};
+  const featureOrder: string[] = [];
+  const seen = new Set<string>();
+
+  for (let i = 0; i < path.length - 1; i++) {
+    const curr = path[i];
+    const next = path[i + 1];
+    if (curr.type !== 'split') continue;
+    const goesLeft = curr.left === next;
+    const f = curr.featureName;
+    if (!seen.has(f)) { seen.add(f); featureOrder.push(f); }
+
+    if (curr.featureType === 'numerical') {
+      if (!numericalBounds[f]) numericalBounds[f] = { min: -Infinity, max: Infinity };
+      const tVal = curr.threshold!;
+      if (goesLeft) numericalBounds[f].max = Math.min(numericalBounds[f].max, tVal);
+      else numericalBounds[f].min = Math.max(numericalBounds[f].min, tVal);
+    } else {
+      const val = String(curr.categoryValue);
+      if (goesLeft) categoricalEqualities[f] = val;
+      else (categoricalInequalities[f] ??= new Set()).add(val);
+    }
+  }
+
+  // Localized phrase builders
+  const q = (v: string) => `"${v}"`;
+  const catEq = (f: string, v: string) =>
+    lang === 'pt' ? `${f} é ${q(v)}` : lang === 'fr' ? `${f} est ${q(v)}` : `${f} is ${q(v)}`;
+  const catNeq = (f: string, v: string) =>
+    lang === 'pt' ? `${f} não é ${q(v)}` : lang === 'fr' ? `${f} n'est pas ${q(v)}` : `${f} is not ${q(v)}`;
+  const catNotIn = (f: string, items: string[]) => {
+    const list = items.map(q).join(', ');
+    return lang === 'pt' ? `${f} não é nenhum de ${list}`
+         : lang === 'fr' ? `${f} n'est aucun de ${list}`
+         : `${f} is none of ${list}`;
+  };
+  const numBetween = (f: string, min: string, max: string) =>
+    lang === 'pt' ? `${f} está entre ${min} e ${max}`
+    : lang === 'fr' ? `${f} est entre ${min} et ${max}`
+    : `${f} is between ${min} and ${max}`;
+  const numAtMost = (f: string, max: string) =>
+    lang === 'pt' ? `${f} é no máximo ${max}`
+    : lang === 'fr' ? `${f} est au plus ${max}`
+    : `${f} is at most ${max}`;
+  const numGreater = (f: string, min: string) =>
+    lang === 'pt' ? `${f} é maior que ${min}`
+    : lang === 'fr' ? `${f} est supérieur à ${min}`
+    : `${f} is greater than ${min}`;
+
+  const out: string[] = [];
+  for (const f of featureOrder) {
+    if (numericalBounds[f]) {
+      const { min, max } = numericalBounds[f];
+      if (min !== -Infinity && max !== Infinity) out.push(numBetween(f, formatNum(min), formatNum(max)));
+      else if (max !== Infinity) out.push(numAtMost(f, formatNum(max)));
+      else if (min !== -Infinity) out.push(numGreater(f, formatNum(min)));
+    } else if (categoricalEqualities[f] !== undefined) {
+      out.push(catEq(f, categoricalEqualities[f]));
+    } else if (categoricalInequalities[f]) {
+      const items = Array.from(categoricalInequalities[f]);
+      out.push(items.length === 1 ? catNeq(f, items[0]) : catNotIn(f, items));
+    }
+  }
+  return out;
+}
+
+// Plain-language conditions for a single (live prediction) path.
+export function naturalizePath(path: TabularTreeNode[], lang = 'pt'): string[] {
+  return naturalConditions(path, lang);
+}
+
+export function extractNaturalRules(root: TabularTreeNode, lang = 'pt'): NaturalRule[] {
+  const rules: NaturalRule[] = [];
+  function walk(node: TabularTreeNode, path: TabularTreeNode[]) {
+    const next = [...path, node];
+    if (node.type === 'leaf') {
+      rules.push({
+        conditions: naturalConditions(next, lang),
+        predictedClass: node.predictedClass,
+        confidence: node.confidence,
+        samples: node.samples,
+      });
+      return;
+    }
+    walk(node.left, next);
+    walk(node.right, next);
+  }
+  walk(root, []);
+  return rules;
+}
+
 export function computeFeatureImportance(
   root: TabularTreeNode,
   features: string[]

@@ -109,14 +109,14 @@
   // Color mapping based on token hash to keep same tokens colored identically
   function getTokenBgClass(token: string): string {
     const colors = [
-      "bg-indigo-100/80 border-indigo-200 text-indigo-900",
-      "bg-emerald-100/80 border-emerald-200 text-emerald-900",
-      "bg-amber-100/80 border-amber-200 text-amber-900",
-      "bg-rose-100/80 border-rose-200 text-rose-900",
-      "bg-sky-100/80 border-sky-200 text-sky-900",
-      "bg-slate-100/80 border-slate-200 text-slate-900",
-      "bg-orange-100/80 border-orange-200 text-orange-900",
-      "bg-teal-100/80 border-teal-200 text-teal-900",
+      "bg-brand-wash/80 border-brand/30 text-brand",
+      "bg-success-wash/80 border-success/30 text-success",
+      "bg-warning-wash/80 border-warning/30 text-warning",
+      "bg-danger-wash/80 border-danger/30 text-danger",
+      "bg-llm-wash/80 border-llm/30 text-llm",
+      "bg-sunken/80 border-hairline text-ink",
+      "bg-warning-wash/80 border-warning/30 text-warning",
+      "bg-llm-wash/80 border-llm/30 text-llm",
     ];
     const hash = getStringHash(token);
     return colors[hash % colors.length];
@@ -887,30 +887,30 @@
 </script>
 
 <div
-  class="bg-zinc-50 rounded-2xl shadow-sm border border-zinc-200 overflow-hidden flex flex-col transition-all duration-200"
+  class="bg-sunken rounded-2xl shadow-sm border border-hairline overflow-hidden flex flex-col transition-all duration-200"
 >
   <!-- Inner Playground sub-navigation -->
   <div
-    class="bg-white border-b border-zinc-200 px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4"
+    class="bg-surface border-b border-hairline px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4"
   >
     <div>
-      <h2 class="text-lg font-bold tracking-tight text-zinc-900">
+      <h2 class="text-lg font-bold tracking-tight text-ink">
         {$t("llm_tab_title")}
       </h2>
-      <p class="text-xs text-zinc-500 mt-1 max-w-xl">{$t("llm_tab_desc")}</p>
+      <p class="text-xs text-ink-faint mt-1 max-w-xl">{$t("llm_tab_desc")}</p>
     </div>
 
     <!-- Pills tabs -->
     <div
       id="llm-subtabs"
-      class="flex items-center gap-1 bg-zinc-100 p-1.5 rounded-xl self-start md:self-auto border border-zinc-200/50"
+      class="flex items-center gap-1 bg-sunken p-1.5 rounded-xl self-start md:self-auto border border-hairline/50"
     >
       <button
         on:click={() => (activeSubTab = "tokenizer")}
         class="px-4 py-2 text-xs font-bold rounded-lg transition-all duration-150 {activeSubTab ===
         'tokenizer'
-          ? 'bg-white text-indigo-600 shadow-sm'
-          : 'text-zinc-500 hover:text-zinc-800'}"
+          ? 'bg-surface text-brand shadow-sm'
+          : 'text-ink-faint hover:text-ink-muted'}"
       >
         {$t("tok_title")}
       </button>
@@ -918,8 +918,8 @@
         on:click={() => (activeSubTab = "decoding")}
         class="px-4 py-2 text-xs font-bold rounded-lg transition-all duration-150 {activeSubTab ===
         'decoding'
-          ? 'bg-white text-indigo-600 shadow-sm'
-          : 'text-zinc-500 hover:text-zinc-800'}"
+          ? 'bg-surface text-brand shadow-sm'
+          : 'text-ink-faint hover:text-ink-muted'}"
       >
         {$t("dec_title")}
       </button>
@@ -934,7 +934,7 @@
              is itself the lesson — we let the user discover the difference
              between modes by clicking, not by reading three boxes of copy. -->
         <div class="flex flex-col gap-2">
-          <p class="text-base text-zinc-700 leading-relaxed">
+          <p class="text-base text-ink-muted leading-relaxed">
             {@html $t("tok_desc")}
           </p>
         </div>
@@ -943,14 +943,14 @@
              important interaction on this page. -->
         <div
           id="llm-tok-mode"
-          class="flex items-center gap-2 bg-zinc-100 p-1 rounded-xl self-start border border-zinc-200/40"
+          class="flex items-center gap-2 bg-sunken p-1 rounded-xl self-start border border-hairline/40"
         >
           <button
             on:click={() => (tokenizerMode = "word")}
             class="px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all {tokenizerMode ===
             'word'
-              ? 'bg-white text-indigo-600 shadow-xs'
-              : 'text-zinc-500 hover:text-zinc-800'}"
+              ? 'bg-surface text-brand shadow-xs'
+              : 'text-ink-faint hover:text-ink-muted'}"
           >
             {$t("tok_mode_word")}
           </button>
@@ -958,8 +958,8 @@
             on:click={() => (tokenizerMode = "subword")}
             class="px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all {tokenizerMode ===
             'subword'
-              ? 'bg-white text-teal-600 shadow-xs'
-              : 'text-zinc-500 hover:text-zinc-800'}"
+              ? 'bg-surface text-llm shadow-xs'
+              : 'text-ink-faint hover:text-ink-muted'}"
           >
             {$t("tok_mode_subword")}
           </button>
@@ -970,14 +970,14 @@
           bind:value={tokenInput}
           placeholder={$t("tok_input_placeholder")}
           rows="3"
-          class="w-full p-4 text-sm border border-zinc-200 rounded-xl outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100/50 transition-all font-sans bg-white shadow-xs resize-none"
+          class="w-full p-4 text-sm border border-hairline rounded-xl outline-none focus:border-brand/50 focus:ring-2 focus:ring-brand/50 transition-all font-sans bg-surface shadow-xs resize-none"
         ></textarea>
 
         <!-- Visualizer: the centerpiece. Token chips, no header, no hint
              text. The interaction is self-evident. -->
         {#if tokens.length > 0}
           <div
-            class="flex flex-wrap gap-x-1.5 gap-y-2 p-5 rounded-xl bg-white border border-zinc-200 shadow-xs"
+            class="flex flex-wrap gap-x-1.5 gap-y-2 p-5 rounded-xl bg-surface border border-hairline shadow-xs"
           >
             {#each tokens as tok, idx}
               <!-- svelte-ignore a11y-mouse-events-have-key-events -->
@@ -988,7 +988,7 @@
                 class="px-2 py-1 text-sm font-semibold font-mono rounded border transition-all cursor-default shrink-0 select-none
                        {getTokenBgClass(tok.text)}
                        {hoveredTokenIdx === idx
-                  ? 'ring-2 ring-indigo-500 scale-105 shadow-xs'
+                  ? 'ring-2 ring-brand scale-105 shadow-xs'
                   : ''}"
               >
                 {tok.text}
@@ -998,13 +998,13 @@
           <!-- BPE-only legend: the "Ġ" prefix is jarring without context.
                Only show it in subword mode where it actually appears. -->
           {#if tokenizerMode === "subword"}
-            <p class="text-[11px] text-zinc-500 leading-relaxed -mt-3">
+            <p class="text-[11px] text-ink-faint leading-relaxed -mt-3">
               {@html $t("tok_g_legend")}
             </p>
           {/if}
         {:else}
           <div
-            class="h-28 rounded-xl border border-dashed border-zinc-200 flex items-center justify-center text-sm text-zinc-400 italic bg-white"
+            class="h-28 rounded-xl border border-dashed border-hairline flex items-center justify-center text-sm text-ink-faint italic bg-surface"
           >
             {$t("tok_input_placeholder")}
           </div>
@@ -1016,31 +1016,31 @@
              figure so the number stops being abstract. -->
         <div id="llm-token-stats" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div
-            class="bg-white border border-zinc-200 rounded-xl px-5 py-4 shadow-xs"
+            class="bg-surface border border-hairline rounded-xl px-5 py-4 shadow-xs"
           >
             <span
-              class="text-[10px] font-bold uppercase tracking-wider text-zinc-400"
+              class="text-[10px] font-bold uppercase tracking-wider text-ink-faint"
               >{$t("tok_stats_tokens")}</span
             >
             <div
-              class="text-3xl font-extrabold tracking-tight text-zinc-900 mt-1 tabular-nums"
+              class="text-3xl font-bold tracking-tight text-ink mt-1 tabular-nums"
             >
               {totalTokens}
             </div>
           </div>
           <div
-            class="bg-white border border-zinc-200 rounded-xl px-5 py-4 shadow-xs"
+            class="bg-surface border border-hairline rounded-xl px-5 py-4 shadow-xs"
           >
             <span
-              class="text-[10px] font-bold uppercase tracking-wider text-zinc-400"
+              class="text-[10px] font-bold uppercase tracking-wider text-ink-faint"
               >{$t("tok_stats_cost")}</span
             >
             <div
-              class="text-3xl font-extrabold tracking-tight text-emerald-600 mt-1 tabular-nums"
+              class="text-3xl font-bold tracking-tight text-success mt-1 tabular-nums"
             >
               ${estimatedCost}
             </div>
-            <div class="text-[11px] text-zinc-400 mt-1">
+            <div class="text-[11px] text-ink-faint mt-1">
               {$t("tok_stats_cost_intuition")}
             </div>
           </div>
@@ -1053,14 +1053,14 @@
       <div class="flex flex-col gap-6 animate-fade-in max-w-3xl mx-auto">
         <!-- Lead. -->
         <div class="flex flex-col gap-2">
-          <p class="text-base text-zinc-700 leading-relaxed">
+          <p class="text-base text-ink-muted leading-relaxed">
             {@html $t("dec_desc")}
           </p>
         </div>
 
         <!-- Prompt presets. -->
         <div class="flex flex-col gap-2">
-          <span class="text-xs font-bold text-zinc-700"
+          <span class="text-xs font-bold text-ink-muted"
             >{$t("dec_prompt_label")}</span
           >
           <div class="flex flex-wrap gap-2">
@@ -1069,8 +1069,8 @@
                 on:click={() => handlePresetChange(idx)}
                 class="px-3.5 py-2 text-xs font-bold rounded-lg border transition-all
                        {selectedPresetIdx === idx
-                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                  : 'bg-white text-indigo-600 border-zinc-200 hover:border-indigo-300 hover:bg-indigo-50/50'}"
+                  ? 'bg-brand text-white border-brand shadow-sm'
+                  : 'bg-surface text-brand border-hairline hover:border-brand/50 hover:bg-brand-wash/50'}"
               >
                 {preset.title}
               </button>
@@ -1081,15 +1081,15 @@
         <!-- Sliders: kept compact. End-anchors give intuition; the small
              one-line description below each slider is enough for context. -->
         <div
-          class="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs flex flex-col gap-6"
+          class="bg-surface border border-hairline rounded-2xl p-5 shadow-xs flex flex-col gap-6"
         >
           <div id="llm-temp" class="flex flex-col gap-2">
             <div class="flex justify-between items-center">
-              <span class="text-xs font-bold text-zinc-800"
+              <span class="text-xs font-bold text-ink-muted"
                 >{$t("dec_temp_label")}</span
               >
               <span
-                class="px-2 py-0.5 text-xs font-mono font-bold bg-indigo-50 border border-indigo-100 text-indigo-700 rounded tabular-nums"
+                class="px-2 py-0.5 text-xs font-mono font-bold bg-brand-wash border border-brand/30 text-brand rounded tabular-nums"
                 >T = {temperature.toFixed(2)}</span
               >
             </div>
@@ -1099,26 +1099,26 @@
               min="0.1"
               max="2.0"
               step="0.05"
-              class="w-full accent-indigo-600 h-1.5 bg-zinc-100 rounded-lg cursor-pointer"
+              class="w-full accent-indigo-600 h-1.5 bg-sunken rounded-lg cursor-pointer"
             />
             <div
-              class="flex justify-between text-[10px] font-semibold text-zinc-400 uppercase tracking-wider px-0.5"
+              class="flex justify-between text-[10px] font-semibold text-ink-faint uppercase tracking-wider px-0.5"
             >
               <span>← {$t("dec_temp_anchor_low")}</span>
               <span>{$t("dec_temp_anchor_high")} →</span>
             </div>
-            <p class="text-[11px] text-zinc-500 leading-normal">
+            <p class="text-[11px] text-ink-faint leading-normal">
               {$t("dec_temp_desc")}
             </p>
           </div>
 
           <div id="llm-topp" class="flex flex-col gap-2">
             <div class="flex justify-between items-center">
-              <span class="text-xs font-bold text-zinc-800"
+              <span class="text-xs font-bold text-ink-muted"
                 >{$t("dec_topp_label")}</span
               >
               <span
-                class="px-2 py-0.5 text-xs font-mono font-bold bg-teal-50 border border-teal-100 text-teal-700 rounded tabular-nums"
+                class="px-2 py-0.5 text-xs font-mono font-bold bg-llm-wash border border-llm/30 text-llm rounded tabular-nums"
                 >P = {topP.toFixed(2)}</span
               >
             </div>
@@ -1128,15 +1128,15 @@
               min="0.1"
               max="1.0"
               step="0.05"
-              class="w-full accent-teal-600 h-1.5 bg-zinc-100 rounded-lg cursor-pointer"
+              class="w-full accent-teal-600 h-1.5 bg-sunken rounded-lg cursor-pointer"
             />
             <div
-              class="flex justify-between text-[10px] font-semibold text-zinc-400 uppercase tracking-wider px-0.5"
+              class="flex justify-between text-[10px] font-semibold text-ink-faint uppercase tracking-wider px-0.5"
             >
               <span>← {$t("dec_topp_anchor_low")}</span>
               <span>{$t("dec_topp_anchor_high")} →</span>
             </div>
-            <p class="text-[11px] text-zinc-500 leading-normal">
+            <p class="text-[11px] text-ink-faint leading-normal">
               {$t("dec_topp_desc")}
             </p>
           </div>
@@ -1147,10 +1147,10 @@
         {#if topCandidate}
           <div
             id="llm-decode-result"
-            class="bg-gradient-to-br from-indigo-50 to-indigo-50/40 border border-indigo-100 rounded-xl px-5 py-4 flex items-center gap-3"
+            class="bg-llm-wash border border-llm/30 rounded-xl px-5 py-4 flex items-center gap-3"
           >
             <div
-              class="w-9 h-9 rounded-full bg-indigo-600 flex items-center justify-center text-white shrink-0"
+              class="w-9 h-9 rounded-full bg-llm flex items-center justify-center text-white shrink-0"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -1164,15 +1164,15 @@
             </div>
             <div class="flex-1 min-w-0">
               <div
-                class="text-[10px] font-bold uppercase tracking-widest text-indigo-500"
+                class="text-[10px] font-bold uppercase tracking-widest text-llm"
               >
                 {$t("dec_winner_label")}
               </div>
               <div
-                class="text-lg font-bold text-indigo-900 truncate font-mono mt-0.5"
+                class="text-lg font-bold text-ink truncate font-mono mt-0.5"
               >
                 "{topCandidate.word}"
-                <span class="text-sm font-semibold text-indigo-400 tabular-nums"
+                <span class="text-sm font-semibold text-llm tabular-nums"
                   >· {Math.round(topCandidate.normProb * 100)}%</span
                 >
               </div>
@@ -1184,35 +1184,35 @@
              Filtered (Top-P excluded) bars are visibly muted so the user
              still sees the cut. -->
         <div
-          class="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs flex flex-col gap-3"
+          class="bg-surface border border-hairline rounded-2xl p-5 shadow-xs flex flex-col gap-3"
         >
           {#each computedCandidates as cand}
             <div class="flex items-center gap-3 w-full">
               <div class="w-32 shrink-0 text-right">
                 <span
                   class="text-sm font-semibold font-mono {cand.filtered
-                    ? 'text-zinc-400 line-through'
-                    : 'text-zinc-800'}"
+                    ? 'text-ink-faint line-through'
+                    : 'text-ink-muted'}"
                 >
                   "{cand.word}"
                 </span>
               </div>
               <div
-                class="flex-1 h-6 bg-zinc-100 rounded-md overflow-hidden relative border border-zinc-200/40"
+                class="flex-1 h-6 bg-sunken rounded-md overflow-hidden relative border border-hairline/40"
               >
                 <div
                   class="h-full rounded-l-md transition-all duration-300
                          {cand.filtered
-                    ? 'bg-zinc-200'
-                    : 'bg-gradient-to-r from-indigo-500 to-indigo-600'}"
+                    ? 'bg-line'
+                    : 'bg-llm'}"
                   style="width: {(cand.filtered
                     ? cand.rawProb
                     : cand.normProb) * 100}%"
                 ></div>
                 <span
                   class="absolute inset-y-0 right-3 flex items-center text-[10px] font-mono font-bold tabular-nums {cand.filtered
-                    ? 'text-zinc-400'
-                    : 'text-indigo-900'}"
+                    ? 'text-ink-faint'
+                    : 'text-llm'}"
                 >
                   {Math.round(
                     (cand.filtered ? cand.rawProb : cand.normProb) * 100,

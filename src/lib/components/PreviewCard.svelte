@@ -314,17 +314,17 @@
 </script>
 
 <div
-  class="bg-white rounded-xl shadow-sm border border-zinc-200 overflow-hidden flex flex-col"
+  class="bg-surface rounded-xl shadow-sm border border-hairline overflow-hidden flex flex-col"
 >
   <!-- Input Selector -->
   <div
     id="cv-input-source"
-    class="px-5 py-3 flex items-center justify-between bg-white border-b border-zinc-100"
+    class="px-5 py-3 flex items-center justify-between bg-surface border-b border-hairline"
   >
-    <span class="text-sm font-medium text-zinc-500">{$t("input_source")}</span>
+    <span class="text-sm font-medium text-ink-faint">{$t("input_source")}</span>
     <select
       bind:value={previewMode}
-      class="ml-auto text-sm border border-zinc-200 bg-white hover:bg-zinc-50 rounded-lg px-3 py-1.5 outline-none font-medium text-zinc-700 transition-colors cursor-pointer shadow-sm"
+      class="ml-auto text-sm border border-hairline bg-surface hover:bg-sunken rounded-lg px-3 py-1.5 outline-none font-medium text-ink-muted transition-colors cursor-pointer shadow-sm"
     >
       <option value="webcam">{$t("webcam")}</option>
       <option value="canvas">{$t("canvas") || "Desenhar"}</option>
@@ -335,12 +335,12 @@
   <!-- Content Area -->
   {#if previewMode === "webcam"}
     <div
-      class="bg-zinc-100 aspect-square relative flex items-center justify-center overflow-hidden border-b border-zinc-200"
+      class="bg-sunken aspect-square relative flex items-center justify-center overflow-hidden border-b border-hairline"
     >
       {#if !isActive}
         <div class="flex flex-col items-center gap-3">
           <div
-            class="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400"
+            class="w-12 h-12 rounded-full bg-ink flex items-center justify-center text-paper"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -360,7 +360,7 @@
               /></svg
             >
           </div>
-          <p class="text-sm font-medium text-zinc-400">
+          <p class="text-sm font-medium text-ink-faint">
             {#if !isModelTrained}
               Train model to enable preview
             {:else}
@@ -382,13 +382,13 @@
     </div>
   {:else if previewMode === "canvas"}
     <div
-      class="bg-zinc-100 aspect-square relative flex items-center justify-center border-b border-zinc-200"
+      class="bg-sunken aspect-square relative flex items-center justify-center border-b border-hairline"
     >
       <canvas
         bind:this={drawCanvas}
         width="224"
         height="224"
-        class="w-full h-full bg-black touch-none cursor-crosshair"
+        class="w-full h-full bg-ink touch-none cursor-crosshair"
         on:mousedown={startDrawing}
         on:mousemove={draw}
         on:mouseup={stopDrawing}
@@ -401,17 +401,17 @@
 
       <button
         on:click={clearCanvas}
-        class="absolute top-3 right-3 bg-white/90 hover:bg-white text-zinc-600 text-xs font-semibold px-3 py-1.5 rounded-lg shadow-sm border border-zinc-200 transition-all z-10"
+        class="absolute top-3 right-3 bg-surface hover:bg-surface text-ink-muted text-xs font-semibold px-3 py-1.5 rounded-lg shadow-sm border border-hairline transition-all z-10"
       >
         {$t("clear") || "Limpar"}
       </button>
 
       {#if !isModelTrained}
         <div
-          class="absolute inset-0 bg-white/80 backdrop-blur-[2px] flex flex-col items-center justify-center gap-3 z-20"
+          class="absolute inset-0 bg-surface backdrop-blur-[2px] flex flex-col items-center justify-center gap-3 z-20"
         >
           <div
-            class="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400"
+            class="w-12 h-12 rounded-full bg-ink flex items-center justify-center text-paper"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -426,7 +426,7 @@
               /></svg
             >
           </div>
-          <p class="text-sm font-medium text-zinc-500">
+          <p class="text-sm font-medium text-ink-faint">
             Train model to enable drawing preview
           </p>
         </div>
@@ -437,9 +437,9 @@
   {/if}
 
   <!-- Output Area -->
-  <div id="cv-output" class="px-6 py-5 bg-white flex flex-col gap-3">
+  <div id="cv-output" class="px-6 py-5 bg-surface flex flex-col gap-3">
     <div
-      class="text-sm font-semibold uppercase text-zinc-400 tracking-widest mb-2"
+      class="text-sm font-semibold uppercase text-ink-faint tracking-widest mb-2"
     >
       Output
     </div>
@@ -453,19 +453,19 @@
           <div class="flex justify-between text-xs mb-1.5">
             <span
               class="font-semibold {isTop
-                ? 'text-indigo-700'
-                : 'text-zinc-600'}">{pred.label}</span
+                ? 'text-cv'
+                : 'text-ink-muted'}">{pred.label}</span
             >
             <span
-              class="font-bold {isTop ? 'text-indigo-700' : 'text-zinc-500'}"
+              class="font-bold {isTop ? 'text-cv' : 'text-ink-faint'}"
               >{pred.confidence}%</span
             >
           </div>
-          <div class="w-full bg-zinc-100 h-2 rounded-full overflow-hidden">
+          <div class="w-full bg-sunken h-2 rounded-full overflow-hidden">
             <div
               class="h-full rounded-full transition-all duration-500 {isTop
-                ? 'bg-indigo-500'
-                : 'bg-zinc-300'}"
+                ? 'bg-cv'
+                : 'bg-line'}"
               style="width: {pred.confidence}%"
             ></div>
           </div>

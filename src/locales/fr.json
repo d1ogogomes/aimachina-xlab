@@ -323,5 +323,6 @@
   "dt_tour_step6_title": "Visualisez et exportez",
   "dt_tour_step6_desc": "Visualisez l'arbre sous forme de graphe, lisez les règles en texte IF/ELSE, ou exportez le modèle en code Python/JavaScript. Vous pouvez aussi appliquer un post-élagage pour simplifier l'arbre.",
   "dt_tour_step7_title": "Prédicteur interactif",
-  "dt_tour_step7_desc": "Renseignez les valeurs des caractéristiques et observez la prédiction en temps réel, avec le chemin de décision qui s'illumine sur l'arbre."
+  "dt_tour_step7_desc": "Renseignez les valeurs des caractéristiques et observez la prédiction en temps réel, avec le chemin de décision qui s'illumine sur l'arbre.",
+  "dtree_fit": "Ajuster"
 }

@@ -1,107 +1,272 @@
 @import "tailwindcss";
 
+/* ───────────────────────────────────────────────────────────────
+   AIMachina XLab — design system
+   Register: product (expressive Home). Direction: editorial-scientific.
+   A cool paper canvas, real typographic hierarchy (serif display +
+   sans UI + mono for data), hairline structure instead of glass,
+   color reserved for state and meaning. All color in OKLCH.
+   ─────────────────────────────────────────────────────────────── */
+
+@theme {
+  /* Type roles ---------------------------------------------------- */
+  --font-display: "Newsreader", Georgia, "Times New Roman", serif;
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Surfaces — cool paper, not cream. Chroma pulled toward cool. -- */
+  --color-paper: oklch(0.987 0.0025 255);     /* app background        */
+  --color-surface: oklch(1 0 0);              /* cards, panels         */
+  --color-sunken: oklch(0.965 0.004 255);     /* toolbars, wells, code */
+  --color-raised: oklch(0.995 0.0015 255);    /* hovered surface       */
+
+  /* Lines — hairline structure replaces shadows/glass ------------- */
+  --color-hairline: oklch(0.915 0.004 255);   /* 1px dividers          */
+  --color-line: oklch(0.86 0.006 255);        /* stronger borders      */
+
+  /* Ink — cool near-black ramp, contrast-checked on paper --------- */
+  --color-ink: oklch(0.24 0.012 262);         /* headings, primary     */
+  --color-ink-muted: oklch(0.45 0.014 262);   /* body / secondary, 7:1 */
+  --color-ink-faint: oklch(0.555 0.012 262);  /* labels, captions 4.6:1*/
+
+  /* Brand + semantic lab accents (kept as meaningful coding) ------ */
+  --color-brand: oklch(0.49 0.155 268);       /* refined ink-indigo    */
+  --color-brand-ink: oklch(0.42 0.155 268);   /* hover / pressed       */
+  --color-brand-wash: oklch(0.955 0.022 268); /* tint for selected bg  */
+
+  --color-cv: oklch(0.50 0.15 264);           /* Computer Vision       */
+  --color-cv-ink: oklch(0.43 0.15 264);       /* hover / pressed       */
+  --color-cv-wash: oklch(0.955 0.022 264);
+  --color-llm: oklch(0.52 0.092 192);         /* LLM (deep teal)       */
+  --color-llm-ink: oklch(0.45 0.092 192);
+  --color-llm-wash: oklch(0.955 0.026 192);
+  --color-dt: oklch(0.57 0.115 64);           /* Decision Tree (clay)  */
+  --color-dt-ink: oklch(0.50 0.115 64);
+  --color-dt-wash: oklch(0.957 0.03 70);
+
+  /* States -------------------------------------------------------- */
+  --color-success: oklch(0.55 0.13 152);
+  --color-success-ink: oklch(0.48 0.13 152);
+  --color-success-wash: oklch(0.95 0.03 152);
+  --color-warning: oklch(0.62 0.135 72);
+  --color-warning-ink: oklch(0.54 0.135 72);
+  --color-warning-wash: oklch(0.955 0.035 78);
+  --color-danger: oklch(0.55 0.2 27);
+  --color-danger-ink: oklch(0.48 0.2 27);
+  --color-danger-wash: oklch(0.955 0.025 27);
+
+  /* Radii — measured, not pill-everything ------------------------- */
+  --radius-xs: 0.375rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+
+  /* Elevation — soft, cool-tinted, sparing ------------------------ */
+  --shadow-card: 0 1px 2px oklch(0.24 0.012 262 / 0.04),
+                 0 8px 24px oklch(0.24 0.012 262 / 0.05);
+  --shadow-pop: 0 8px 16px oklch(0.24 0.012 262 / 0.06),
+                0 20px 48px oklch(0.24 0.012 262 / 0.1);
+
+  /* Motion — product cadence, exponential ease-out ---------------- */
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+
+  /* Z-index scale — semantic, never arbitrary --------------------- */
+  --z-base: 1;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-backdrop: 300;
+  --z-modal: 400;
+  --z-toast: 500;
+  --z-tooltip: 600;
+}
+
 @layer base {
-  html, body, #app {
-    font-family: 'Inter', system-ui, sans-serif;
+  html,
+  body,
+  #app {
+    font-family: var(--font-sans);
+    background-color: var(--color-paper);
+    color: var(--color-ink);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: clip;
     width: 100%;
   }
 
-  /* Thin scrollbar */
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+  /* Serif display, only for headings and hero — never UI labels.    */
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: -0.018em;
+    color: var(--color-ink);
+    text-wrap: balance;
   }
 
+  p {
+    text-wrap: pretty;
+  }
+
+  /* Tabular figures everywhere numbers matter (metrics, tables).    */
+  .nums,
+  .font-mono {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  ::selection {
+    background: var(--color-brand);
+    color: white;
+  }
+
+  /* Thin, ink-tinted scrollbar -------------------------------------*/
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
   ::-webkit-scrollbar-track {
     background: transparent;
   }
-
   ::-webkit-scrollbar-thumb {
-    background: #d4d4d8;
+    background: var(--color-line);
     border-radius: 9999px;
+    border: 2px solid var(--color-paper);
   }
-
   ::-webkit-scrollbar-thumb:hover {
-    background: #a1a1aa;
+    background: var(--color-ink-faint);
   }
 }
 
-@utility liquid-glass {
-  background: rgba(255, 255, 255, 0.45);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+/* ── Reusable surfaces ───────────────────────────────────────────
+   Hairline-bordered panels replace the old liquid-glass utilities.
+   Components opt in with `panel` / `panel-sunken`.                  */
+@utility panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-lg);
 }
 
+@utility panel-sunken {
+  background: var(--color-sunken);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-md);
+}
+
+/* Faint engineering-grid texture — graph paper, on-theme, not blobs.
+   Apply to a positioned ancestor; sits behind content.             */
+@utility grid-paper {
+  background-image:
+    linear-gradient(to right, oklch(0.24 0.012 262 / 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, oklch(0.24 0.012 262 / 0.035) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+/* ── Legacy glass utilities, retired ─────────────────────────────
+   Kept as no-tint hairline panels so any not-yet-migrated lab markup
+   referencing them degrades to the new system instead of breaking.  */
+@utility liquid-glass {
+  background: var(--color-surface);
+  border: 1px solid var(--color-hairline);
+}
 @utility liquid-glass-strong {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
 }
 
 @utility animate-spin-slow {
   animation: spin 25s linear infinite;
 }
-/* While a guided tour runs, the sticky header is dropped to normal flow.
-   driver.js raises the highlighted element's z-index above the overlay; for
-   the full-width Diagnostics / Decision Tree sections that would paint over
-   the pinned header, leaving it visually broken after scrolling back up.
-   Un-pinning it for the duration of the tour avoids the stacking conflict. */
+
+/* ── Motion primitives ───────────────────────────────────────────*/
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@utility animate-fade-in {
+  animation: fade-in 0.35s var(--ease-out-quint) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* While a guided tour runs, drop the sticky header to normal flow so
+   driver.js can raise highlighted full-width sections above the
+   overlay without the pinned header painting over them. */
 body.tour-active #app-header {
   position: static;
 }
 
-/* ── Guided tour (driver.js) popover theme ──────────────────
-   Shared across the Computer Vision, LLM and Decision Tree labs.
-   driver renders the popover at the document body, so this lives
-   in the global stylesheet rather than a component. */
+/* ── Guided tour (driver.js) popover — editorial-scientific theme ──*/
 .driver-popover.aimachina-tour {
-  border-radius: 1rem;
+  border-radius: var(--radius-lg);
   padding: 1.25rem;
   max-width: 22rem;
-  box-shadow: 0 20px 50px rgba(79, 70, 229, 0.18);
-  background: #ffffff;
+  box-shadow: var(--shadow-pop);
+  background: var(--color-surface);
+  border: 1px solid var(--color-hairline);
 }
 .driver-popover.aimachina-tour .driver-popover-title {
-  font-size: 1rem;
-  font-weight: 800;
-  letter-spacing: -0.01em;
-  color: #18181b;
+  font-family: var(--font-display);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  color: var(--color-ink);
 }
 .driver-popover.aimachina-tour .driver-popover-description {
   font-size: 0.8125rem;
   line-height: 1.55;
-  color: #52525b;
+  color: var(--color-ink-muted);
 }
 .driver-popover.aimachina-tour .driver-popover-progress-text {
+  font-family: var(--font-mono);
   font-size: 0.6875rem;
-  font-weight: 600;
-  color: #a1a1aa;
+  font-weight: 500;
+  color: var(--color-ink-faint);
 }
 .driver-popover.aimachina-tour button {
-  border-radius: 0.5rem;
+  border-radius: var(--radius-sm);
   font-size: 0.75rem;
   font-weight: 600;
   text-shadow: none;
   padding: 0.4rem 0.8rem;
 }
 .driver-popover.aimachina-tour .driver-popover-next-btn {
-  background: #4f46e5;
-  color: #ffffff;
+  background: var(--color-brand);
+  color: #fff;
   border: none;
 }
 .driver-popover.aimachina-tour .driver-popover-next-btn:hover {
-  background: #4338ca;
+  background: var(--color-brand-ink);
 }
 .driver-popover.aimachina-tour .driver-popover-prev-btn {
-  background: #f4f4f5;
-  color: #3f3f46;
-  border: none;
+  background: var(--color-sunken);
+  color: var(--color-ink-muted);
+  border: 1px solid var(--color-hairline);
 }
 .driver-popover.aimachina-tour .driver-popover-prev-btn:hover {
-  background: #e4e4e7;
+  background: var(--color-raised);
 }

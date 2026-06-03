@@ -1085,13 +1085,13 @@
         {#each [{ n: 1, label: $t("teach_machine"), active: true }, { n: 2, label: $t("train_button"), active: isModelTrained || isTrainingModel }, { n: 3, label: $t("test_machine"), active: isModelTrained }, { n: 4, label: $t("diagnostics"), active: confusionMatrix.length > 0 && confusionMatrix.some( (row) => row.some((v) => v > 0), ) }, { n: 5, label: $t("dtree_title"), active: decisionTree !== null }] as step, i}
           <div
             class="flex items-center gap-2 {step.active
-              ? 'text-zinc-800'
-              : 'text-zinc-400'}"
+              ? 'text-ink-muted'
+              : 'text-ink-faint'}"
           >
             <span
               class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 {step.active
-                ? 'bg-indigo-600 text-white'
-                : 'bg-zinc-200 text-zinc-400'}">{step.n}</span
+                ? 'bg-cv text-white'
+                : 'bg-sunken text-ink-faint'}">{step.n}</span
             >
             <span class="text-xs font-medium hidden sm:block"
               >{step.label}</span
@@ -1100,8 +1100,8 @@
           {#if i < 4}
             <div
               class="flex-1 max-w-8 h-px mx-2 {step.active
-                ? 'bg-indigo-300'
-                : 'bg-zinc-200'} shrink-0"
+                ? 'bg-cv'
+                : 'bg-sunken'} shrink-0"
             ></div>
           {/if}
         {/each}
@@ -1114,7 +1114,7 @@
         <div id="cv-dataset-actions" class="flex items-center gap-2 flex-wrap">
           <button
             on:click={() => loadDemoDataset("pets")}
-            class="text-sm font-semibold text-indigo-700 bg-white border border-indigo-100 hover:border-indigo-300 hover:bg-indigo-50 px-3 py-1.5 rounded-lg transition-all flex items-center gap-2 shadow-sm"
+            class="text-sm font-semibold text-cv bg-surface border border-cv/30 hover:border-cv/50 hover:bg-cv-wash px-3 py-1.5 rounded-lg transition-all flex items-center gap-2 shadow-sm"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -1132,7 +1132,7 @@
           </button>
           <button
             on:click={() => loadDemoDataset("mnist")}
-            class="text-sm font-semibold text-teal-700 bg-white border border-teal-100 hover:border-teal-300 hover:bg-teal-50 px-3 py-1.5 rounded-lg transition-all flex items-center gap-2 shadow-sm"
+            class="text-sm font-semibold text-llm bg-surface border border-llm/30 hover:border-llm/50 hover:bg-llm-wash px-3 py-1.5 rounded-lg transition-all flex items-center gap-2 shadow-sm"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -1152,7 +1152,7 @@
             <div class="relative group/cds">
               <button
                 on:click={() => loadCustomDataset(cdsIdx)}
-                class="text-sm font-semibold text-amber-700 bg-white border border-amber-100 hover:border-amber-300 hover:bg-amber-50 px-3 py-1.5 rounded-lg transition-all flex items-center gap-2 shadow-sm"
+                class="text-sm font-semibold text-warning bg-surface border border-warning/30 hover:border-warning/50 hover:bg-warning-wash px-3 py-1.5 rounded-lg transition-all flex items-center gap-2 shadow-sm"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -1172,7 +1172,7 @@
               </button>
               <button
                 on:click={() => deleteCustomDataset(cdsIdx)}
-                class="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover/cds:opacity-100 transition-opacity shadow-sm hover:bg-red-600"
+                class="absolute -top-1.5 -right-1.5 w-5 h-5 bg-danger text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover/cds:opacity-100 transition-opacity shadow-sm hover:bg-danger-ink"
                 aria-label="Delete dataset"
               >
                 ×
@@ -1181,7 +1181,7 @@
           {/each}
           <button
             on:click={openSaveDatasetModal}
-            class="text-sm font-semibold text-zinc-500 bg-white border border-dashed border-zinc-300 hover:border-zinc-400 hover:text-zinc-700 hover:bg-zinc-50 px-3 py-1.5 rounded-lg transition-all flex items-center gap-2"
+            class="text-sm font-semibold text-ink-faint bg-surface border border-dashed border-line hover:border-line hover:text-ink-muted hover:bg-sunken px-3 py-1.5 rounded-lg transition-all flex items-center gap-2"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -1206,20 +1206,20 @@
       <div id="cv-classes-container" class="grid grid-cols-1 gap-4">
         {#each classes as item}
           <div
-            class="bg-white/70 backdrop-blur-md rounded-2xl border border-white/60 shadow-[0_8px_30px_rgba(0,0,0,0.02)] overflow-hidden group hover:border-indigo-300/80 transition-all duration-300"
+            class="bg-surface backdrop-blur-md rounded-2xl border border-hairline shadow-[0_8px_30px_rgba(0,0,0,0.02)] overflow-hidden group hover:border-cv/50 transition-all duration-300"
           >
             <div
-              class="p-4 border-b border-zinc-100 flex items-center justify-between bg-zinc-50/50 gap-3"
+              class="p-4 border-b border-hairline flex items-center justify-between bg-sunken/50 gap-3"
             >
               <input
                 type="text"
                 bind:value={item.name}
-                class="font-medium text-zinc-700 bg-transparent outline-none w-full border-b border-transparent focus:border-indigo-400 transition-colors"
+                class="font-medium text-ink-muted bg-transparent outline-none w-full border-b border-transparent focus:border-cv/50 transition-colors"
               />
               {#if classes.length > 2}
                 <button
                   on:click={() => removeClass(item.id)}
-                  class="text-zinc-400 hover:text-red-500 transition-colors"
+                  class="text-ink-faint hover:text-danger transition-colors"
                   title={$t("remove_class")}
                 >
                   <svg
@@ -1241,13 +1241,13 @@
 
             <!-- Galeria de Imagens Adicionada -->
             <div
-              class="p-4 border-b border-zinc-100 bg-zinc-50/30 max-h-40 overflow-y-auto"
+              class="p-4 border-b border-hairline bg-sunken/30 max-h-40 overflow-y-auto"
             >
               {#if trainingImages[item.id] && trainingImages[item.id].length > 0}
                 <div class="flex flex-wrap gap-2">
                   {#each trainingImages[item.id] as imgUrl, idx}
                     <div
-                      class="relative group/img w-12 h-12 rounded overflow-hidden border border-zinc-200"
+                      class="relative group/img w-12 h-12 rounded overflow-hidden border border-hairline"
                     >
                       <img
                         src={imgUrl}
@@ -1256,7 +1256,7 @@
                       />
                       <button
                         on:click={() => removeImage(item.id, idx)}
-                        class="absolute inset-0 bg-red-500/80 text-white opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity"
+                        class="absolute inset-0 bg-danger/80 text-white opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity"
                         aria-label="Remove training sample"
                       >
                         <svg
@@ -1282,7 +1282,7 @@
                 <div
                   class="flex flex-col items-center justify-center gap-3 py-6"
                 >
-                  <span class="text-sm font-medium text-zinc-500"
+                  <span class="text-sm font-medium text-ink-faint"
                     >{$t("add_image_samples")}</span
                   >
                   <div
@@ -1293,7 +1293,7 @@
                   >
                     <button
                       on:click={() => (activeWebcamClass = item.id)}
-                      class="flex-1 flex flex-col items-center justify-center gap-2 h-16 bg-blue-50/50 hover:bg-blue-100/50 text-blue-600 rounded-lg border border-blue-100 transition-colors"
+                      class="flex-1 flex flex-col items-center justify-center gap-2 h-16 bg-brand-wash/50 hover:bg-brand-wash/50 text-brand rounded-lg border border-brand/30 transition-colors"
                     >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -1312,7 +1312,7 @@
                     </button>
                     <button
                       on:click={() => (activeDrawClass = item.id)}
-                      class="flex-1 flex flex-col items-center justify-center gap-2 h-16 bg-blue-50/50 hover:bg-blue-100/50 text-blue-600 rounded-lg border border-blue-100 transition-colors"
+                      class="flex-1 flex flex-col items-center justify-center gap-2 h-16 bg-brand-wash/50 hover:bg-brand-wash/50 text-brand rounded-lg border border-brand/30 transition-colors"
                     >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -1330,7 +1330,7 @@
                       >
                     </button>
                     <label
-                      class="flex-1 flex flex-col items-center justify-center gap-2 h-16 bg-blue-50/50 hover:bg-blue-100/50 text-blue-600 rounded-lg border border-blue-100 cursor-pointer transition-colors"
+                      class="flex-1 flex flex-col items-center justify-center gap-2 h-16 bg-brand-wash/50 hover:bg-brand-wash/50 text-brand rounded-lg border border-brand/30 cursor-pointer transition-colors"
                     >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -1362,23 +1362,23 @@
             </div>
 
             <div
-              class="p-4 flex justify-between items-center gap-4 bg-zinc-50/30"
+              class="p-4 flex justify-between items-center gap-4 bg-sunken/30"
             >
               <div class="flex flex-col">
-                <span class="text-xl font-medium tracking-tight text-zinc-800"
+                <span class="text-xl font-medium tracking-tight text-ink-muted"
                   >{trainingImages[item.id]
                     ? trainingImages[item.id].length
                     : 0}</span
                 >
                 <span
-                  class="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider"
+                  class="text-[10px] font-semibold text-ink-faint uppercase tracking-wider"
                   >{$t("samples")}</span
                 >
               </div>
               <div class="flex items-center gap-2">
                 <button
                   on:click={() => (activeWebcamClass = item.id)}
-                  class="p-2 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                  class="p-2 text-brand hover:bg-brand-wash rounded-md transition-colors"
                   title="Webcam"
                 >
                   <svg
@@ -1396,7 +1396,7 @@
                 </button>
                 <button
                   on:click={() => (activeDrawClass = item.id)}
-                  class="p-2 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                  class="p-2 text-brand hover:bg-brand-wash rounded-md transition-colors"
                   title={$t("canvas")}
                 >
                   <svg
@@ -1413,7 +1413,7 @@
                   >
                 </button>
                 <label
-                  class="p-2 text-blue-600 hover:bg-blue-50 rounded-md cursor-pointer transition-colors"
+                  class="p-2 text-brand hover:bg-brand-wash rounded-md cursor-pointer transition-colors"
                   title="Upload"
                 >
                   <svg
@@ -1448,7 +1448,7 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
           <button
             on:click={addClass}
-            class="bg-transparent border-2 border-dashed border-zinc-300 rounded-xl flex items-center justify-center gap-2 text-sm font-medium text-zinc-400 hover:text-indigo-600 hover:border-indigo-400 hover:bg-indigo-50/50 transition-all py-4"
+            class="bg-transparent border-2 border-dashed border-line rounded-xl flex items-center justify-center gap-2 text-sm font-medium text-ink-faint hover:text-cv hover:border-cv/50 hover:bg-cv-wash/50 transition-all py-4"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -1469,7 +1469,7 @@
           </button>
           <button
             on:click={resetProject}
-            class="bg-white border border-red-200 rounded-xl flex items-center justify-center gap-2 text-sm font-medium text-red-500 hover:border-red-400 hover:bg-red-50/60 hover:text-red-600 transition-all py-4 shadow-sm"
+            class="bg-surface border border-danger/30 rounded-xl flex items-center justify-center gap-2 text-sm font-medium text-danger hover:border-danger/50 hover:bg-danger-wash/60 hover:text-danger transition-all py-4 shadow-sm"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -1491,11 +1491,11 @@
 
       <div
         id="cv-train-card"
-        class="mt-4 bg-white/70 backdrop-blur-md rounded-2xl border border-white/60 shadow-[0_8px_30px_rgba(0,0,0,0.02)] overflow-hidden hover:border-indigo-300/80 transition-all duration-300"
+        class="mt-4 bg-surface backdrop-blur-md rounded-2xl border border-hairline shadow-[0_8px_30px_rgba(0,0,0,0.02)] overflow-hidden hover:border-cv/50 transition-all duration-300"
       >
         {#if trainingError}
           <div
-            class="px-6 py-3 bg-red-50 border-b border-red-100 flex items-center gap-2 text-sm text-red-700 font-medium"
+            class="px-6 py-3 bg-danger-wash border-b border-danger/30 flex items-center gap-2 text-sm text-danger font-medium"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -1522,16 +1522,16 @@
         {#if isTrainingModel}
           <div class="px-6 pt-4 pb-0">
             <div
-              class="flex justify-between text-xs font-medium text-zinc-500 mb-1.5"
+              class="flex justify-between text-xs font-medium text-ink-faint mb-1.5"
             >
               <span>{$t("processing_images")}</span>
               <span>{trainingProgress}%</span>
             </div>
             <div
-              class="w-full bg-zinc-100 h-1.5 rounded-full overflow-hidden"
+              class="w-full bg-sunken h-1.5 rounded-full overflow-hidden"
             >
               <div
-                class="bg-indigo-500 h-full rounded-full transition-all duration-200"
+                class="bg-cv h-full rounded-full transition-all duration-200"
                 style="width:{trainingProgress}%"
               ></div>
             </div>
@@ -1540,7 +1540,7 @@
         <div class="p-6 flex items-center justify-between gap-4">
           <div>
             <h3 class="text-base font-semibold mb-1">{$t("train_button")}</h3>
-            <p class="text-sm text-zinc-500 leading-relaxed">
+            <p class="text-sm text-ink-faint leading-relaxed">
               {$t("teach_desc")}
             </p>
           </div>
@@ -1549,11 +1549,11 @@
             disabled={isTrainingModel}
             class="shrink-0 px-6 py-2.5 font-medium rounded-lg shadow-sm transition-all text-sm flex items-center gap-2 justify-center disabled:opacity-50 {isModelTrained &&
             !isTrainingModel
-              ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-              : 'bg-indigo-600 hover:bg-indigo-700 text-white'} {canTrain &&
+              ? 'bg-success hover:bg-success-ink text-white'
+              : 'bg-cv hover:bg-cv-ink text-white'} {canTrain &&
             !isModelTrained &&
             !isTrainingModel
-              ? 'ring-4 ring-indigo-500/50 animate-pulse'
+              ? 'ring-4 ring-cv/50 animate-pulse'
               : ''}"
           >
             {#if isTrainingModel}
@@ -1606,7 +1606,7 @@
           : 12}
       >
         <div
-          class="bg-zinc-100 aspect-square relative flex items-center justify-center overflow-hidden border-b border-zinc-200"
+          class="bg-sunken aspect-square relative flex items-center justify-center overflow-hidden border-b border-hairline"
         >
           {#if showExplanation && explanationDataUrl}
             <!-- svelte-ignore a11y-missing-attribute -->
@@ -1616,7 +1616,7 @@
             />
             <!-- Legend -->
             <div
-              class="absolute bottom-2 left-2 right-2 flex items-center gap-2 bg-black/60 rounded-md px-2 py-1.5 backdrop-blur-sm"
+              class="absolute bottom-2 left-2 right-2 flex items-center gap-2 bg-ink/60 rounded-md px-2 py-1.5 backdrop-blur-sm"
             >
               <div
                 class="h-2 flex-1 rounded-full"
@@ -1639,25 +1639,25 @@
                 fill="none"
                 stroke="currentColor"
                 stroke-width="1.5"
-                class="text-zinc-300"
+                class="text-ink-faint"
                 ><rect x="3" y="3" width="18" height="18" rx="2" ry="2"
                 ></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline
                   points="21 15 16 10 5 21"
                 ></polyline></svg
               >
-              <p class="text-xs text-zinc-400 font-medium">
+              <p class="text-xs text-ink-faint font-medium">
                 {$t("test_desc")}
               </p>
             </div>
           {/if}
           {#if isExplaining}
             <div
-              class="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3"
+              class="absolute inset-0 bg-surface backdrop-blur-sm flex flex-col items-center justify-center gap-3"
             >
               <div
-                class="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"
+                class="w-8 h-8 border-4 border-cv/30 border-t-indigo-600 rounded-full animate-spin"
               ></div>
-              <p class="text-xs font-medium text-zinc-600">
+              <p class="text-xs font-medium text-ink-muted">
                 {$t("explaining")}
               </p>
             </div>
@@ -1671,11 +1671,11 @@
                 ? mnistDatasets
                 : demoDatasets}
             <div
-              class="border border-indigo-100 bg-indigo-50/40 rounded-lg p-3 flex flex-col gap-3"
+              class="border border-cv/30 bg-cv-wash/40 rounded-lg p-3 flex flex-col gap-3"
             >
               <div class="flex flex-col gap-2.5">
                 <span
-                  class="text-xs font-semibold text-indigo-700 uppercase tracking-wide"
+                  class="text-xs font-semibold text-cv uppercase tracking-wide"
                   >{$t("demo_test")}</span
                 >
                 <div class="flex flex-wrap gap-1.5">
@@ -1685,8 +1685,8 @@
                         selectDemoTestImage(demoIdx, dataset.tests[0].src)}
                       class="px-3 py-1.5 text-xs font-semibold rounded-md border transition-colors {selectedDemoTestClassId ===
                       demoIdx
-                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                        : 'bg-white text-indigo-600 border-indigo-200 hover:border-indigo-400 hover:bg-indigo-50'}"
+                        ? 'bg-cv text-white border-cv shadow-sm'
+                        : 'bg-surface text-cv border-cv/30 hover:border-cv/50 hover:bg-cv-wash'}"
                     >
                       {$t(dataset.labelKey).replace("Dígito ", "")}
                     </button>
@@ -1701,10 +1701,10 @@
                         selectedDemoTestClassId,
                         demoImg.src,
                       )}
-                    class="aspect-square rounded-md overflow-hidden border-2 transition-colors bg-white {previewUrl ===
+                    class="aspect-square rounded-md overflow-hidden border-2 transition-colors bg-surface {previewUrl ===
                     demoImg.src
-                      ? 'border-indigo-500'
-                      : 'border-white hover:border-indigo-300'}"
+                      ? 'border-cv'
+                      : 'border-hairline hover:border-cv/50'}"
                     aria-label={`${$t("demo_image")} ${demoImgIdx + 1}: ${demoImg.title}`}
                   >
                     <img
@@ -1719,35 +1719,35 @@
                 {/each}
               </div>
               <details
-                class="rounded-md border border-indigo-100 bg-white/70"
+                class="rounded-md border border-cv/30 bg-surface"
               >
                 <summary
-                  class="cursor-pointer select-none px-3 py-2 text-xs font-semibold text-indigo-700"
+                  class="cursor-pointer select-none px-3 py-2 text-xs font-semibold text-cv"
                 >
                   {$t("demo_references")}
                 </summary>
                 <div
-                  class="border-t border-indigo-100 px-3 py-3 max-h-56 overflow-y-auto flex flex-col gap-4"
+                  class="border-t border-cv/30 px-3 py-3 max-h-56 overflow-y-auto flex flex-col gap-4"
                 >
                   {#if activeDemoDatasetType === "mnist"}
                     <a
                       href="https://www.kaggle.com/datasets/alexanderyyy/mnist-png"
                       target="_blank"
                       rel="noreferrer"
-                      class="group rounded-md border border-zinc-100 bg-white px-2.5 py-2 text-left hover:border-indigo-200 hover:bg-indigo-50/40 transition-colors break-all"
+                      class="group rounded-md border border-hairline bg-surface px-2.5 py-2 text-left hover:border-cv/30 hover:bg-cv-wash/40 transition-colors break-all"
                     >
                       <span
-                        class="block text-xs font-medium text-zinc-700 group-hover:text-indigo-700"
+                        class="block text-xs font-medium text-ink-muted group-hover:text-cv"
                         >MNIST Dataset (Kaggle)</span
                       >
-                      <span class="block mt-0.5 text-[11px] text-zinc-500"
+                      <span class="block mt-0.5 text-[11px] text-ink-faint"
                         >https://www.kaggle.com/datasets/alexanderyyy/mnist-png</span
                       >
                     </a>
                   {:else}
                     <div>
                       <p
-                        class="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-400"
+                        class="mb-2 text-[10px] font-semibold uppercase tracking-wide text-ink-faint"
                       >
                         {$t("demo_training_refs")}
                       </p>
@@ -1757,14 +1757,14 @@
                             href={ref.source}
                             target="_blank"
                             rel="noreferrer"
-                            class="group rounded-md border border-zinc-100 bg-white px-2.5 py-2 text-left hover:border-indigo-200 hover:bg-indigo-50/40 transition-colors"
+                            class="group rounded-md border border-hairline bg-surface px-2.5 py-2 text-left hover:border-cv/30 hover:bg-cv-wash/40 transition-colors"
                           >
                             <span
-                              class="block text-xs font-medium text-zinc-700 group-hover:text-indigo-700"
+                              class="block text-xs font-medium text-ink-muted group-hover:text-cv"
                               >{refIdx + 1}. {ref.title}</span
                             >
                             <span
-                              class="block mt-0.5 text-[11px] text-zinc-500"
+                              class="block mt-0.5 text-[11px] text-ink-faint"
                               >{ref.author} · {ref.license}</span
                             >
                           </a>
@@ -1773,7 +1773,7 @@
                     </div>
                     <div>
                       <p
-                        class="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-400"
+                        class="mb-2 text-[10px] font-semibold uppercase tracking-wide text-ink-faint"
                       >
                         {$t("demo_test_refs")}
                       </p>
@@ -1783,14 +1783,14 @@
                             href={ref.source}
                             target="_blank"
                             rel="noreferrer"
-                            class="group rounded-md border border-zinc-100 bg-white px-2.5 py-2 text-left hover:border-indigo-200 hover:bg-indigo-50/40 transition-colors"
+                            class="group rounded-md border border-hairline bg-surface px-2.5 py-2 text-left hover:border-cv/30 hover:bg-cv-wash/40 transition-colors"
                           >
                             <span
-                              class="block text-xs font-medium text-zinc-700 group-hover:text-indigo-700"
+                              class="block text-xs font-medium text-ink-muted group-hover:text-cv"
                               >{refIdx + 1}. {ref.title}</span
                             >
                             <span
-                              class="block mt-0.5 text-[11px] text-zinc-500"
+                              class="block mt-0.5 text-[11px] text-ink-faint"
                               >{ref.author} · {ref.license}</span
                             >
                           </a>
@@ -1804,11 +1804,11 @@
           {/if}
 
           <label
-            class="w-full flex justify-between items-center px-4 py-2.5 text-sm border border-zinc-200 rounded-lg cursor-pointer hover:bg-zinc-50 hover:border-indigo-300 transition-all bg-zinc-50"
+            class="w-full flex justify-between items-center px-4 py-2.5 text-sm border border-hairline rounded-lg cursor-pointer hover:bg-sunken hover:border-cv/50 transition-all bg-sunken"
           >
-            <span class="font-medium text-zinc-700">{$t("data_input")}</span>
+            <span class="font-medium text-ink-muted">{$t("data_input")}</span>
             <span
-              class="text-indigo-600 font-semibold text-xs uppercase tracking-wide"
+              class="text-cv font-semibold text-xs uppercase tracking-wide"
               >{$t("browse")}</span
             >
             <input
@@ -1824,13 +1824,13 @@
 
           <!-- XAI Explain Button -->
           {#if isModelTrained && previewUrl}
-            <div class="border-t border-zinc-100 pt-4 flex flex-col gap-2">
+            <div class="border-t border-hairline pt-4 flex flex-col gap-2">
               <div class="flex items-center justify-between">
                 <div>
-                  <p class="text-xs font-semibold text-zinc-700">
+                  <p class="text-xs font-semibold text-ink-muted">
                     {$t("explanation_title")}
                   </p>
-                  <p class="text-xs text-zinc-400 mt-0.5">
+                  <p class="text-xs text-ink-faint mt-0.5">
                     {$t("explanation_desc")}
                   </p>
                 </div>
@@ -1839,7 +1839,7 @@
                 <button
                   on:click={explainPrediction}
                   disabled={isExplaining}
-                  class="flex-1 py-2 text-xs font-semibold bg-zinc-900 hover:bg-zinc-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
+                  class="flex-1 py-2 text-xs font-semibold bg-ink hover:opacity-90 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -1866,7 +1866,7 @@
                 {#if showExplanation}
                   <button
                     on:click={() => (showExplanation = false)}
-                    class="px-3 py-2 text-xs font-medium border border-zinc-200 rounded-lg hover:bg-zinc-50 transition-colors text-zinc-600"
+                    class="px-3 py-2 text-xs font-medium border border-hairline rounded-lg hover:bg-sunken transition-colors text-ink-muted"
                   >
                     {$t("show_original")}
                   </button>
@@ -1890,14 +1890,14 @@
      the standard portal-equivalent fix. -->
   {#if showResetConfirm}
     <div
-      class="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm transition-opacity fade-in"
+      class="fixed inset-0 bg-ink/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm transition-opacity fade-in"
     >
       <div
-        class="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col fade-up"
+        class="bg-surface rounded-xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col fade-up"
       >
         <div class="p-6">
           <div
-            class="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center text-red-600 mb-4 mx-auto ring-8 ring-red-50/50"
+            class="w-12 h-12 rounded-full bg-danger-wash flex items-center justify-center text-danger mb-4 mx-auto ring-8 ring-danger/50"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -1913,28 +1913,28 @@
               ></path></svg
             >
           </div>
-          <h3 class="text-lg font-bold text-zinc-900 text-center mb-2">
+          <h3 class="text-lg font-bold text-ink text-center mb-2">
             {$t("reset_modal_title")}
           </h3>
-          <p class="text-sm text-zinc-500 text-center leading-relaxed">
+          <p class="text-sm text-ink-faint text-center leading-relaxed">
             {$t("reset_modal_desc_1")}
-            <strong class="text-zinc-700 font-semibold"
+            <strong class="text-ink-muted font-semibold"
               >{$t("reset_modal_desc_2")}</strong
             >.
           </p>
         </div>
         <div
-          class="px-6 py-4 bg-zinc-50/80 border-t border-zinc-100 flex gap-3"
+          class="px-6 py-4 bg-sunken/80 border-t border-hairline flex gap-3"
         >
           <button
             on:click={() => (showResetConfirm = false)}
-            class="flex-1 px-4 py-2.5 text-sm font-semibold text-zinc-600 bg-white border border-zinc-200 hover:bg-zinc-50 hover:text-zinc-900 rounded-lg transition-colors"
+            class="flex-1 px-4 py-2.5 text-sm font-semibold text-ink-muted bg-surface border border-hairline hover:bg-sunken hover:text-ink rounded-lg transition-colors"
           >
             {$t("reset_modal_cancel")}
           </button>
           <button
             on:click={executeReset}
-            class="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors shadow-sm"
+            class="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-danger hover:bg-danger-ink rounded-lg transition-colors shadow-sm"
           >
             {$t("reset_modal_confirm")}
           </button>
@@ -1945,14 +1945,14 @@
 
   {#if showSaveDatasetModal}
     <div
-      class="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm transition-opacity fade-in"
+      class="fixed inset-0 bg-ink/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm transition-opacity fade-in"
     >
       <div
-        class="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col fade-up"
+        class="bg-surface rounded-xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col fade-up"
       >
         <div class="p-6">
           <div
-            class="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 mb-4 mx-auto ring-8 ring-amber-50/50"
+            class="w-12 h-12 rounded-full bg-warning-wash flex items-center justify-center text-warning mb-4 mx-auto ring-8 ring-warning/50"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -1969,15 +1969,15 @@
               /></svg
             >
           </div>
-          <h3 class="text-lg font-bold text-zinc-900 text-center mb-2">
+          <h3 class="text-lg font-bold text-ink text-center mb-2">
             {$t("save_dataset_title")}
           </h3>
-          <p class="text-sm text-zinc-500 text-center leading-relaxed mb-4">
+          <p class="text-sm text-ink-faint text-center leading-relaxed mb-4">
             {$t("save_dataset_desc")}
           </p>
           {#if saveDatasetError}
             <div
-              class="mb-3 px-3 py-2 bg-red-50 border border-red-100 rounded-lg text-sm text-red-700 font-medium text-center"
+              class="mb-3 px-3 py-2 bg-danger-wash border border-danger/30 rounded-lg text-sm text-danger font-medium text-center"
             >
               {saveDatasetError}
             </div>
@@ -1986,25 +1986,25 @@
             type="text"
             bind:value={saveDatasetName}
             placeholder={$t("save_dataset_placeholder")}
-            class="w-full px-4 py-2.5 text-sm border border-zinc-200 rounded-lg outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100 transition-all"
+            class="w-full px-4 py-2.5 text-sm border border-hairline rounded-lg outline-none focus:border-warning/50 focus:ring-2 focus:ring-warning transition-all"
             on:keydown={(e) => {
               if (e.key === "Enter") confirmSaveDataset();
             }}
           />
         </div>
         <div
-          class="px-6 py-4 bg-zinc-50/80 border-t border-zinc-100 flex gap-3"
+          class="px-6 py-4 bg-sunken/80 border-t border-hairline flex gap-3"
         >
           <button
             on:click={() => (showSaveDatasetModal = false)}
-            class="flex-1 px-4 py-2.5 text-sm font-semibold text-zinc-600 bg-white border border-zinc-200 hover:bg-zinc-50 hover:text-zinc-900 rounded-lg transition-colors"
+            class="flex-1 px-4 py-2.5 text-sm font-semibold text-ink-muted bg-surface border border-hairline hover:bg-sunken hover:text-ink rounded-lg transition-colors"
           >
             {$t("reset_modal_cancel")}
           </button>
           <button
             on:click={confirmSaveDataset}
             disabled={!saveDatasetName.trim()}
-            class="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-amber-600 hover:bg-amber-700 disabled:bg-amber-300 rounded-lg transition-colors shadow-sm"
+            class="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-warning hover:bg-warning-ink disabled:bg-warning rounded-lg transition-colors shadow-sm"
           >
             {$t("save_dataset_confirm")}
           </button>
@@ -2072,22 +2072,22 @@
     class="max-w-[85rem] mx-auto w-full px-8 mt-12 relative z-10"
   >
     <div
-      class="bg-white/70 backdrop-blur-md rounded-2xl border border-white/60 shadow-[0_8px_30px_rgba(0,0,0,0.02)] overflow-hidden hover:border-indigo-300/80 transition-all duration-300"
+      class="bg-surface backdrop-blur-md rounded-2xl border border-hairline shadow-[0_8px_30px_rgba(0,0,0,0.02)] overflow-hidden hover:border-cv/50 transition-all duration-300"
     >
-      <div class="bg-zinc-900 px-6 py-5">
+      <div class="bg-ink px-6 py-5">
         <h2 class="text-base font-semibold tracking-tight text-white">
           {$t("diagnostics")}
         </h2>
-        <p class="text-xs text-zinc-400 mt-0.5">{$t("diag_desc")}</p>
+        <p class="text-xs text-white/65 mt-0.5">{$t("diag_desc")}</p>
       </div>
 
       <div class="p-6 grid grid-cols-1 xl:grid-cols-12 gap-8">
         <div class="xl:col-span-4 flex flex-col gap-4">
           <div>
-            <h3 class="text-sm font-semibold text-zinc-700">
+            <h3 class="text-sm font-semibold text-ink-muted">
               {$t("test_env")}
             </h3>
-            <p class="text-xs text-zinc-500 leading-relaxed mt-1">
+            <p class="text-xs text-ink-faint leading-relaxed mt-1">
               {$t("test_env_desc")}
             </p>
           </div>
@@ -2095,17 +2095,17 @@
           <div class="flex flex-col gap-3">
             {#each classes as item}
               <div
-                class="bg-zinc-50 rounded-lg border border-zinc-200 overflow-hidden"
+                class="bg-sunken rounded-lg border border-hairline overflow-hidden"
               >
                 <!-- Header row -->
                 <div
-                  class="px-3 py-2.5 flex justify-between items-center border-b border-zinc-200 bg-white"
+                  class="px-3 py-2.5 flex justify-between items-center border-b border-hairline bg-surface"
                 >
                   <div>
-                    <div class="text-sm font-semibold text-zinc-800">
+                    <div class="text-sm font-semibold text-ink-muted">
                       {item.name}
                     </div>
-                    <div class="text-xs text-zinc-400">
+                    <div class="text-xs text-ink-faint">
                       {(testSamples[item.id] || []).length}
                       {$t("samples")}
                     </div>
@@ -2113,7 +2113,7 @@
                   <div class="flex gap-2">
                     <button
                       on:click={() => (activeTestWebcamClass = item.id)}
-                      class="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 bg-zinc-100 border border-zinc-200 text-zinc-700 rounded cursor-pointer hover:border-indigo-300 hover:text-indigo-600 transition-colors"
+                      class="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 bg-sunken border border-hairline text-ink-muted rounded cursor-pointer hover:border-cv/50 hover:text-cv transition-colors"
                       title="Webcam"
                     >
                       <svg
@@ -2131,7 +2131,7 @@
                     </button>
                     <button
                       on:click={() => (activeTestDrawClass = item.id)}
-                      class="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 bg-zinc-100 border border-zinc-200 text-zinc-700 rounded cursor-pointer hover:border-indigo-300 hover:text-indigo-600 transition-colors"
+                      class="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 bg-sunken border border-hairline text-ink-muted rounded cursor-pointer hover:border-cv/50 hover:text-cv transition-colors"
                       title={$t("canvas")}
                     >
                       <svg
@@ -2148,7 +2148,7 @@
                       >
                     </button>
                     <label
-                      class="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 bg-zinc-100 border border-zinc-200 rounded cursor-pointer hover:border-indigo-300 hover:text-indigo-600 transition-colors"
+                      class="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 bg-sunken border border-hairline rounded cursor-pointer hover:border-cv/50 hover:text-cv transition-colors"
                     >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -2181,7 +2181,7 @@
                   >
                     {#each testSamples[item.id] as imgUrl, idx}
                       <div
-                        class="relative group/timg w-10 h-10 rounded overflow-hidden border border-zinc-200 shrink-0"
+                        class="relative group/timg w-10 h-10 rounded overflow-hidden border border-hairline shrink-0"
                       >
                         <img
                           src={imgUrl}
@@ -2190,7 +2190,7 @@
                         />
                         <button
                           on:click={() => removeTestImage(item.id, idx)}
-                          class="absolute inset-0 bg-red-500/80 text-white opacity-0 group-hover/timg:opacity-100 flex items-center justify-center transition-opacity"
+                          class="absolute inset-0 bg-danger/80 text-white opacity-0 group-hover/timg:opacity-100 flex items-center justify-center transition-opacity"
                           aria-label="Remove test sample"
                         >
                           <svg
@@ -2213,7 +2213,7 @@
                     {/each}
                   </div>
                 {:else}
-                  <div class="px-3 py-2 text-xs text-zinc-400 italic">
+                  <div class="px-3 py-2 text-xs text-ink-faint italic">
                     {$t("no_images")}
                   </div>
                 {/if}
@@ -2226,11 +2226,11 @@
             disabled={!isModelTrained ||
               totalTestSamples === 0 ||
               isEvaluating}
-            class="w-full py-2.5 text-sm font-medium bg-zinc-800 hover:bg-zinc-900 text-white rounded-lg transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
+            class="w-full py-2.5 text-sm font-medium bg-ink hover:opacity-90 text-white rounded-lg transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
           >
             {#if isEvaluating}
               <div
-                class="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"
+                class="w-4 h-4 border-2 border-hairline border-t-white rounded-full animate-spin"
               ></div>
             {/if}
             {isEvaluating ? $t("evaluating") : $t("run_diag")}
@@ -2238,33 +2238,33 @@
         </div>
 
         <div class="xl:col-span-8 flex flex-col gap-4 min-w-0">
-          <h3 class="text-sm font-semibold text-zinc-700">
+          <h3 class="text-sm font-semibold text-ink-muted">
             {$t("perf_dist")}
           </h3>
 
           {#if confusionMatrix.length > 0}
-            <div class="overflow-x-auto border border-zinc-200 rounded-lg">
+            <div class="overflow-x-auto border border-hairline rounded-lg">
               <table class="w-full text-sm text-left">
                 <thead
-                  class="bg-zinc-50 text-xs uppercase font-semibold text-zinc-500 border-b border-zinc-200"
+                  class="bg-sunken text-xs uppercase font-semibold text-ink-faint border-b border-hairline"
                 >
                   <tr>
-                    <th class="px-4 py-3 border-r border-zinc-200"
+                    <th class="px-4 py-3 border-r border-hairline"
                       >True Label \ Pred</th
                     >
                     {#each classes as c}
                       <th
-                        class="px-4 py-3 border-r border-zinc-200 text-center"
+                        class="px-4 py-3 border-r border-hairline text-center"
                         >{c.name}</th
                       >
                     {/each}
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-zinc-200 bg-white">
+                <tbody class="divide-y divide-hairline bg-surface">
                   {#each classes as realClass, rIndex}
                     <tr>
                       <td
-                        class="px-4 py-3 font-medium text-zinc-700 border-r border-zinc-200 bg-zinc-50/30"
+                        class="px-4 py-3 font-medium text-ink-muted border-r border-hairline bg-sunken/30"
                         >{realClass.name}</td
                       >
                       {#each classes as predClass, cIndex}
@@ -2273,21 +2273,21 @@
                           inspectorCell?.rIdx === rIndex &&
                           inspectorCell?.cIdx === cIndex}
                         <td
-                          class="px-4 py-3 text-center border-r border-zinc-200 font-medium transition-all
+                          class="px-4 py-3 text-center border-r border-hairline font-medium transition-all
                                                {count > 0
                             ? 'cursor-pointer'
                             : ''}
                                                {isActive
-                            ? 'ring-2 ring-inset ring-indigo-400'
+                            ? 'ring-2 ring-inset ring-cv'
                             : ''}
                                                {rIndex === cIndex && count > 0
-                            ? 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
+                            ? 'bg-cv-wash text-cv hover:bg-cv-wash'
                             : ''}
                                                {rIndex !== cIndex && count > 0
-                            ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                            ? 'bg-danger-wash text-danger hover:bg-danger-wash'
                             : ''}
                                                {count === 0
-                            ? 'text-zinc-300 font-normal'
+                            ? 'text-ink-faint font-normal'
                             : ''}"
                           on:click={() => {
                             if (count > 0) {
@@ -2305,34 +2305,34 @@
               </table>
             </div>
             <p
-              class="text-xs text-zinc-500 leading-relaxed max-w-2xl bg-zinc-50 p-3 rounded border border-zinc-100"
+              class="text-xs text-ink-faint leading-relaxed max-w-2xl bg-sunken p-3 rounded border border-hairline"
             >
               {$t("matrix_note")}
-              <span class="font-medium text-indigo-600"
+              <span class="font-medium text-cv"
                 >{$t("click_cell_hint")}</span
               >
             </p>
 
             <!-- Per-class Metrics Table -->
             {#if classMetrics.length > 0}
-              <div class="border border-zinc-200 rounded-lg overflow-hidden">
+              <div class="border border-hairline rounded-lg overflow-hidden">
                 <div
-                  class="px-4 py-3 bg-zinc-50 border-b border-zinc-200 flex items-center justify-between"
+                  class="px-4 py-3 bg-sunken border-b border-hairline flex items-center justify-between"
                 >
-                  <h4 class="text-sm font-semibold text-zinc-700">
+                  <h4 class="text-sm font-semibold text-ink-muted">
                     {$t("metrics_title")}
                   </h4>
                   <div class="flex items-center gap-2">
-                    <span class="text-xs font-medium text-zinc-500"
+                    <span class="text-xs font-medium text-ink-faint"
                       >{$t("metrics_accuracy")}:</span
                     >
                     <span
                       class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold {globalAccuracy >=
                       0.8
-                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        ? 'bg-success-wash text-success border border-success/30'
                         : globalAccuracy >= 0.5
-                          ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                          : 'bg-red-50 text-red-600 border border-red-200'}"
+                          ? 'bg-warning-wash text-warning border border-warning/30'
+                          : 'bg-danger-wash text-danger border border-danger/30'}"
                     >
                       {(globalAccuracy * 100).toFixed(1)}%
                     </span>
@@ -2341,116 +2341,116 @@
                 <div class="overflow-x-auto">
                   <table class="w-full text-sm">
                   <thead
-                    class="bg-zinc-50/50 text-xs uppercase font-semibold text-zinc-500 border-b border-zinc-200"
+                    class="bg-sunken/50 text-xs uppercase font-semibold text-ink-faint border-b border-hairline"
                   >
                     <tr>
                       <th
-                        class="px-4 py-2.5 text-left border-r border-zinc-200"
+                        class="px-4 py-2.5 text-left border-r border-hairline"
                         >{$t("metrics_class")}</th
                       >
                       <th
-                        class="px-4 py-2.5 text-center border-r border-zinc-200"
+                        class="px-4 py-2.5 text-center border-r border-hairline"
                         >Precision</th
                       >
                       <th
-                        class="px-4 py-2.5 text-center border-r border-zinc-200"
+                        class="px-4 py-2.5 text-center border-r border-hairline"
                         >Recall</th
                       >
                       <th
-                        class="px-4 py-2.5 text-center border-r border-zinc-200"
+                        class="px-4 py-2.5 text-center border-r border-hairline"
                         >F1-Score</th
                       >
                       <th class="px-4 py-2.5 text-center">Support</th>
                     </tr>
                   </thead>
-                  <tbody class="divide-y divide-zinc-100 bg-white">
+                  <tbody class="divide-y divide-hairline bg-surface">
                     {#each classes as cls, i}
                       {@const m = classMetrics[i]}
-                      <tr class="hover:bg-zinc-50/50 transition-colors">
+                      <tr class="hover:bg-sunken/50 transition-colors">
                         <td
-                          class="px-4 py-3 font-medium text-zinc-700 border-r border-zinc-200"
+                          class="px-4 py-3 font-medium text-ink-muted border-r border-hairline"
                           >{cls.name}</td
                         >
-                        <td class="px-4 py-2.5 border-r border-zinc-200">
+                        <td class="px-4 py-2.5 border-r border-hairline">
                           <div class="flex items-center gap-2 justify-center">
                             <div
-                              class="w-16 h-1.5 bg-zinc-100 rounded-full overflow-hidden"
+                              class="w-16 h-1.5 bg-sunken rounded-full overflow-hidden"
                             >
                               <div
                                 class="h-full rounded-full transition-all {m.precision >=
                                 0.8
-                                  ? 'bg-emerald-500'
+                                  ? 'bg-success'
                                   : m.precision >= 0.5
-                                    ? 'bg-amber-400'
-                                    : 'bg-red-400'}"
+                                    ? 'bg-warning'
+                                    : 'bg-danger'}"
                                 style="width: {m.precision * 100}%"
                               ></div>
                             </div>
                             <span
                               class="text-xs font-semibold tabular-nums w-12 text-right {m.precision >=
                               0.8
-                                ? 'text-emerald-700'
+                                ? 'text-success'
                                 : m.precision >= 0.5
-                                  ? 'text-amber-600'
-                                  : 'text-red-500'}"
+                                  ? 'text-warning'
+                                  : 'text-danger'}"
                               >{(m.precision * 100).toFixed(1)}%</span
                             >
                           </div>
                         </td>
-                        <td class="px-4 py-2.5 border-r border-zinc-200">
+                        <td class="px-4 py-2.5 border-r border-hairline">
                           <div class="flex items-center gap-2 justify-center">
                             <div
-                              class="w-16 h-1.5 bg-zinc-100 rounded-full overflow-hidden"
+                              class="w-16 h-1.5 bg-sunken rounded-full overflow-hidden"
                             >
                               <div
                                 class="h-full rounded-full transition-all {m.recall >=
                                 0.8
-                                  ? 'bg-emerald-500'
+                                  ? 'bg-success'
                                   : m.recall >= 0.5
-                                    ? 'bg-amber-400'
-                                    : 'bg-red-400'}"
+                                    ? 'bg-warning'
+                                    : 'bg-danger'}"
                                 style="width: {m.recall * 100}%"
                               ></div>
                             </div>
                             <span
                               class="text-xs font-semibold tabular-nums w-12 text-right {m.recall >=
                               0.8
-                                ? 'text-emerald-700'
+                                ? 'text-success'
                                 : m.recall >= 0.5
-                                  ? 'text-amber-600'
-                                  : 'text-red-500'}"
+                                  ? 'text-warning'
+                                  : 'text-danger'}"
                               >{(m.recall * 100).toFixed(1)}%</span
                             >
                           </div>
                         </td>
-                        <td class="px-4 py-2.5 border-r border-zinc-200">
+                        <td class="px-4 py-2.5 border-r border-hairline">
                           <div class="flex items-center gap-2 justify-center">
                             <div
-                              class="w-16 h-1.5 bg-zinc-100 rounded-full overflow-hidden"
+                              class="w-16 h-1.5 bg-sunken rounded-full overflow-hidden"
                             >
                               <div
                                 class="h-full rounded-full transition-all {m.f1 >=
                                 0.8
-                                  ? 'bg-emerald-500'
+                                  ? 'bg-success'
                                   : m.f1 >= 0.5
-                                    ? 'bg-amber-400'
-                                    : 'bg-red-400'}"
+                                    ? 'bg-warning'
+                                    : 'bg-danger'}"
                                 style="width: {m.f1 * 100}%"
                               ></div>
                             </div>
                             <span
                               class="text-xs font-semibold tabular-nums w-12 text-right {m.f1 >=
                               0.8
-                                ? 'text-emerald-700'
+                                ? 'text-success'
                                 : m.f1 >= 0.5
-                                  ? 'text-amber-600'
-                                  : 'text-red-500'}"
+                                  ? 'text-warning'
+                                  : 'text-danger'}"
                               >{(m.f1 * 100).toFixed(1)}%</span
                             >
                           </div>
                         </td>
                         <td
-                          class="px-4 py-2.5 text-center text-xs font-medium text-zinc-500 tabular-nums"
+                          class="px-4 py-2.5 text-center text-xs font-medium text-ink-faint tabular-nums"
                           >{m.support}</td
                         >
                       </tr>
@@ -2467,17 +2467,17 @@
                 detailedResults[inspectorCell.rIdx]?.[inspectorCell.cIdx] ??
                 []}
               {@const isCorrect = inspectorCell.rIdx === inspectorCell.cIdx}
-              <div class="border border-zinc-200 rounded-lg overflow-hidden">
+              <div class="border border-hairline rounded-lg overflow-hidden">
                 <div
                   class="px-4 py-3 {isCorrect
-                    ? 'bg-indigo-50 border-b border-indigo-100'
-                    : 'bg-red-50 border-b border-red-100'} flex items-center justify-between"
+                    ? 'bg-cv-wash border-b border-cv/30'
+                    : 'bg-danger-wash border-b border-danger/30'} flex items-center justify-between"
                 >
                   <div>
                     <p
                       class="text-sm font-semibold {isCorrect
-                        ? 'text-indigo-800'
-                        : 'text-red-800'}"
+                        ? 'text-cv'
+                        : 'text-danger'}"
                     >
                       {classes[inspectorCell.rIdx]?.name} → {classes[
                         inspectorCell.cIdx
@@ -2498,7 +2498,7 @@
                       inspectorCell = null;
                       inspectorExplainUrl = "";
                     }}
-                    class="text-zinc-400 hover:text-zinc-600 transition-colors"
+                    class="text-ink-faint hover:text-ink-muted transition-colors"
                     aria-label="Close sample inspector"
                   >
                     <svg
@@ -2519,15 +2519,15 @@
                   </button>
                 </div>
 
-                <div class="p-4 flex gap-4 flex-wrap bg-white">
+                <div class="p-4 flex gap-4 flex-wrap bg-surface">
                   {#each cell as sample, sIdx}
                     <div class="flex flex-col items-center gap-1.5">
                       <button
                         type="button"
                         class="relative group/s w-20 h-20 rounded-lg overflow-hidden border-2 {inspectorExplainingIdx ===
                         sIdx
-                          ? 'border-indigo-400'
-                          : 'border-zinc-200 hover:border-indigo-300'} cursor-pointer transition-colors"
+                          ? 'border-cv/50'
+                          : 'border-hairline hover:border-cv/50'} cursor-pointer transition-colors"
                         on:click={() =>
                           explainInspectorImage(sample.imgUrl, sIdx)}
                         aria-label="Explain sample prediction"
@@ -2547,15 +2547,15 @@
                         {/if}
                         {#if inspectorExplainingIdx === sIdx}
                           <div
-                            class="absolute inset-0 bg-white/80 flex items-center justify-center"
+                            class="absolute inset-0 bg-surface flex items-center justify-center"
                           >
                             <div
-                              class="w-5 h-5 border-2 border-indigo-300 border-t-indigo-600 rounded-full animate-spin"
+                              class="w-5 h-5 border-2 border-cv/50 border-t-indigo-600 rounded-full animate-spin"
                             ></div>
                           </div>
                         {:else}
                           <div
-                            class="absolute inset-0 bg-black/40 opacity-0 group-hover/s:opacity-100 flex items-center justify-center transition-opacity"
+                            class="absolute inset-0 bg-ink/40 opacity-0 group-hover/s:opacity-100 flex items-center justify-center transition-opacity"
                           >
                             <svg
                               xmlns="http://www.w3.org/2000/svg"
@@ -2577,25 +2577,25 @@
                       </button>
                       <span
                         class="text-xs font-semibold {isCorrect
-                          ? 'text-indigo-600'
-                          : 'text-red-500'}">{sample.confidence}%</span
+                          ? 'text-cv'
+                          : 'text-danger'}">{sample.confidence}%</span
                       >
                     </div>
                   {/each}
                 </div>
 
                 {#if inspectorExplainUrl}
-                  <div class="px-4 pb-4 bg-white border-t border-zinc-100">
+                  <div class="px-4 pb-4 bg-surface border-t border-hairline">
                     <div
                       class="relative rounded-lg overflow-hidden w-48 h-48"
                     >
                       <img
                         src={inspectorExplainUrl}
-                        class="w-full h-full object-contain bg-zinc-100"
+                        class="w-full h-full object-contain bg-sunken"
                         alt="heatmap"
                       />
                       <div
-                        class="absolute bottom-1 left-1 right-1 flex items-center gap-1.5 bg-black/60 rounded px-1.5 py-1 backdrop-blur-sm"
+                        class="absolute bottom-1 left-1 right-1 flex items-center gap-1.5 bg-ink/60 rounded px-1.5 py-1 backdrop-blur-sm"
                       >
                         <div
                           class="h-1.5 flex-1 rounded-full"
@@ -2609,7 +2609,7 @@
                     </div>
                     <button
                       on:click={() => (inspectorExplainUrl = "")}
-                      class="mt-2 text-xs text-zinc-400 hover:text-zinc-600 underline"
+                      class="mt-2 text-xs text-ink-faint hover:text-ink-muted underline"
                       >{$t("hide_map")}</button
                     >
                   </div>
@@ -2618,7 +2618,7 @@
             {/if}
           {:else}
             <div
-              class="h-44 bg-zinc-50/50 rounded-lg border border-dashed border-zinc-300 flex items-center justify-center text-sm font-medium text-zinc-400"
+              class="h-44 bg-sunken/50 rounded-lg border border-dashed border-line flex items-center justify-center text-sm font-medium text-ink-faint"
             >
               {$t("awaiting_samples")}
             </div>
@@ -2634,23 +2634,23 @@
     class="max-w-[85rem] mx-auto w-full px-8 mt-12 relative z-10"
   >
     <div
-      class="bg-white/70 backdrop-blur-md rounded-2xl border border-white/60 shadow-[0_8px_30px_rgba(0,0,0,0.02)] overflow-hidden hover:border-indigo-300/80 transition-all duration-300"
+      class="bg-surface backdrop-blur-md rounded-2xl border border-hairline shadow-[0_8px_30px_rgba(0,0,0,0.02)] overflow-hidden hover:border-cv/50 transition-all duration-300"
     >
-      <div class="bg-zinc-900 px-6 py-5">
+      <div class="bg-ink px-6 py-5">
         <h2 class="text-base font-semibold tracking-tight text-white">
           {$t("dtree_title")}
         </h2>
-        <p class="text-xs text-zinc-400 mt-0.5">{$t("dtree_subtitle")}</p>
+        <p class="text-xs text-white/65 mt-0.5">{$t("dtree_subtitle")}</p>
       </div>
 
       <div class="p-6 grid grid-cols-1 xl:grid-cols-12 gap-8">
         <!-- Left: Description + Run button -->
         <div class="xl:col-span-4 flex flex-col gap-4">
           <div>
-            <h3 class="text-sm font-semibold text-zinc-700">
+            <h3 class="text-sm font-semibold text-ink-muted">
               {$t("dtree_title")}
             </h3>
-            <p class="text-xs text-zinc-500 leading-relaxed mt-1">
+            <p class="text-xs text-ink-faint leading-relaxed mt-1">
               {$t("dtree_note")}
             </p>
           </div>
@@ -2660,11 +2660,11 @@
             disabled={!isModelTrained ||
               savedEmbeddings.length === 0 ||
               isBuildingTree}
-            class="w-full py-2.5 text-sm font-medium bg-zinc-800 hover:bg-zinc-900 text-white rounded-lg transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
+            class="w-full py-2.5 text-sm font-medium bg-ink hover:opacity-90 text-white rounded-lg transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
           >
             {#if isBuildingTree}
               <div
-                class="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"
+                class="w-4 h-4 border-2 border-hairline border-t-white rounded-full animate-spin"
               ></div>
             {/if}
             {isBuildingTree ? $t("evaluating") : $t("run_diag")}
@@ -2680,7 +2680,7 @@
             />
           {:else}
             <div
-              class="h-44 bg-zinc-50/50 rounded-lg border border-dashed border-zinc-300 flex items-center justify-center text-sm font-medium text-zinc-400"
+              class="h-44 bg-sunken/50 rounded-lg border border-dashed border-line flex items-center justify-center text-sm font-medium text-ink-faint"
             >
               {$t("dtree_awaiting")}
             </div>
