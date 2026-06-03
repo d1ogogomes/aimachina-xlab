@@ -3,6 +3,11 @@
   import { tick } from "svelte";
   import { driver } from "driver.js";
   import "driver.js/dist/driver.css";
+  import {
+    tokenize,
+    getStringHash,
+    type TokenRepresentation,
+  } from "../ml/tokenizer";
 
   // Sub-tabs within the LLM Playground
   let activeSubTab: "tokenizer" | "decoding" = "tokenizer";
@@ -101,78 +106,6 @@
   }
 
   // Simple deterministic hash for arbitrary strings (for IDs)
-  function getStringHash(str: string): number {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      hash = str.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    return Math.abs(hash);
-  }
-
-  // Predefined vocabulary for realism (maps common words/subwords to authentic GPT-4-like token IDs)
-  const VOCAB_MAP: Record<string, number> = {
-    Over: 6439,
-    over: 724,
-    hill: 7329,
-    dale: 31201,
-    Thorough: 44781,
-    thorough: 18274,
-    bush: 14502,
-    brier: 48122,
-    park: 4203,
-    pale: 19483,
-    flood: 12891,
-    fire: 3290,
-    The: 464,
-    the: 262,
-    dog: 5679,
-    was: 373,
-    hungry: 9821,
-    because: 842,
-    it: 366,
-    "hadn't": 1982,
-    eaten: 12903,
-    all: 477,
-    day: 1110,
-    Albert: 13928,
-    Einstein: 22912,
-    scientist: 13812,
-    physicist: 25890,
-    genius: 18921,
-    German: 4920,
-    famous: 6203,
-    FBI: 8493,
-    chasing: 14930,
-    criminal: 9823,
-    on: 319,
-    run: 1004,
-    O: 53,
-    Pedro: 14920,
-    comprou: 38291,
-    um: 429,
-    livro: 21820,
-    e: 259,
-    leu: 19821,
-    "-o": 492,
-    na: 420,
-    biblioteca: 33902,
-  };
-
-  // Subword dictionary to split words realistically
-  const SUBWORD_RULES: Record<string, string[]> = {
-    Thorough: ["Thor", "ough"],
-    thorough: ["thor", "ough"],
-    Thoroughly: ["Thor", "ough", "ly"],
-    everywhere: ["every", "where"],
-    Einstein: ["Eins", "tein"],
-    physicist: ["physic", "ist"],
-    comprou: ["com", "prou"],
-    biblioteca: ["biblio", "teca"],
-    University: ["Uni", "ver", "sity"],
-    Texas: ["Tex", "as"],
-    Austin: ["Aus", "tin"],
-  };
-
   // Color mapping based on token hash to keep same tokens colored identically
   function getTokenBgClass(token: string): string {
     const colors = [
@@ -189,118 +122,8 @@
     return colors[hash % colors.length];
   }
 
-  // Token definition
-  type TokenRepresentation = {
-    text: string;
-    id: number;
-    spaceBefore: boolean;
-  };
-
-  // Reactive tokenization
-  $: tokens = (() => {
-    if (!tokenInput) return [] as TokenRepresentation[];
-
-    // Unicode-aware splitter:
-    //   - \s+              → whitespace runs
-    //   - [\p{L}\p{N}_]+   → "word" runs that include accented chars (pública, dégagé, fome…)
-    //   - [^\p{L}\p{N}\s_] → single punctuation/symbol char
-    // Without the `u` flag and \p{} classes, \w is ASCII-only and accented
-    // letters silently fall into the punctuation branch — "pública" was being
-    // shredded into ["p", "ú", "blica"] in the PT default input.
-    const wordRe = /(\s+|[\p{L}\p{N}_]+|[^\p{L}\p{N}\s_])/gu;
-
-    if (tokenizerMode === "word") {
-      const result: TokenRepresentation[] = [];
-      let m: RegExpExecArray | null;
-      let prevWasSpace = false;
-      let firstToken = true;
-      while ((m = wordRe.exec(tokenInput)) !== null) {
-        const w = m[0];
-        if (/^\s+$/.test(w)) {
-          prevWasSpace = true;
-          continue;
-        }
-        // spaceBefore: was the immediately-preceding text whitespace?
-        // Using indexOf(w) here was buggy: for repeated words like "the … the"
-        // every occurrence picked up the position of the FIRST occurrence,
-        // so spaceBefore (and Ġ in subword mode) was wrong on duplicates.
-        const spaceBefore = !firstToken && prevWasSpace;
-        firstToken = false;
-        prevWasSpace = false;
-
-        let id = VOCAB_MAP[w] || VOCAB_MAP[w.toLowerCase()];
-        if (!id) {
-          id = 10000 + (getStringHash(w) % 89999);
-        }
-        result.push({ text: w, id, spaceBefore });
-      }
-      return result;
-    } else {
-      // Subword BPE simulation: Break longer words
-      const result: TokenRepresentation[] = [];
-      let m: RegExpExecArray | null;
-      let prevWasSpace = false;
-      let firstToken = true;
-      while ((m = wordRe.exec(tokenInput)) !== null) {
-        const w = m[0];
-        if (/^\s+$/.test(w)) {
-          prevWasSpace = true;
-          continue;
-        }
-
-        const spaceBefore = !firstToken && prevWasSpace;
-        firstToken = false;
-        prevWasSpace = false;
-
-        // Punctuation and symbols never get split or prefixed with Ġ
-        const isPunct = /^[^\p{L}\p{N}_]+$/u.test(w);
-
-        // Simulated BPE Rule-based Split
-        const rules =
-          !isPunct && (SUBWORD_RULES[w] || SUBWORD_RULES[w.toLowerCase()]);
-        if (rules) {
-          rules.forEach((sub, subIdx) => {
-            const cleanSub = sub;
-            const displaySub =
-              subIdx === 0 && spaceBefore ? `Ġ${cleanSub}` : cleanSub;
-            let id = VOCAB_MAP[cleanSub] || VOCAB_MAP[cleanSub.toLowerCase()];
-            if (!id) {
-              id = 10000 + (getStringHash(cleanSub) % 89999);
-            }
-            result.push({
-              text: displaySub,
-              id,
-              spaceBefore: subIdx === 0 && spaceBefore,
-            });
-          });
-        } else if (!isPunct && w.length > 7) {
-          // Fallback split for unknown long words: split in half
-          const mid = Math.floor(w.length / 2);
-          const part1 = w.slice(0, mid);
-          const part2 = w.slice(mid);
-
-          const displayPart1 = spaceBefore ? `Ġ${part1}` : part1;
-          const id1 = 10000 + (getStringHash(part1) % 89999);
-          const id2 = 10000 + (getStringHash(part2) % 89999);
-
-          result.push({ text: displayPart1, id: id1, spaceBefore });
-          result.push({ text: part2, id: id2, spaceBefore: false });
-        } else {
-          const displayText = spaceBefore && !isPunct ? `Ġ${w}` : w;
-          let id = VOCAB_MAP[w] || VOCAB_MAP[w.toLowerCase()];
-          if (!id) {
-            id = 10000 + (getStringHash(w) % 89999);
-          }
-          result.push({
-            text: displayText,
-            id,
-            spaceBefore: spaceBefore && !isPunct,
-          });
-        }
-      }
-      return result;
-    }
-  })();
+  // Reactive tokenization (pure logic lives in ../ml/tokenizer).
+  $: tokens = tokenize(tokenInput, tokenizerMode) as TokenRepresentation[];
 
   $: totalTokens = tokens.length;
   $: estimatedCost =
