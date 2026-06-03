@@ -46,6 +46,15 @@
 @utility animate-spin-slow {
   animation: spin 25s linear infinite;
 }
+/* While a guided tour runs, the sticky header is dropped to normal flow.
+   driver.js raises the highlighted element's z-index above the overlay; for
+   the full-width Diagnostics / Decision Tree sections that would paint over
+   the pinned header, leaving it visually broken after scrolling back up.
+   Un-pinning it for the duration of the tour avoids the stacking conflict. */
+body.tour-active #app-header {
+  position: static;
+}
+
 /* ── Guided tour (driver.js) popover theme ──────────────────
    Shared across the Computer Vision, LLM and Decision Tree labs.
    driver renders the popover at the document body, so this lives

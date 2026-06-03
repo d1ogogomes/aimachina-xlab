@@ -195,7 +195,10 @@
   {/if}
 
   {#if activeTab !== "home"}
-    <div class="w-full max-w-[85rem] mx-auto px-8 pt-6 sticky top-0 z-50">
+    <div
+      id="app-header"
+      class="w-full max-w-[85rem] mx-auto px-8 pt-6 sticky top-0 z-50"
+    >
       <header
         class="bg-white/80 backdrop-blur-md rounded-full p-2 grid grid-cols-[1fr_auto_1fr] items-center shadow-[0_10px_30px_rgba(79,70,229,0.06)] border border-white/50"
       >

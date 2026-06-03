@@ -992,6 +992,7 @@
         align: "center" as const,
       },
     });
+    document.body.classList.add("tour-active");
     driver({
       showProgress: true,
       popoverClass: "aimachina-tour",
@@ -999,6 +1000,7 @@
       prevBtnText: $t("tour_btn_prev"),
       doneBtnText: $t("tour_btn_done"),
       onDestroyed: () => {
+        document.body.classList.remove("tour-active");
         if (typeof window !== "undefined") {
           window.scrollTo(0, 0);
         }
