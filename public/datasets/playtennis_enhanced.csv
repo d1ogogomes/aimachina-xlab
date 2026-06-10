@@ -1,0 +1,501 @@
+Day,Outlook,Temperature,Humidity,Wind,Season,Weekend,Location,Rainfall_mm,UVIndex,CloudCover_pct,AirQuality_AQI,Pressure_hPa,WeatherScore,IdealConditions,PlayTennis,PlayTennis_Num
+D001,Sunny,Hot,High,Weak,Spring,0,Park,0.8,7.0,0.0,41.0,,5.9,0,No,0
+D002,Overcast,Mild,Normal,Strong,Spring,0,Backyard,0.7,3.0,83.0,,1015.5,9.2,0,No,0
+D003,Overcast,Cool,Normal,Weak,Summer,0,Park,4.1,4.0,60.0,55.0,1015.6,8.0,0,Yes,1
+D004,Rain,Mild,High,Strong,Summer,0,Public Court,12.5,1.0,82.0,65.0,1013.7,5.8,0,No,0
+D005,Rain,Hot,Normal,Weak,Summer,0,Resort,31.6,5.0,94.0,48.0,1001.9,6.3,0,Yes,1
+D006,Sunny,Mild,High,Weak,Fall,0,Park,1.3,5.0,0.0,58.0,1012.9,8.3,0,No,0
+D007,Overcast,Mild,Normal,,Fall,0,Park,1.7,3.0,47.0,42.0,1017.3,9.1,0,Yes,1
+D008,Sunny,Hot,High,Strong,Fall,0,Backyard,0.9,6.0,17.0,63.0,1021.3,5.0,0,No,0
+D009,Overcast,Mild,Normal,Weak,Winter,0,Backyard,4.0,1.0,81.0,,1005.6,10.0,1,Yes,1
+D010,Overcast,Hot,Normal,Weak,Winter,0,Club,6.8,3.0,74.0,52.0,1006.7,7.9,0,Yes,1
+D011,Rain,Cool,High,Weak,Winter,0,Club,13.2,0.0,100.0,38.0,1007.4,6.2,0,No,0
+D012,Overcast,Hot,Normal,Weak,Spring,1,Club,5.4,2.0,81.0,40.0,,8.0,0,Yes,1
+D013,Overcast,Hot,Normal,,Spring,0,Backyard,1.2,3.0,78.0,44.0,1018.5,7.3,0,Yes,1
+D014,Sunny,Mild,Normal,Weak,Spring,0,Club,0.8,6.0,4.0,52.0,1016.3,9.0,0,Yes,1
+D015,Sunny,Cool,Normal,,Summer,0,Public Court,1.7,9.0,24.0,60.0,1027.5,6.9,0,Yes,1
+D016,Rain,Mild,High,Strong,Summer,0,Public Court,18.2,2.0,77.0,15.0,997.0,5.9,0,No,0
+D017,Overcast,Hot,High,Weak,Summer,0,Club,7.1,5.0,73.0,27.0,1016.7,6.9,0,Yes,1
+D018,Sunny,Mild,Normal,Weak,Fall,1,Park,0.9,3.0,29.0,37.0,1014.8,9.1,0,Yes,1
+D019,Sunny,Cool,Normal,Weak,Fall,0,Park,4.3,6.0,28.0,18.0,1020.8,7.8,0,Yes,1
+D020,Rain,Hot,Normal,Weak,Fall,0,Park,42.1,0.0,78.0,22.0,1005.8,5.9,0,No,0
+D021,Rain,Mild,High,Weak,Winter,0,Park,16.8,0.0,90.0,67.0,1001.6,7.2,0,Yes,1
+D022,Rain,Cool,Normal,Strong,Winter,0,Backyard,10.8,3.0,72.0,28.0,1005.1,5.9,0,No,0
+D023,Overcast,Cool,High,Weak,Winter,0,Public Court,0.3,3.0,59.0,,1013.8,8.1,0,No,0
+D024,Sunny,Mild,High,Weak,Spring,1,Public Court,0.1,6.0,11.0,70.0,1024.5,7.7,0,Yes,1
+D025,Overcast,Cool,Normal,Weak,Spring,1,Public Court,0.4,4.0,89.0,58.0,1004.5,9.2,0,Yes,1
+D026,Rain,Mild,,Weak,Spring,0,Public Court,30.7,,93.0,49.0,,7.8,0,No,0
+D027,Overcast,Hot,Normal,Weak,Summer,0,Backyard,3.9,4.0,64.0,70.0,1012.0,6.9,0,Yes,1
+D028,Rain,Mild,High,Weak,Summer,1,Public Court,14.5,3.0,89.0,60.0,1003.5,6.1,0,Yes,1
+D029,Rain,Mild,Normal,Weak,Summer,0,Park,24.9,1.0,79.0,37.0,1007.0,7.0,0,Yes,1
+D030,Rain,Cool,High,Strong,Fall,0,Resort,19.7,0.0,70.0,71.0,1012.0,5.1,0,No,0
+D031,Overcast,Mild,High,Weak,Fall,0,Resort,0.4,3.0,79.0,50.0,1008.1,8.8,0,No,0
+D032,Sunny,Cool,High,Strong,Fall,0,Club,0.4,3.0,14.0,27.0,1021.2,6.0,0,No,0
+D033,Rain,Hot,High,Weak,Winter,0,Park,,1.0,95.0,14.0,1006.8,4.9,0,No,0
+D034,Rain,Cool,Normal,Strong,Winter,1,Backyard,39.9,1.0,80.0,40.0,1008.3,5.8,0,No,0
+D035,Overcast,Mild,Normal,Strong,Winter,0,Public Court,2.1,0.0,78.0,54.0,1011.6,9.1,0,Yes,1
+D036,Rain,Cool,Normal,Strong,Spring,0,Resort,33.9,2.0,73.0,52.0,1002.5,6.1,0,No,0
+D037,Sunny,Mild,Normal,Weak,Spring,0,Backyard,0.9,9.0,21.0,43.0,1015.8,8.9,0,Yes,1
+D038,Rain,Cool,Normal,Weak,Spring,0,Club,3.7,2.0,66.0,39.0,1001.7,7.2,0,No,0
+D039,Sunny,Hot,High,Strong,Summer,0,Public Court,3.9,10.0,10.0,86.0,1012.8,4.9,0,No,0
+D040,Sunny,,High,Strong,Summer,0,Park,0.5,10.0,11.0,54.0,1019.7,6.2,0,No,0
+D041,Sunny,Hot,High,Strong,Summer,1,Backyard,2.5,9.0,18.0,36.0,1012.2,5.1,0,No,0
+D042,Overcast,Hot,High,Weak,Fall,1,Park,2.9,0.0,58.0,16.0,1014.4,6.8,0,Yes,1
+D043,Rain,Hot,Normal,Weak,Fall,0,Club,24.6,0.0,73.0,52.0,1004.6,6.3,0,Yes,1
+D044,Overcast,Hot,High,Weak,Fall,0,Backyard,6.9,0.0,79.0,34.0,1016.2,6.9,0,Yes,1
+D045,Rain,Mild,Normal,Weak,Winter,1,Backyard,23.7,0.0,100.0,20.0,1007.2,8.2,0,Yes,1
+D046,Rain,Cool,High,Strong,Winter,1,Club,8.1,1.0,84.0,34.0,1009.4,5.0,0,No,0
+D047,Rain,Mild,Normal,Weak,Winter,0,Park,30.6,0.0,95.0,25.0,1003.9,8.1,0,Yes,1
+D048,Sunny,Cool,Normal,Weak,Spring,1,Club,0.4,9.0,20.0,15.0,1014.6,8.1,0,Yes,1
+D049,Sunny,Cool,High,Strong,Spring,1,Resort,0.4,7.0,20.0,5.0,1025.3,6.1,0,No,0
+D050,Rain,Cool,Normal,Weak,Spring,0,Backyard,38.4,0.0,79.0,49.0,991.7,6.9,0,No,0
+D051,Rain,Mild,Normal,Weak,Summer,0,Backyard,17.4,3.0,100.0,44.0,1000.8,7.1,0,Yes,1
+D052,Sunny,Hot,High,Weak,Summer,0,Public Court,0.2,9.0,10.0,37.0,1021.2,6.1,0,No,0
+D053,Sunny,Hot,Normal,,Summer,0,Park,0.7,10.0,17.0,6.0,1018.7,5.0,0,Yes,1
+D054,Overcast,Cool,Normal,Weak,Fall,1,Park,2.5,1.0,92.0,57.0,1013.3,8.0,0,Yes,1
+D055,Rain,Hot,Normal,Strong,Fall,0,Club,47.4,1.0,94.0,5.0,1004.1,5.0,0,No,0
+D056,Rain,Mild,Normal,Weak,Fall,0,Park,14.7,3.0,80.0,38.0,1011.2,8.3,0,Yes,1
+D057,Overcast,Cool,Normal,Weak,Winter,1,Park,1.5,1.0,86.0,48.0,1012.4,,0,Yes,1
+D058,Overcast,Mild,Normal,Strong,Winter,0,,3.2,1.0,89.0,31.0,1002.4,9.0,0,Yes,1
+D059,Rain,Cool,Normal,Weak,Winter,1,Public Court,25.7,0.0,72.0,36.0,1001.5,7.2,0,No,0
+D060,Sunny,Mild,Normal,,Spring,0,Resort,0.9,8.0,30.0,51.0,1012.0,7.9,0,Yes,1
+D061,Sunny,Mild,High,Weak,Spring,0,Resort,1.0,7.0,33.0,65.0,1019.9,7.9,0,No,0
+D062,Sunny,Hot,Normal,Strong,Spring,1,Backyard,2.1,7.0,31.0,62.0,1013.5,6.5,0,Yes,1
+D063,Sunny,Hot,Normal,Weak,Summer,0,Resort,1.5,9.0,21.0,,1018.1,7.1,0,Yes,1
+D064,Overcast,Mild,Normal,Weak,Summer,0,Backyard,,6.0,95.0,59.0,1013.4,10.0,1,Yes,1
+D065,Rain,Mild,High,Weak,Summer,0,Backyard,30.9,2.0,75.0,22.0,1009.9,6.1,0,Yes,1
+D066,Rain,Mild,Normal,Strong,Fall,0,,10.9,0.0,85.0,14.0,1005.2,7.2,0,No,0
+D067,Rain,Mild,High,Strong,Fall,0,Club,30.3,1.0,84.0,60.0,1003.0,6.1,0,No,0
+D068,Sunny,Mild,Normal,Weak,Fall,0,Park,1.6,,25.0,20.0,1022.6,9.1,0,Yes,1
+D069,Rain,Mild,Normal,Weak,Winter,0,Public Court,19.4,1.0,80.0,29.0,999.9,7.8,0,Yes,1
+D070,Sunny,Mild,High,Strong,Winter,0,Public Court,1.4,4.0,25.0,17.0,1020.8,7.1,0,No,0
+D071,Sunny,Hot,Normal,Strong,Winter,0,Park,2.1,4.0,3.0,80.0,1015.1,,0,Yes,1
+D072,Sunny,Cool,Normal,Weak,Spring,0,Park,0.5,6.0,19.0,11.0,1018.4,,0,Yes,1
+D073,Sunny,Mild,High,Strong,Spring,0,Resort,0.6,6.0,23.0,34.0,1015.6,7.0,0,Yes,1
+D074,Sunny,Hot,High,Weak,Spring,1,Resort,1.3,7.0,24.0,66.0,1012.7,6.1,0,No,0
+D075,Overcast,Mild,Normal,Weak,Summer,0,Park,2.0,7.0,67.0,7.0,1015.0,8.7,1,Yes,1
+D076,Sunny,Hot,Normal,Strong,Summer,1,Backyard,1.6,11.0,30.0,,1023.6,,0,Yes,1
+D077,Rain,Cool,Normal,Weak,Summer,0,Public Court,53.5,4.0,100.0,71.0,1014.0,7.1,0,Yes,1
+D078,Rain,Mild,Normal,Strong,Fall,0,,12.2,1.0,73.0,46.0,994.6,6.7,0,No,0
+D079,Overcast,Hot,High,Strong,Fall,0,Backyard,4.8,3.0,74.0,28.0,1018.1,6.0,0,Yes,1
+D080,Rain,Cool,High,Weak,Fall,0,Public Court,35.1,3.0,90.0,58.0,1011.9,5.7,0,No,0
+D081,Overcast,Hot,Normal,Strong,Winter,0,Resort,1.0,1.0,60.0,46.0,1009.9,7.1,0,Yes,1
+D082,Sunny,Cool,Normal,Strong,Winter,0,Park,1.7,5.0,10.0,46.0,1026.0,7.0,0,Yes,1
+D083,Overcast,Hot,High,Strong,Winter,0,Club,5.8,0.0,100.0,,1009.9,5.9,0,Yes,1
+D084,Sunny,Mild,Normal,Weak,Spring,1,Park,1.3,7.0,12.0,71.0,1025.8,9.2,0,Yes,1
+D085,Rain,Mild,Normal,Strong,Spring,0,Backyard,12.4,1.0,80.0,37.0,1009.5,6.9,0,No,0
+D086,Rain,Cool,High,Weak,Spring,0,Park,20.6,0.0,97.0,51.0,1001.5,5.5,0,No,0
+D087,Overcast,Mild,Normal,Strong,Summer,1,,1.2,6.0,84.0,39.0,1014.4,8.1,0,Yes,1
+D088,Overcast,Mild,High,Strong,Summer,0,Club,1.4,5.0,79.0,45.0,1008.3,7.7,0,Yes,1
+D089,Rain,Cool,High,Weak,Summer,1,Backyard,15.3,2.0,71.0,31.0,1003.8,5.9,0,No,0
+D090,Sunny,Hot,Normal,Weak,Fall,0,Backyard,0.3,2.0,9.0,43.0,1023.6,5.9,0,Yes,1
+D091,Overcast,Mild,Normal,Strong,Fall,0,Public Court,0.7,1.0,65.0,16.0,1009.7,8.8,0,No,0
+D092,Rain,Hot,High,Strong,Fall,0,Backyard,19.6,0.0,93.0,55.0,1003.3,3.9,0,No,0
+D093,Rain,Cool,High,Weak,Winter,1,Resort,3.1,0.0,85.0,45.0,1005.2,5.8,0,No,0
+D094,Sunny,Hot,Normal,Strong,Winter,1,Public Court,0.2,6.0,0.0,69.0,1013.0,6.0,0,Yes,1
+D095,Sunny,Mild,High,Weak,Winter,0,Park,0.9,3.0,25.0,30.0,1017.0,7.8,0,No,0
+D096,Sunny,Mild,Normal,Weak,Spring,0,Club,,6.0,21.0,69.0,1023.6,9.0,0,Yes,1
+D097,Rain,Mild,Normal,,Spring,0,Backyard,26.7,2.0,66.0,34.0,1009.7,8.2,0,Yes,1
+D098,Rain,Cool,Normal,Strong,Spring,0,Club,16.8,0.0,50.0,13.0,1002.6,5.1,0,No,0
+D099,Rain,Cool,Normal,Weak,Summer,1,Club,32.6,0.0,78.0,68.0,1003.3,7.0,0,Yes,1
+D100,Sunny,Cool,Normal,Weak,Summer,0,Club,0.2,10.0,0.0,33.0,1031.4,7.9,0,Yes,1
+D101,Sunny,Cool,High,Weak,Summer,0,Park,1.6,10.0,0.0,66.0,1012.1,7.0,0,No,0
+D102,Overcast,Mild,,Weak,Fall,0,Resort,3.3,1.0,64.0,27.0,1014.0,7.9,0,Yes,1
+D103,Rain,Hot,Normal,Weak,Fall,0,Backyard,12.7,0.0,92.0,61.0,1002.3,6.0,0,Yes,1
+D104,Rain,Cool,Normal,Weak,Fall,0,Resort,10.2,1.0,94.0,48.0,1008.0,6.7,0,Yes,1
+D105,Sunny,Mild,Normal,Weak,Winter,0,Backyard,0.4,2.0,,34.0,1014.1,9.1,0,Yes,1
+D106,Sunny,Mild,Normal,Weak,Winter,1,Park,0.0,2.0,18.0,46.0,1024.8,9.0,0,Yes,1
+D107,Overcast,Cool,High,Weak,Winter,0,Club,5.0,0.0,67.0,39.0,1008.0,8.3,0,Yes,1
+D108,Rain,Hot,Normal,Weak,Spring,0,,8.5,1.0,89.0,56.0,1013.2,6.2,0,Yes,1
+D109,Sunny,Cool,Normal,Strong,Spring,0,Resort,0.3,6.0,0.0,31.0,1015.7,6.1,0,No,0
+D110,Sunny,Mild,Normal,Strong,Spring,0,Club,2.6,8.0,7.0,20.0,1029.8,8.0,0,Yes,1
+D111,Overcast,Hot,Normal,Weak,Summer,0,Club,3.3,,100.0,5.0,1020.4,7.9,0,Yes,1
+D112,Sunny,Cool,Normal,Strong,Summer,1,Park,2.7,8.0,11.0,44.0,1013.3,7.1,0,Yes,1
+D113,Sunny,Cool,High,Strong,Summer,0,Park,0.5,10.0,1.0,31.0,1024.3,6.0,0,No,0
+D114,Overcast,Hot,,Strong,Fall,1,Public Court,1.4,3.0,84.0,19.0,1015.7,7.2,0,Yes,1
+D115,Overcast,Mild,High,Weak,Fall,0,Public Court,2.9,2.0,90.0,27.0,1015.8,8.1,0,Yes,1
+D116,Rain,Cool,High,Weak,Fall,0,Resort,15.1,1.0,96.0,43.0,1009.1,6.1,0,No,0
+D117,Sunny,Mild,High,Weak,Winter,0,Club,1.7,1.0,25.0,31.0,1013.8,8.1,0,No,0
+D118,Overcast,Cool,Normal,Strong,Winter,0,Park,6.3,3.0,87.0,20.0,1005.4,7.9,0,Yes,1
+D119,Rain,Mild,High,Weak,Winter,1,Backyard,16.1,0.0,100.0,31.0,1008.2,6.8,0,Yes,1
+D120,Rain,Hot,High,Weak,Spring,0,Club,15.2,0.0,93.0,39.0,,4.8,0,No,0
+D121,Rain,Hot,Normal,Weak,Spring,1,Backyard,4.3,2.0,100.0,53.0,1007.8,6.2,0,Yes,1
+D122,Sunny,Cool,High,Strong,Spring,1,Backyard,3.5,8.0,21.0,52.0,1021.4,5.9,0,No,0
+D123,Rain,Cool,Normal,Strong,Summer,0,Club,7.2,4.0,87.0,60.0,999.9,5.9,0,No,0
+D124,Sunny,Mild,Normal,Weak,Summer,0,Backyard,0.5,9.0,9.0,24.0,1008.5,9.1,0,Yes,1
+D125,Sunny,,Normal,Weak,Summer,0,Backyard,2.7,10.0,8.0,7.0,1019.2,9.0,0,Yes,1
+D126,Sunny,Cool,Normal,Weak,Fall,0,Club,1.0,5.0,0.0,18.0,1016.6,7.9,0,Yes,1
+D127,Rain,Cool,Normal,Weak,Fall,0,Club,18.8,0.0,100.0,24.0,1007.6,6.9,0,No,0
+D128,Rain,Hot,High,Strong,Fall,1,Park,19.8,3.0,99.0,,1009.0,3.7,0,No,0
+D129,Rain,Mild,High,Weak,Winter,1,Backyard,23.4,1.0,76.0,83.0,1012.7,6.9,0,Yes,1
+D130,Overcast,Cool,High,Weak,Winter,0,Public Court,4.7,2.0,99.0,8.0,1015.0,8.2,0,Yes,1
+D131,Overcast,,Normal,Weak,Winter,1,Backyard,2.4,2.0,70.0,73.0,1015.2,7.9,0,Yes,1
+D132,Rain,Mild,High,Strong,Spring,0,Club,5.9,0.0,100.0,47.0,1006.7,5.7,0,No,0
+D133,Rain,Hot,High,Strong,Spring,0,Club,2.3,1.0,82.0,58.0,997.1,3.8,0,No,0
+D134,Overcast,Mild,Normal,Strong,Spring,0,Park,1.5,4.0,80.0,48.0,1008.2,9.1,0,Yes,1
+D135,Sunny,Mild,High,Strong,Summer,0,Public Court,0.5,7.0,17.0,48.0,1015.6,7.1,0,No,0
+D136,Overcast,Cool,Normal,Weak,Summer,0,Park,2.7,4.0,71.0,42.0,1012.3,9.0,0,Yes,1
+D137,Overcast,Hot,High,Strong,Summer,0,Park,11.0,6.0,63.0,36.0,,5.9,0,Yes,1
+D138,Rain,Mild,High,Weak,Fall,0,Park,19.2,1.0,82.0,5.0,1011.1,6.8,0,Yes,1
+D139,Overcast,Mild,Normal,Strong,Fall,1,Park,3.9,3.0,58.0,27.0,1010.3,9.1,0,Yes,1
+D140,Rain,Hot,High,Weak,Fall,0,Park,9.6,2.0,100.0,37.0,1001.4,5.1,0,No,0
+D141,Sunny,Hot,High,Strong,Winter,0,Club,0.3,3.0,11.0,53.0,1015.1,5.2,0,No,0
+D142,Overcast,Hot,High,Strong,Winter,0,Resort,0.2,2.0,79.0,35.0,1018.3,5.8,0,Yes,1
+D143,Overcast,Mild,Normal,Strong,Winter,0,Club,9.0,2.0,94.0,26.0,1021.1,9.2,0,Yes,1
+D144,Rain,Hot,High,Weak,Spring,0,Club,28.2,2.0,91.0,62.0,1003.6,5.0,0,No,0
+D145,Sunny,Hot,Normal,Strong,Spring,0,Club,0.7,8.0,12.0,60.0,1017.5,6.0,0,Yes,1
+D146,Sunny,Hot,High,Strong,Spring,1,Public Court,1.1,8.0,23.0,23.0,1016.6,5.1,0,No,0
+D147,Rain,Hot,Normal,Weak,Summer,0,Park,16.3,2.0,95.0,24.0,1011.4,5.9,0,Yes,1
+D148,Overcast,Mild,High,Strong,Summer,0,Club,6.7,6.0,,31.0,1012.2,7.7,0,Yes,1
+D149,Rain,Mild,Normal,Weak,Summer,0,Club,13.7,2.0,94.0,16.0,1008.0,8.1,0,Yes,1
+D150,Rain,Mild,Normal,Strong,Fall,0,Public Court,23.2,0.0,86.0,33.0,1012.6,7.1,0,No,0
+D151,Sunny,Cool,High,Strong,Fall,0,Backyard,3.4,4.0,12.0,26.0,,5.9,0,No,0
+D152,Rain,Hot,High,Weak,Fall,1,Club,45.0,0.0,83.0,29.0,1004.4,5.1,0,No,0
+D153,Sunny,Mild,High,Strong,Winter,0,Park,0.1,1.0,30.0,41.0,1015.8,7.1,0,No,0
+D154,Rain,Cool,High,Weak,Winter,0,Backyard,16.3,0.0,94.0,38.0,996.4,5.8,0,Yes,1
+D155,Overcast,Cool,Normal,Strong,Winter,0,Backyard,,2.0,71.0,55.0,1001.4,8.0,0,Yes,1
+D156,Sunny,Cool,High,Strong,Spring,0,Club,0.1,8.0,11.0,29.0,1021.7,,0,No,0
+D157,Overcast,Mild,Normal,Weak,Spring,1,Club,4.8,3.0,73.0,23.0,1016.3,9.7,1,Yes,1
+D158,Sunny,Cool,High,Weak,Spring,1,Club,0.1,6.0,23.0,26.0,1018.2,7.0,0,No,0
+D159,Rain,Mild,Normal,Strong,Summer,1,Park,10.7,1.0,70.0,17.0,1005.7,6.9,0,No,0
+D160,Sunny,Cool,Normal,Strong,Summer,0,Club,1.3,11.0,23.0,36.0,1016.8,7.1,0,Yes,1
+D161,Overcast,Hot,High,Weak,Summer,0,Club,0.9,4.0,70.0,42.0,1011.3,,0,Yes,1
+D162,Rain,Cool,High,Strong,Fall,1,Resort,12.9,2.0,76.0,49.0,1003.4,4.8,0,No,0
+D163,Overcast,Cool,Normal,Weak,Fall,0,Backyard,1.8,,57.0,30.0,1017.2,8.9,0,Yes,1
+D164,Overcast,Cool,High,Weak,Fall,0,Public Court,4.3,2.0,89.0,48.0,1009.1,7.5,0,Yes,1
+D165,Overcast,Mild,High,Weak,Winter,0,Park,8.8,0.0,85.0,72.0,1009.9,9.1,0,Yes,1
+D166,Overcast,Cool,Normal,Strong,Winter,0,,5.1,0.0,96.0,6.0,1008.1,7.0,0,Yes,1
+D167,Overcast,Cool,Normal,Strong,Winter,0,Club,7.3,,77.0,47.0,1013.3,7.0,0,Yes,1
+D168,Rain,Cool,Normal,Weak,Spring,0,Public Court,37.2,2.0,81.0,50.0,1003.0,5.8,0,No,0
+D169,Overcast,Cool,High,Weak,Spring,0,Club,1.5,5.0,95.0,67.0,1016.2,8.1,0,Yes,1
+D170,Sunny,Cool,High,Weak,Spring,0,Club,0.8,9.0,26.0,26.0,1021.2,6.2,0,No,0
+D171,Sunny,Cool,High,Weak,Summer,0,Public Court,0.4,9.0,31.0,52.0,1019.6,7.0,0,No,0
+D172,Sunny,Hot,High,Weak,Summer,0,Club,2.8,9.0,11.0,16.0,1017.2,6.1,0,No,0
+D173,Overcast,Mild,High,Weak,Summer,0,Club,4.4,4.0,97.0,16.0,1013.2,8.9,0,Yes,1
+D174,Sunny,Mild,Normal,Weak,Fall,1,Park,0.5,5.0,15.0,69.0,1027.8,9.0,0,Yes,1
+D175,Overcast,Cool,High,Strong,Fall,1,Backyard,1.0,2.0,54.0,59.0,1011.4,6.8,0,Yes,1
+D176,Sunny,Hot,Normal,Weak,Fall,1,Park,0.2,5.0,3.0,73.0,1027.4,7.1,0,Yes,1
+D177,Sunny,Mild,High,Weak,Winter,0,,3.5,3.0,22.0,59.0,1019.6,8.0,0,No,0
+D178,Sunny,Hot,Normal,Weak,Winter,1,Park,0.5,3.0,22.0,34.0,1023.8,6.8,0,Yes,1
+D179,Rain,Cool,Normal,Weak,Winter,0,Backyard,46.8,0.0,100.0,51.0,1014.3,6.9,0,Yes,1
+D180,Rain,Cool,Normal,Weak,Spring,0,Club,8.9,1.0,80.0,45.0,1012.6,7.0,0,Yes,1
+D181,Overcast,Mild,Normal,Weak,Spring,1,Park,1.2,2.0,91.0,61.0,1012.8,10.0,1,Yes,1
+D182,Rain,Mild,Normal,Strong,Spring,0,Park,18.3,2.0,91.0,24.0,1012.0,7.2,0,No,0
+D183,Rain,Hot,High,Strong,Summer,1,Backyard,4.5,2.0,87.0,28.0,,4.0,0,No,0
+D184,Rain,Hot,High,Weak,Summer,1,Backyard,40.0,0.0,83.0,58.0,1001.0,4.8,0,No,0
+D185,Overcast,Hot,Normal,Weak,Summer,1,Backyard,0.2,4.0,88.0,46.0,1007.7,8.0,0,Yes,1
+D186,Overcast,Cool,High,Weak,Fall,1,Park,3.3,1.0,87.0,54.0,1011.8,8.3,0,Yes,1
+D187,Sunny,Hot,High,Weak,Fall,1,Resort,2.0,6.0,0.0,63.0,1029.1,5.8,0,No,0
+D188,Overcast,Hot,High,,Fall,0,Backyard,0.7,2.0,72.0,85.0,1009.0,5.9,0,Yes,1
+D189,Rain,Cool,Normal,Weak,Winter,1,Backyard,9.1,1.0,92.0,23.0,997.2,7.1,0,Yes,1
+D190,Rain,Hot,Normal,Weak,Winter,0,Park,20.6,3.0,89.0,24.0,999.5,6.0,0,Yes,1
+D191,Sunny,Hot,High,Weak,Winter,1,Club,1.4,5.0,,80.0,1011.0,5.9,0,No,0
+D192,Rain,Hot,,Weak,Spring,0,Public Court,5.7,1.0,65.0,54.0,1003.1,5.0,0,No,0
+D193,Overcast,Mild,High,Strong,Spring,1,Public Court,2.2,2.0,89.0,22.0,1019.5,8.1,0,Yes,1
+D194,Sunny,Cool,Normal,Weak,Spring,0,Public Court,2.1,4.0,0.0,43.0,,8.0,0,Yes,1
+D195,Sunny,Hot,High,Weak,Summer,0,Park,5.2,9.0,13.0,56.0,1007.8,,0,No,0
+D196,Rain,Mild,High,Weak,Summer,0,Park,23.3,1.0,65.0,27.0,999.6,7.0,0,Yes,1
+D197,Overcast,Hot,High,Strong,Summer,0,Club,,3.0,58.0,27.0,1021.8,6.1,0,Yes,1
+D198,Sunny,Mild,Normal,Strong,Fall,0,,1.6,5.0,21.0,84.0,1015.0,8.0,0,Yes,1
+D199,Rain,Mild,High,Weak,Fall,1,Club,3.6,3.0,86.0,22.0,1007.3,,0,Yes,1
+D200,Rain,,High,Weak,Fall,1,Park,10.1,1.0,81.0,57.0,1006.1,6.2,0,No,0
+D201,Sunny,Hot,Normal,Strong,Spring,1,Club,0.7,5.0,18.0,60.0,1023.7,4.3,0,No,0
+D202,Sunny,Cool,High,Weak,Spring,0,Park,0.3,7.0,0.0,8.0,1014.9,3.9,0,Yes,1
+D203,Rain,Mild,High,Strong,Spring,0,Park,8.7,0.0,82.0,50.0,1018.1,1.8,0,No,0
+D204,Overcast,Mild,High,Weak,Winter,0,Club,1.4,1.0,71.0,29.0,1021.6,,0,Yes,1
+D205,Rain,Mild,Normal,Strong,Fall,1,Club,28.9,0.0,100.0,61.0,1005.4,4.1,0,No,0
+D206,Rain,Hot,Normal,Weak,Summer,1,Resort,4.6,2.0,100.0,46.0,996.0,5.8,0,No,0
+D207,Rain,Mild,Normal,Strong,Fall,0,Club,10.5,2.0,96.0,55.0,1009.9,3.8,0,No,0
+D208,Overcast,Hot,Normal,Strong,Fall,0,Club,1.2,3.0,86.0,31.0,1010.7,5.7,0,Yes,1
+D209,Overcast,Mild,Normal,Weak,Winter,0,Park,5.6,3.0,62.0,38.0,1017.3,8.9,1,Yes,1
+D210,Sunny,Cool,Normal,Strong,Winter,0,Park,1.0,3.0,0.0,54.0,1018.4,4.0,0,Yes,1
+D211,Sunny,Cool,Normal,Strong,Winter,0,Park,,1.0,8.0,13.0,1014.1,4.9,0,Yes,1
+D212,Overcast,Cool,Normal,Strong,Winter,1,Club,1.6,3.0,78.0,30.0,1014.6,7.2,0,Yes,1
+D213,Rain,Cool,Normal,Weak,Winter,0,Park,10.3,0.0,100.0,34.0,991.8,6.2,0,Yes,1
+D214,Sunny,Mild,High,Weak,Spring,1,Backyard,0.6,6.0,13.0,47.0,1027.1,5.3,0,Yes,1
+D215,Sunny,Mild,Normal,Strong,Summer,0,Club,4.9,10.0,14.0,9.0,1012.5,4.0,0,Yes,1
+D216,Rain,Hot,High,Strong,Summer,0,Park,12.7,2.0,93.0,39.0,999.3,2.2,0,No,0
+D217,Rain,,High,Weak,Winter,0,Park,,0.0,100.0,65.0,1000.7,4.0,0,No,0
+D218,Sunny,Hot,Normal,Weak,Summer,0,Resort,0.3,11.0,16.0,45.0,1010.3,7.0,0,No,0
+D219,Rain,Hot,Normal,Weak,Fall,0,Public Court,23.5,2.0,88.0,33.0,1000.4,4.9,0,No,0
+D220,Rain,Hot,Normal,Strong,Spring,0,Backyard,32.8,2.0,70.0,43.0,,3.7,0,No,0
+D221,Overcast,,Normal,Strong,Summer,0,Public Court,0.4,,89.0,44.0,1016.4,7.1,0,Yes,1
+D222,Overcast,Cool,High,Weak,Winter,0,Park,6.8,3.0,63.0,54.0,1017.8,6.2,0,Yes,1
+D223,Rain,Cool,High,Strong,Winter,1,Park,22.7,0.0,91.0,15.0,1000.6,1.8,0,No,0
+D224,Overcast,Mild,High,Strong,Winter,0,Park,7.7,2.0,71.0,88.0,1014.9,4.0,0,Yes,1
+D225,Sunny,Hot,High,Weak,Spring,1,Public Court,4.2,7.0,13.0,68.0,1015.4,5.1,0,No,0
+D226,Overcast,Mild,High,Weak,Winter,0,Park,1.8,2.0,,43.0,1013.6,5.9,0,Yes,1
+D227,Sunny,Cool,Normal,Weak,Winter,0,Public Court,1.4,4.0,15.0,55.0,1023.2,6.2,0,Yes,1
+D228,Rain,Cool,Normal,Strong,Fall,0,Park,30.3,0.0,96.0,109.0,1008.1,4.0,0,No,0
+D229,Sunny,Mild,Normal,Weak,Summer,1,Public Court,3.3,11.0,1.0,12.0,1018.6,5.9,0,Yes,1
+D230,Overcast,Cool,High,Strong,Winter,1,Backyard,1.4,2.0,55.0,31.0,1017.5,5.2,0,No,0
+D231,Rain,Cool,Normal,Strong,Fall,0,Backyard,10.2,2.0,100.0,73.0,1011.8,3.9,0,No,0
+D232,Rain,Mild,Normal,Weak,Winter,0,Backyard,23.1,0.0,100.0,25.0,1004.2,5.9,0,Yes,1
+D233,Rain,,High,Strong,Summer,0,Club,6.7,2.0,93.0,10.0,1009.6,1.9,0,No,0
+D234,Rain,Mild,Normal,Weak,Fall,0,Park,45.0,0.0,84.0,62.0,1001.8,5.8,0,Yes,1
+D235,Overcast,Cool,High,Strong,Winter,0,Public Court,0.8,1.0,59.0,38.0,1002.0,4.0,0,Yes,1
+D236,Rain,Cool,High,Weak,Winter,0,Public Court,38.1,2.0,72.0,60.0,1005.3,2.9,0,No,0
+D237,Rain,Mild,Normal,Strong,Fall,0,Club,19.8,0.0,97.0,42.0,995.9,4.1,0,No,0
+D238,Overcast,Cool,Normal,Strong,Summer,0,Public Court,14.1,5.0,82.0,45.0,1009.0,5.7,0,Yes,1
+D239,Rain,Hot,Normal,Strong,Spring,1,Club,11.3,3.0,100.0,66.0,,3.8,0,No,0
+D240,Sunny,Mild,High,Strong,Winter,1,Public Court,,4.0,23.0,50.0,1017.3,3.0,0,Yes,1
+D241,Overcast,Hot,Normal,Weak,Winter,0,Club,1.3,3.0,69.0,32.0,1013.4,9.2,1,Yes,1
+D242,Overcast,Mild,Normal,Weak,Fall,0,Backyard,1.4,3.0,78.0,37.0,1012.3,9.1,1,Yes,1
+D243,Sunny,Cool,High,Weak,Winter,1,Resort,0.5,6.0,29.0,18.0,1022.4,4.9,0,No,0
+D244,Rain,Cool,Normal,Strong,Spring,1,Park,17.2,3.0,88.0,25.0,1003.5,3.8,0,No,0
+D245,Overcast,Mild,Normal,Strong,Fall,0,Backyard,0.9,3.0,69.0,43.0,,6.9,0,Yes,1
+D246,Sunny,Mild,Normal,Strong,Spring,0,Public Court,4.4,6.0,6.0,36.0,1019.4,5.0,0,Yes,1
+D247,Rain,Cool,Normal,Strong,Fall,1,Backyard,,1.0,89.0,27.0,1005.0,3.6,0,No,0
+D248,Overcast,Hot,Normal,Weak,Fall,0,Park,4.2,2.0,83.0,32.0,1013.1,8.8,1,Yes,1
+D249,Overcast,Mild,High,Weak,Winter,1,Club,1.0,4.0,79.0,32.0,1020.8,6.9,0,Yes,1
+D250,Overcast,Mild,High,Strong,Fall,1,Park,2.3,3.0,64.0,29.0,1001.7,4.0,0,Yes,1
+D251,Sunny,Mild,Normal,Weak,Spring,1,Backyard,5.5,7.0,0.0,46.0,1020.8,7.0,0,Yes,1
+D252,Overcast,Mild,Normal,Weak,Spring,1,Park,9.3,5.0,69.0,9.0,1019.2,7.9,1,Yes,1
+D253,Overcast,Hot,Normal,Weak,Summer,1,Park,0.2,5.0,78.0,45.0,1019.6,9.1,1,Yes,1
+D254,Sunny,Cool,High,Strong,Fall,0,Park,0.2,2.0,16.0,49.0,1022.0,2.0,0,No,0
+D255,Overcast,Mild,High,Weak,Summer,1,Backyard,8.0,6.0,99.0,42.0,1019.9,6.9,0,Yes,1
+D256,Sunny,Hot,High,Weak,Spring,0,Club,1.2,6.0,26.0,66.0,1025.1,4.1,0,No,0
+D257,Rain,Hot,Normal,Weak,Spring,0,Park,33.0,0.0,100.0,37.0,1005.9,4.1,0,No,0
+D258,Sunny,Mild,Normal,Weak,Fall,0,Backyard,1.5,6.0,0.0,39.0,1020.0,5.8,0,Yes,1
+D259,Rain,Mild,High,Weak,Winter,1,Park,16.3,0.0,89.0,20.0,1006.9,4.0,0,No,0
+D260,Rain,,Normal,Weak,Summer,1,Park,54.5,2.0,83.0,25.0,1004.5,5.1,0,No,0
+D261,Sunny,Hot,Normal,Weak,Fall,1,Park,1.1,,13.0,55.0,1020.2,7.2,0,Yes,1
+D262,Overcast,Cool,Normal,Weak,Summer,0,Backyard,1.2,5.0,68.0,35.0,1000.2,8.1,1,Yes,1
+D263,Sunny,Hot,Normal,Weak,Summer,0,Club,0.9,11.0,3.0,55.0,1022.5,6.0,0,Yes,1
+D264,Rain,Mild,High,Weak,Fall,1,Club,42.2,0.0,80.0,14.0,1002.0,3.1,0,No,0
+D265,Overcast,,Normal,Strong,Fall,1,Resort,5.9,1.0,74.0,82.0,1017.1,6.1,0,Yes,1
+D266,Overcast,Cool,Normal,Strong,Winter,1,Backyard,1.7,1.0,86.0,74.0,1005.0,7.0,0,Yes,1
+D267,Rain,Cool,High,Weak,Summer,0,Park,,2.0,83.0,5.0,1008.3,4.0,0,No,0
+D268,Overcast,Mild,Normal,Weak,Summer,0,Park,3.3,6.0,81.0,22.0,1012.8,9.0,1,Yes,1
+D269,Overcast,Cool,Normal,Weak,Fall,0,Resort,4.4,2.0,62.0,45.0,998.3,7.8,1,Yes,1
+D270,Sunny,Mild,Normal,Weak,Fall,0,Backyard,1.4,5.0,0.0,38.0,1012.0,6.0,0,Yes,1
+D271,Overcast,Mild,Normal,Weak,Summer,0,Backyard,0.9,5.0,67.0,53.0,1017.3,8.9,1,Yes,1
+D272,Rain,Hot,Normal,Strong,Winter,0,Backyard,64.7,1.0,87.0,46.0,1002.3,3.9,0,No,0
+D273,Sunny,Hot,High,Weak,Summer,0,Park,1.3,10.0,16.0,44.0,1021.3,4.2,0,No,0
+D274,Overcast,Cool,Normal,Weak,Fall,0,Club,4.4,4.0,85.0,34.0,1018.0,8.1,1,Yes,1
+D275,Overcast,Cool,High,Weak,Summer,0,Public Court,0.7,7.0,64.0,11.0,1011.9,5.7,0,Yes,1
+D276,Overcast,Hot,High,Strong,Spring,0,Backyard,6.0,4.0,57.0,60.0,1013.2,3.8,0,No,0
+D277,Rain,Hot,High,Strong,Winter,0,Park,60.2,0.0,94.0,20.0,1000.6,1.9,0,No,0
+D278,Overcast,Mild,Normal,Strong,Fall,1,Park,1.7,3.0,71.0,22.0,1009.1,6.9,0,Yes,1
+D279,Rain,Cool,High,,Fall,0,Park,8.6,3.0,100.0,,1006.1,3.0,0,No,0
+D280,Sunny,Cool,Normal,Weak,Winter,1,Club,3.6,1.0,32.0,51.0,1017.8,6.8,0,Yes,1
+D281,Rain,Mild,Normal,Strong,Fall,0,Park,65.0,1.0,100.0,50.0,1006.1,4.1,0,No,0
+D282,Rain,Hot,High,Strong,Spring,0,Park,7.1,3.0,83.0,22.0,1005.1,2.0,0,No,0
+D283,Rain,Cool,,Weak,Summer,0,Resort,4.1,4.0,100.0,29.0,1009.2,3.9,0,Yes,1
+D284,Overcast,Mild,High,Strong,Fall,1,Park,4.8,2.0,95.0,35.0,1004.4,4.0,0,Yes,1
+D285,Rain,Hot,Normal,Strong,Winter,0,Park,,3.0,100.0,35.0,999.8,4.9,0,No,0
+D286,Overcast,Cool,Normal,Weak,Winter,0,Club,2.6,1.0,73.0,42.0,1024.2,7.7,1,Yes,1
+D287,Sunny,Hot,Normal,Strong,Spring,0,Park,0.9,3.0,29.0,17.0,1015.9,4.0,0,No,0
+D288,Overcast,Mild,High,Weak,Fall,0,Backyard,1.0,2.0,,48.0,1008.3,6.0,0,Yes,1
+D289,Overcast,Mild,Normal,Weak,Spring,1,Backyard,1.1,3.0,68.0,48.0,1005.8,8.9,1,Yes,1
+D290,Rain,Mild,Normal,Weak,Fall,0,Backyard,13.3,1.0,93.0,69.0,999.9,5.2,0,Yes,1
+D291,Overcast,Mild,High,Strong,Spring,0,Backyard,11.3,2.0,65.0,63.0,1002.9,5.1,0,No,0
+D292,Sunny,Mild,High,Strong,Fall,0,Club,0.8,2.0,35.0,43.0,1017.6,2.4,0,No,0
+D293,Rain,Cool,High,Strong,Spring,0,Public Court,16.9,3.0,85.0,64.0,1015.6,2.1,0,No,0
+D294,Overcast,Hot,High,Weak,Fall,0,Backyard,1.6,2.0,79.0,30.0,1008.1,6.9,0,No,0
+D295,Rain,Mild,High,Strong,Fall,0,Park,22.6,0.0,84.0,49.0,1012.8,1.9,0,No,0
+D296,Sunny,Hot,High,Weak,Fall,1,Park,3.7,5.0,,31.0,1014.8,4.9,0,No,0
+D297,Overcast,Hot,Normal,Strong,Spring,0,Park,1.1,2.0,81.0,12.0,1008.6,6.9,0,Yes,1
+D298,Overcast,Hot,Normal,Weak,Winter,0,Park,4.6,0.0,80.0,43.0,1007.6,9.0,1,Yes,1
+D299,Overcast,Hot,High,Weak,Summer,0,Club,3.0,,86.0,33.0,1013.2,6.8,0,No,0
+D300,Sunny,Mild,Normal,Weak,Spring,0,Club,1.0,6.0,36.0,52.0,1015.1,7.1,0,Yes,1
+D301,Overcast,Hot,High,Weak,Spring,0,Park,4.8,2.0,59.0,35.0,1017.4,7.0,0,Yes,1
+D302,Overcast,Cool,Normal,Strong,Spring,1,Park,4.7,5.0,80.0,38.0,1003.8,7.1,0,Yes,1
+D303,Sunny,Mild,Normal,Weak,Fall,0,Club,0.3,5.0,16.0,48.0,1017.0,,0,Yes,1
+D304,Sunny,Mild,Normal,Strong,Summer,1,Club,2.8,11.0,8.0,41.0,1015.8,3.8,0,Yes,1
+D305,Rain,Hot,High,Weak,Spring,0,Backyard,20.1,1.0,86.0,42.0,,3.0,0,No,0
+D306,Overcast,Cool,Normal,Weak,Fall,1,Backyard,6.7,3.0,85.0,41.0,1017.2,8.2,1,Yes,1
+D307,Overcast,Mild,High,Weak,Fall,0,Club,1.7,2.0,92.0,68.0,1009.4,5.9,0,Yes,1
+D308,Overcast,Cool,Normal,Strong,Winter,0,Backyard,0.4,0.0,51.0,18.0,1006.5,6.9,0,Yes,1
+D309,Sunny,Hot,Normal,Strong,Winter,0,Resort,3.2,2.0,14.0,67.0,1011.9,5.1,0,No,0
+D310,Rain,Hot,Normal,Weak,Winter,1,Park,23.8,0.0,90.0,30.0,1002.8,5.9,0,No,0
+D311,Overcast,Cool,Normal,Weak,Spring,1,Backyard,1.4,3.0,,29.0,1008.0,9.0,1,Yes,1
+D312,Rain,Hot,Normal,Weak,Winter,1,Park,25.9,3.0,100.0,24.0,1005.5,5.2,0,No,0
+D313,Rain,Hot,Normal,Weak,Summer,0,Park,24.6,4.0,87.0,25.0,998.2,4.9,0,No,0
+D314,Overcast,Hot,High,Weak,Spring,1,Park,11.5,,62.0,5.0,1007.2,7.2,0,Yes,1
+D315,Overcast,Hot,Normal,Weak,Summer,0,Club,8.3,4.0,82.0,33.0,1014.9,8.9,1,Yes,1
+D316,Sunny,Hot,High,Strong,Summer,0,Public Court,1.8,11.0,27.0,82.0,1014.4,2.8,0,No,0
+D317,Overcast,Hot,High,Weak,Winter,1,Park,0.9,2.0,70.0,40.0,1018.4,7.1,0,Yes,1
+D318,Rain,Hot,Normal,Weak,Fall,0,Park,5.7,2.0,100.0,43.0,1005.8,5.0,0,No,0
+D319,Overcast,Mild,High,Weak,Summer,1,Public Court,2.7,6.0,77.0,31.0,1013.1,7.0,0,Yes,1
+D320,Overcast,Hot,High,Weak,Winter,0,Club,3.0,,69.0,42.0,1014.0,5.9,0,No,0
+D321,Rain,Mild,Normal,Weak,Spring,0,Resort,2.7,1.0,100.0,13.0,993.8,6.0,0,Yes,1
+D322,Sunny,Hot,High,Strong,Summer,1,Backyard,1.8,11.0,30.0,50.0,1012.3,1.7,0,No,0
+D323,Rain,Cool,High,Weak,Winter,0,Resort,6.5,2.0,89.0,44.0,1003.5,4.0,0,No,0
+D324,Overcast,Mild,Normal,Weak,Fall,0,Park,9.1,3.0,74.0,44.0,1011.0,9.2,1,Yes,1
+D325,Sunny,Mild,High,Weak,Summer,0,Public Court,2.8,11.0,30.0,43.0,1021.3,3.7,0,Yes,1
+D326,Rain,Mild,High,Weak,Spring,1,Backyard,10.5,4.0,81.0,39.0,997.2,3.9,0,No,0
+D327,Rain,Hot,Normal,Weak,Fall,0,Backyard,31.9,0.0,60.0,11.0,1008.3,5.9,0,No,0
+D328,Sunny,Mild,Normal,Strong,Winter,1,Resort,2.3,3.0,8.0,35.0,1015.7,5.8,0,Yes,1
+D329,Sunny,Mild,High,Weak,Summer,0,Park,1.8,10.0,15.0,43.0,1007.5,3.7,0,No,0
+D330,Rain,Cool,Normal,Weak,Spring,1,Public Court,8.0,1.0,100.0,51.0,1002.6,4.8,0,Yes,1
+D331,Rain,Mild,High,Strong,Fall,0,Club,9.5,1.0,82.0,52.0,1007.2,2.0,0,No,0
+D332,Overcast,Mild,Normal,Strong,Fall,0,Public Court,6.8,2.0,76.0,57.0,,7.2,0,Yes,1
+D333,Overcast,Cool,High,Weak,Winter,0,Park,14.7,1.0,69.0,34.0,1014.2,6.8,0,Yes,1
+D334,Sunny,Hot,Normal,Weak,Fall,1,Backyard,1.6,8.0,13.0,38.0,1021.6,6.0,0,Yes,1
+D335,Sunny,Hot,High,Weak,Spring,0,Backyard,1.7,6.0,0.0,62.0,1020.4,4.0,0,No,0
+D336,Rain,Mild,High,Weak,Fall,1,Club,5.2,1.0,100.0,70.0,1002.7,,0,No,0
+D337,Overcast,Cool,Normal,Strong,Fall,1,Park,2.1,3.0,84.0,43.0,1014.9,6.3,0,Yes,1
+D338,Overcast,Hot,Normal,Weak,Winter,0,Backyard,5.4,2.0,78.0,30.0,,8.1,1,Yes,1
+D339,Sunny,Mild,Normal,Strong,Spring,0,Park,0.4,6.0,27.0,,1020.0,4.1,0,Yes,1
+D340,Overcast,Mild,High,Strong,Summer,0,Park,3.8,5.0,59.0,60.0,1009.6,5.1,0,Yes,1
+D341,Overcast,Hot,High,Weak,Fall,1,Park,4.2,0.0,78.0,35.0,1018.0,6.9,0,No,0
+D342,Rain,Mild,Normal,Strong,Fall,0,Club,9.2,2.0,86.0,77.0,1007.0,3.9,0,Yes,1
+D343,Rain,Cool,High,Weak,Summer,0,Club,20.3,2.0,83.0,40.0,1001.5,3.2,0,No,0
+D344,Overcast,Mild,Normal,Weak,Fall,1,Club,2.1,3.0,85.0,46.0,1017.4,6.7,1,Yes,1
+D345,Rain,Mild,Normal,Weak,Winter,1,Backyard,15.7,0.0,97.0,44.0,1001.5,5.9,0,Yes,1
+D346,Rain,Hot,High,Weak,Winter,0,Backyard,24.6,0.0,91.0,46.0,1016.9,2.8,0,No,0
+D347,Sunny,Mild,,Strong,Summer,0,Public Court,0.0,11.0,17.0,48.0,1012.9,5.0,0,Yes,1
+D348,Rain,Mild,High,Strong,Summer,0,Park,44.5,3.0,80.0,38.0,1006.7,,0,No,0
+D349,Sunny,Cool,High,Weak,Winter,0,Resort,1.3,4.0,19.0,9.0,1013.6,4.9,0,Yes,1
+D350,Sunny,Cool,High,Weak,Fall,0,Backyard,2.2,4.0,31.0,37.0,1018.5,4.1,0,Yes,1
+D351,Overcast,Hot,Normal,Strong,Fall,1,Public Court,0.6,1.0,64.0,67.0,1004.6,6.0,0,No,0
+D352,Rain,Hot,Normal,,Summer,1,Park,11.2,4.0,100.0,27.0,1015.8,5.8,0,No,0
+D353,Rain,Cool,High,Weak,Winter,1,Public Court,1.4,3.0,,12.0,1011.7,2.8,0,No,0
+D354,Sunny,Cool,High,Weak,Summer,0,Backyard,2.2,11.0,22.0,55.0,1022.2,5.0,0,No,0
+D355,Rain,Mild,Normal,Weak,Fall,1,Club,16.6,1.0,96.0,39.0,1000.2,4.9,0,Yes,1
+D356,Rain,Mild,High,Strong,Spring,0,Club,31.5,1.0,100.0,11.0,1000.4,1.9,0,No,0
+D357,Sunny,Mild,High,Weak,Summer,1,Backyard,0.3,10.0,3.0,49.0,1027.2,5.1,0,Yes,1
+D358,Sunny,Cool,Normal,Weak,Summer,1,Resort,0.4,9.0,14.0,49.0,1019.1,7.1,0,Yes,1
+D359,Overcast,Mild,Normal,Weak,Winter,0,Backyard,1.6,3.0,79.0,,1013.6,9.3,1,Yes,1
+D360,Overcast,Mild,High,,Fall,1,Public Court,7.3,2.0,60.0,27.0,1008.4,7.0,0,Yes,1
+D361,Rain,Mild,High,Strong,Fall,0,Backyard,36.6,1.0,80.0,80.0,999.2,1.9,0,No,0
+D362,Sunny,Hot,High,Weak,Spring,0,Resort,3.0,6.0,13.0,55.0,1017.3,5.1,0,No,0
+D363,Sunny,Hot,Normal,Strong,Summer,0,Club,0.4,11.0,0.0,60.0,1018.2,4.9,0,No,0
+D364,Rain,Hot,High,Strong,Winter,0,Public Court,5.3,0.0,96.0,69.0,1003.3,1.0,0,No,0
+D365,Overcast,Mild,High,Strong,Winter,0,Park,0.7,1.0,72.0,26.0,1011.9,4.0,0,Yes,1
+D366,Overcast,Cool,High,Weak,Winter,1,Park,6.7,2.0,51.0,46.0,1018.4,6.2,0,Yes,1
+D367,Overcast,Cool,Normal,Weak,Fall,0,Public Court,4.0,2.0,66.0,22.0,1015.0,8.1,1,Yes,1
+D368,Rain,Mild,High,Weak,Spring,0,Backyard,43.5,1.0,100.0,50.0,999.4,3.1,0,No,0
+D369,Overcast,Mild,High,Strong,Fall,0,Public Court,3.0,1.0,77.0,30.0,1014.4,5.2,0,Yes,1
+D370,Rain,Cool,Normal,Strong,Spring,0,Resort,7.5,0.0,67.0,49.0,999.7,2.1,0,No,0
+D371,Sunny,Hot,Normal,Weak,Winter,0,Backyard,3.8,6.0,18.0,54.0,1015.9,6.8,0,Yes,1
+D372,Rain,Cool,High,Strong,Summer,1,Backyard,35.0,3.0,93.0,27.0,1010.0,1.1,0,No,0
+D373,Rain,Cool,Normal,Strong,Summer,1,Resort,24.4,1.0,90.0,43.0,1003.9,4.2,0,Yes,1
+D374,Rain,Mild,Normal,Strong,Winter,0,Club,14.0,1.0,74.0,20.0,1004.0,3.1,0,No,0
+D375,Sunny,Cool,Normal,Strong,Winter,0,Club,0.0,4.0,15.0,7.0,1014.8,3.0,0,Yes,1
+D376,Rain,Cool,Normal,Weak,Spring,0,Resort,20.9,1.0,100.0,61.0,1004.6,6.1,0,Yes,1
+D377,Rain,Cool,Normal,Weak,Fall,0,Backyard,13.7,0.0,85.0,33.0,1001.1,6.0,0,Yes,1
+D378,Overcast,Cool,High,Weak,Summer,0,Club,2.6,5.0,80.0,61.0,1016.7,5.9,0,No,0
+D379,Sunny,Mild,Normal,Strong,Spring,0,Club,0.2,8.0,13.0,57.0,1015.3,3.9,0,Yes,1
+D380,Rain,Cool,Normal,Strong,Summer,0,Backyard,13.9,2.0,58.0,30.0,1006.9,3.1,0,No,0
+D381,Sunny,Mild,Normal,Weak,Spring,0,Backyard,0.0,5.0,14.0,5.0,1028.2,5.9,0,Yes,1
+D382,Sunny,Cool,Normal,Strong,Spring,1,Park,0.6,6.0,35.0,15.0,1009.7,4.9,0,Yes,1
+D383,Rain,Hot,Normal,Weak,Summer,0,Public Court,10.6,4.0,70.0,32.0,1005.1,6.1,0,Yes,1
+D384,Sunny,Mild,High,Weak,Fall,0,Club,3.4,6.0,30.0,68.0,1018.6,4.0,0,Yes,1
+D385,Rain,Hot,High,Weak,Winter,0,Park,10.5,0.0,91.0,44.0,1002.8,3.1,0,No,0
+D386,Sunny,Cool,,Strong,Summer,0,Park,0.5,11.0,7.0,21.0,1020.6,2.8,0,No,0
+D387,Overcast,Mild,High,Weak,Winter,1,Club,6.5,1.0,59.0,30.0,1013.2,6.1,0,Yes,1
+D388,Rain,Cool,Normal,Strong,Summer,1,Park,36.1,2.0,100.0,41.0,1006.5,3.9,0,No,0
+D389,Sunny,Mild,Normal,Weak,Spring,1,Club,2.5,5.0,19.0,50.0,1017.0,5.8,0,Yes,1
+D390,Overcast,Mild,Normal,Weak,Fall,0,Club,0.1,0.0,72.0,35.0,1013.5,8.9,1,Yes,1
+D391,Overcast,Cool,Normal,Strong,Winter,0,Resort,1.3,3.0,65.0,61.0,1011.5,7.2,0,Yes,1
+D392,Rain,Cool,Normal,Strong,Winter,1,Public Court,7.8,1.0,94.0,28.0,1002.7,3.9,0,No,0
+D393,Rain,Hot,High,Strong,Fall,0,,17.6,4.0,100.0,5.0,1005.4,2.3,0,No,0
+D394,Rain,Hot,Normal,Weak,Spring,1,Backyard,21.5,3.0,88.0,,,4.7,0,No,0
+D395,Overcast,Mild,Normal,Weak,Spring,1,Backyard,4.6,4.0,92.0,30.0,1006.2,8.8,1,Yes,1
+D396,Rain,Mild,Normal,Strong,Summer,0,Resort,5.3,1.0,98.0,33.0,1013.2,3.2,0,Yes,1
+D397,Rain,Mild,Normal,Strong,Fall,0,Park,30.8,3.0,80.0,60.0,1002.2,4.2,0,No,0
+D398,Rain,Cool,Normal,Weak,Spring,1,Backyard,58.7,1.0,100.0,76.0,1016.0,,0,No,0
+D399,Sunny,Hot,High,Strong,Summer,1,Park,,11.0,14.0,78.0,1023.3,1.9,0,No,0
+D400,Rain,Mild,Normal,Strong,Fall,0,Resort,26.7,0.0,87.0,27.0,996.0,3.0,0,No,0
+D401,Overcast,,High,Weak,Winter,0,,4.8,0.0,97.0,61.0,1014.7,6.1,0,No,0
+D402,Sunny,Mild,High,Weak,Summer,0,Resort,2.7,11.0,0.0,17.0,1019.6,4.0,0,No,0
+D403,Sunny,Hot,Normal,Weak,Summer,1,Club,0.0,10.0,0.0,60.0,1017.6,6.0,0,No,0
+D404,Rain,Mild,High,Weak,Spring,1,Park,24.1,1.0,76.0,39.0,1005.9,3.0,0,No,0
+D405,Rain,Cool,Normal,Strong,Winter,0,,15.5,0.0,95.0,22.0,1006.6,3.8,0,No,0
+D406,Overcast,Mild,Normal,Weak,Fall,0,Public Court,2.3,2.0,79.0,36.0,1007.9,7.9,1,Yes,1
+D407,Rain,Hot,Normal,Weak,Spring,1,Park,43.1,1.0,81.0,5.0,,6.0,0,No,0
+D408,Sunny,Hot,High,Strong,Winter,0,Backyard,0.0,3.0,16.0,67.0,1018.3,2.0,0,No,0
+D409,Rain,Cool,Normal,Weak,Fall,0,Public Court,30.0,0.0,99.0,17.0,1006.8,4.7,0,Yes,1
+D410,Overcast,Hot,High,Weak,Fall,1,Resort,2.5,1.0,71.0,32.0,1009.3,7.1,0,No,0
+D411,Rain,Hot,Normal,Weak,Summer,1,Club,32.3,6.0,95.0,52.0,1005.5,5.0,0,No,0
+D412,Overcast,Hot,High,Weak,Summer,0,Park,2.8,4.0,74.0,31.0,1021.8,6.8,0,No,0
+D413,Rain,Hot,High,Weak,Fall,1,Backyard,10.2,1.0,87.0,64.0,1000.9,3.3,0,No,0
+D414,Rain,Mild,High,Strong,Summer,0,Park,8.4,1.0,91.0,33.0,1007.6,1.9,0,No,0
+D415,Rain,Mild,Normal,Weak,Fall,0,Resort,16.6,0.0,87.0,97.0,1006.9,5.0,0,Yes,1
+D416,Sunny,Mild,High,Weak,Winter,0,Park,2.2,4.0,0.0,43.0,1019.5,5.1,0,Yes,1
+D417,Sunny,Hot,High,Weak,Summer,0,Public Court,0.8,11.0,15.0,70.0,1020.6,4.3,0,No,0
+D418,Sunny,Mild,Normal,Strong,Spring,0,Backyard,2.9,8.0,11.0,48.0,1015.4,4.1,0,Yes,1
+D419,Rain,Cool,High,Weak,Summer,1,Public Court,27.9,5.0,77.0,40.0,1011.9,3.1,0,No,0
+D420,Overcast,Mild,Normal,Weak,Spring,0,Backyard,0.6,4.0,60.0,35.0,1012.7,7.8,1,Yes,1
+D421,Rain,Cool,High,Strong,Spring,0,Club,20.1,2.0,85.0,46.0,1003.4,2.0,0,No,0
+D422,Rain,Mild,Normal,Strong,Spring,0,Resort,8.0,3.0,88.0,63.0,1005.1,1.9,0,No,0
+D423,Sunny,Cool,Normal,Weak,Spring,1,Resort,0.3,8.0,25.0,49.0,1016.3,6.1,0,Yes,1
+D424,Overcast,Mild,High,Strong,Spring,0,Club,0.8,4.0,90.0,12.0,1018.1,4.1,0,Yes,1
+D425,Rain,Hot,High,Weak,Winter,1,Park,17.8,1.0,75.0,61.0,1002.7,4.2,0,No,0
+D426,Overcast,Mild,Normal,Strong,Spring,0,Backyard,1.9,3.0,84.0,,1017.1,5.7,0,Yes,1
+D427,Overcast,Hot,Normal,Strong,Winter,0,Resort,6.7,0.0,79.0,48.0,1015.4,6.9,0,Yes,1
+D428,Overcast,Mild,High,Strong,Winter,1,,2.0,0.0,76.0,9.0,1001.6,5.2,0,Yes,1
+D429,Rain,Mild,Normal,Weak,Summer,0,Public Court,20.5,2.0,83.0,38.0,1006.8,5.8,0,Yes,1
+D430,Sunny,Cool,Normal,Weak,Spring,0,Park,0.5,6.0,17.0,45.0,1022.4,6.1,0,Yes,1
+D431,Rain,Hot,Normal,Weak,Spring,0,Club,13.2,2.0,100.0,35.0,1003.0,5.2,0,No,0
+D432,Rain,Hot,High,Weak,Summer,0,Park,28.6,1.0,100.0,24.0,1006.5,4.0,0,No,0
+D433,Sunny,Hot,High,Strong,Summer,0,Backyard,0.3,10.0,13.0,51.0,1018.8,2.8,0,No,0
+D434,Sunny,Hot,Normal,Strong,Summer,0,Club,0.1,10.0,18.0,66.0,1021.1,6.0,0,No,0
+D435,Sunny,Hot,High,Weak,Spring,0,Club,0.9,6.0,21.0,79.0,1018.1,5.2,0,No,0
+D436,Sunny,Mild,High,Strong,Summer,0,Park,1.3,11.0,,54.0,1013.5,3.2,0,No,0
+D437,Rain,Hot,Normal,Weak,Fall,0,Backyard,1.6,1.0,96.0,40.0,1013.6,5.0,0,No,0
+D438,Rain,Hot,Normal,Strong,Winter,1,Resort,10.0,0.0,87.0,5.0,1007.4,2.9,0,No,0
+D439,Rain,,High,Strong,Summer,0,Park,10.6,2.0,80.0,45.0,1011.8,1.3,0,No,0
+D440,Overcast,Mild,Normal,Strong,Fall,0,Park,2.2,3.0,64.0,44.0,1012.3,5.1,0,Yes,1
+D441,Overcast,Mild,High,Weak,Summer,0,Park,6.9,5.0,56.0,7.0,1003.6,6.9,0,Yes,1
+D442,Sunny,Cool,Normal,Weak,Winter,1,Backyard,1.4,4.0,8.0,42.0,1014.7,6.1,0,Yes,1
+D443,Rain,Hot,High,Weak,Winter,0,Park,9.3,0.0,87.0,22.0,1004.3,4.0,0,No,0
+D444,Rain,Cool,Normal,Weak,Spring,0,Public Court,10.8,,100.0,61.0,996.1,5.9,0,Yes,1
+D445,Sunny,Hot,High,Strong,Spring,1,Backyard,3.1,6.0,19.0,34.0,1018.1,2.1,0,No,0
+D446,Rain,Hot,Normal,Weak,Winter,0,Resort,15.9,0.0,,53.0,1009.1,6.2,0,No,0
+D447,Sunny,Hot,Normal,Weak,Spring,0,Backyard,0.8,8.0,0.0,71.0,1023.3,6.0,0,Yes,1
+D448,Rain,Mild,High,Strong,Winter,0,Club,14.6,0.0,81.0,6.0,1011.1,2.2,0,No,0
+D449,Rain,Cool,,Weak,Summer,0,Park,8.1,4.0,76.0,36.0,1003.6,5.7,0,Yes,1
+D450,Sunny,Cool,Normal,Strong,Summer,1,,0.6,11.0,13.0,27.0,1023.8,4.3,0,No,0
+D451,Sunny,Mild,High,Weak,Summer,0,Public Court,,11.0,14.0,45.0,1013.7,5.0,0,No,0
+D452,Overcast,Hot,Normal,Strong,Winter,1,Park,2.6,1.0,79.0,20.0,1010.0,6.2,0,Yes,1
+D453,Rain,Cool,Normal,Weak,Summer,0,Club,16.3,3.0,100.0,46.0,1004.6,6.0,0,No,0
+D454,Sunny,Mild,Normal,Weak,Spring,0,Club,1.2,5.0,17.0,18.0,1025.6,6.9,0,Yes,1
+D455,Sunny,Hot,Normal,Strong,Summer,0,Resort,0.5,11.0,5.0,43.0,1017.2,4.0,0,No,0
+D456,Sunny,Mild,High,Strong,Summer,1,Park,1.3,11.0,12.0,,1016.6,3.7,0,No,0
+D457,Sunny,Mild,Normal,Weak,Summer,0,Park,1.3,11.0,0.0,48.0,1015.2,6.1,0,Yes,1
+D458,Overcast,Cool,Normal,Strong,Summer,0,Park,0.3,6.0,96.0,33.0,1013.6,6.0,0,Yes,1
+D459,Overcast,Cool,Normal,Weak,Spring,1,Park,2.3,2.0,88.0,39.0,1003.4,9.0,1,Yes,1
+D460,Rain,Cool,Normal,Weak,Spring,0,Backyard,10.7,2.0,60.0,88.0,1003.5,6.1,0,Yes,1
+D461,Overcast,Hot,Normal,Strong,Fall,0,Resort,3.9,4.0,72.0,37.0,1010.5,7.0,0,Yes,1
+D462,Sunny,Cool,Normal,Strong,Fall,0,Park,1.5,1.0,38.0,35.0,1022.1,5.1,0,Yes,1
+D463,Overcast,Mild,Normal,Strong,Summer,0,Club,1.0,5.0,85.0,57.0,1015.2,7.1,0,Yes,1
+D464,Sunny,Cool,Normal,Strong,Winter,0,Backyard,2.0,4.0,7.0,52.0,1023.9,4.9,0,Yes,1
+D465,Sunny,Cool,Normal,Strong,Winter,1,Backyard,1.4,3.0,4.0,37.0,1014.1,3.9,0,Yes,1
+D466,Rain,Mild,Normal,Strong,Spring,0,Backyard,9.6,1.0,90.0,,1002.6,2.7,0,Yes,1
+D467,Rain,Mild,High,Weak,Winter,0,Club,17.4,0.0,80.0,26.0,999.7,,0,No,0
+D468,Rain,Cool,High,Weak,Winter,0,Backyard,,0.0,90.0,40.0,996.9,4.0,0,No,0
+D469,Overcast,Cool,High,Weak,Fall,0,Resort,3.7,0.0,77.0,72.0,1018.8,7.1,0,Yes,1
+D470,Rain,,High,Strong,Fall,0,Park,28.7,0.0,92.0,64.0,999.0,1.8,0,No,0
+D471,Rain,Mild,High,Weak,Summer,0,Park,30.1,2.0,85.0,30.0,1006.5,3.2,0,No,0
+D472,Rain,Hot,High,Weak,Summer,0,Park,17.3,2.0,100.0,21.0,1000.7,3.9,0,No,0
+D473,Overcast,Hot,High,Strong,Fall,0,Backyard,1.0,2.0,85.0,44.0,1013.5,4.7,0,No,0
+D474,Rain,Hot,Normal,Strong,Fall,0,Backyard,22.3,1.0,89.0,75.0,,3.2,0,No,0
+D475,Rain,Mild,High,Weak,Summer,0,Club,9.4,3.0,92.0,28.0,1003.5,3.7,0,No,0
+D476,Sunny,Mild,Normal,Strong,Fall,0,Public Court,0.1,5.0,13.0,5.0,1018.2,4.1,0,Yes,1
+D477,Rain,Cool,Normal,Weak,Spring,0,Resort,5.5,,84.0,,1007.2,6.1,0,Yes,1
+D478,Sunny,Hot,Normal,Weak,Spring,0,Club,1.0,5.0,11.0,61.0,1023.1,7.0,0,Yes,1
+D479,Overcast,Cool,High,Weak,Fall,1,Park,1.6,1.0,88.0,,1020.3,5.9,0,Yes,1
+D480,Sunny,Mild,Normal,Strong,Fall,0,Club,3.3,3.0,0.0,8.0,1018.0,4.1,0,Yes,1
+D481,Overcast,Hot,Normal,Strong,Winter,1,Park,2.0,0.0,100.0,54.0,1011.4,6.2,0,Yes,1
+D482,Sunny,Cool,High,Strong,Spring,0,Park,1.7,7.0,27.0,26.0,1018.7,2.9,0,No,0
+D483,Rain,Hot,High,Weak,Spring,0,Backyard,19.7,2.0,100.0,17.0,998.1,4.1,0,No,0
+D484,Rain,,High,Strong,Spring,1,Park,19.5,2.0,62.0,23.0,1003.0,1.1,0,No,0
+D485,Sunny,Mild,Normal,Strong,Spring,0,Club,1.0,6.0,12.0,69.0,1017.9,5.0,0,Yes,1
+D486,Rain,Hot,Normal,Weak,Fall,0,Backyard,11.0,1.0,78.0,47.0,1011.5,5.9,0,No,0
+D487,Rain,Hot,Normal,Strong,Summer,1,Public Court,6.1,,80.0,17.0,1003.6,4.1,0,No,0
+D488,Sunny,Mild,Normal,,Summer,0,Park,1.8,10.0,1.0,37.0,1018.2,5.1,0,Yes,1
+D489,Overcast,Cool,High,Strong,Fall,0,Public Court,0.2,2.0,,36.0,1018.6,2.8,0,Yes,1
+D490,Rain,,Normal,Weak,Winter,0,Public Court,5.4,0.0,95.0,46.0,1004.9,5.9,0,Yes,1
+D491,Overcast,Mild,Normal,Strong,Fall,0,Club,0.2,3.0,67.0,47.0,1012.1,6.1,0,Yes,1
+D492,Sunny,Hot,Normal,Weak,Winter,1,,1.0,2.0,24.0,80.0,1024.3,7.0,0,Yes,1
+D493,Rain,Cool,Normal,Weak,Spring,0,Club,17.3,3.0,74.0,,1009.6,5.2,0,Yes,1
+D494,Overcast,Mild,High,Weak,Spring,0,Backyard,3.4,3.0,69.0,25.0,1013.8,5.9,0,Yes,1
+D495,Sunny,Cool,Normal,Weak,Summer,0,Public Court,3.8,9.0,30.0,65.0,1015.1,5.9,0,Yes,1
+D496,Sunny,Mild,High,Strong,Spring,0,Backyard,2.3,7.0,0.0,64.0,1012.0,2.3,0,No,0
+D497,Overcast,Hot,Normal,Weak,Spring,1,Park,0.2,4.0,,52.0,1012.5,8.7,1,Yes,1
+D498,Sunny,Hot,Normal,,Summer,0,Resort,1.1,8.0,5.0,72.0,1021.8,3.9,0,Yes,1
+D499,Overcast,Hot,Normal,Weak,Spring,0,Backyard,1.6,2.0,74.0,17.0,1014.0,9.0,1,Yes,1
+D500,Overcast,Cool,High,Weak,Summer,0,Resort,3.2,7.0,62.0,52.0,1017.9,6.1,0,Yes,1

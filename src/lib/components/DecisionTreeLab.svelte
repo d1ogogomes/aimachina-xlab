@@ -4,6 +4,8 @@
   import {
     GOLF_DATASET,
     IRIS_DATASET,
+    PLAYTENNIS_DATASET,
+    PLAYTENNIS_ENHANCED_DATASET,
     getCustomDatasets,
     saveCustomDataset,
     deleteCustomDataset,
@@ -150,7 +152,13 @@
 
   function loadAllDatasets() {
     const customList = getCustomDatasets();
-    datasets = [GOLF_DATASET, IRIS_DATASET, ...customList];
+    datasets = [
+      GOLF_DATASET,
+      IRIS_DATASET,
+      PLAYTENNIS_DATASET,
+      PLAYTENNIS_ENHANCED_DATASET,
+      ...customList
+    ];
     
     // Refresh active reference
     const found = datasets.find(d => d.id === selectedDatasetId);
