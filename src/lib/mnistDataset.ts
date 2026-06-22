@@ -1,7 +1,15 @@
 import type { DemoDataset, DemoImageRef } from './demoDataset';
 
-// Carrega todos os URLs das imagens MNIST no diretório raiz usando o Vite
-const mnistGlob = import.meta.glob('/mnist_png/**/*.png', { as: 'url', eager: true });
+// Carrega todos os URLs das imagens MNIST a partir de src/mnist_png usando o Vite.
+// O caminho é relativo (não absoluto a partir da raiz): assim o Vite processa as
+// imagens pelo pipeline de assets e emite-as no build (caminhos absolutos como
+// '/mnist_png/**' eram tratados como ficheiros estáticos e não eram incluídos,
+// resultando em 404 em produção).
+const mnistGlob = import.meta.glob('../mnist_png/**/*.png', {
+  query: '?url',
+  import: 'default',
+  eager: true,
+});
 
 // Organizar as imagens por dígito (0-9)
 const digitImages: Record<string, string[]> = {};

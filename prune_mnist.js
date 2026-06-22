@@ -1,10 +1,10 @@
 import fs from 'fs';
 import path from 'path';
 
-const targetDir = path.join(process.cwd(), 'mnist_png');
+const targetDir = path.join(process.cwd(), 'src', 'mnist_png');
 
 if (!fs.existsSync(targetDir)) {
-    console.error("Erro: A pasta mnist_png não foi encontrada!");
+    console.error("Erro: A pasta src/mnist_png não foi encontrada!");
     process.exit(1);
 }
 
