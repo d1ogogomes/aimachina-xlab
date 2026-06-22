@@ -12,6 +12,7 @@
   export let tree: TabularTreeNode;
   export let targetClasses: string[];
   export let highlightPath: TabularTreeNode[] = [];
+  export let criterion: 'gini' | 'entropy' = 'gini';
 
   const CLASS_COLORS = [
     '#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
@@ -350,7 +351,7 @@
             <text x={NODE_W/2} y="56"
               font-size="9" font-weight="600" fill="var(--color-ink-faint)"
               text-anchor="middle" dominant-baseline="middle">
-              n={n.samples} · gini={n.gini}
+              n={n.samples} · {criterion === 'gini' ? 'gini' : 'entropy'}={n.gini}
             </text>
 
             <!-- Dist Bar backing -->
@@ -411,7 +412,7 @@
             <text x={NODE_W/2} y="56"
               font-size="9" font-weight="600" fill="var(--color-ink-muted)"
               text-anchor="middle" dominant-baseline="middle">
-              n={n.samples} · gini={n.gini}
+              n={n.samples} · {criterion === 'gini' ? 'gini' : 'entropy'}={n.gini}
             </text>
 
             <!-- Dist Bar backing -->

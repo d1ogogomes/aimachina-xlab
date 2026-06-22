@@ -413,7 +413,7 @@ export const PLAYTENNIS_DATASET: TabularDataset = {
 export const PLAYTENNIS_ENHANCED_DATASET: TabularDataset = {
   id: 'playtennis_enhanced',
   name: 'Play Tennis (Avançado)',
-  features: ["Day","Outlook","Temperature","Humidity","Wind","Season","Weekend","Location","Rainfall_mm","UVIndex","CloudCover_pct","AirQuality_AQI","Pressure_hPa","WeatherScore","IdealConditions","PlayTennis_Num"],
+  features: ["Day","Outlook","Temperature","Humidity","Wind","Season","Weekend","Location","Rainfall_mm","UVIndex","CloudCover_pct","AirQuality_AQI","Pressure_hPa","WeatherScore","IdealConditions"],
   featureTypes: {
     "Day": "categorical",
     "Outlook": "categorical",
@@ -429,8 +429,7 @@ export const PLAYTENNIS_ENHANCED_DATASET: TabularDataset = {
     "AirQuality_AQI": "numerical",
     "Pressure_hPa": "numerical",
     "WeatherScore": "numerical",
-    "IdealConditions": "numerical",
-    "PlayTennis_Num": "numerical"
+    "IdealConditions": "numerical"
   },
   targetName: 'PlayTennis',
   targetClasses: ["No","Yes"],

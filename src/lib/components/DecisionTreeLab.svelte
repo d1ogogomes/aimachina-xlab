@@ -1070,7 +1070,7 @@
 
           {#if codeExportTab === 'graph'}
             <div class="relative overflow-hidden">
-              <TabularDecisionTreeViz tree={activeTree} targetClasses={activeDataset.targetClasses} highlightPath={highlightPath} />
+              <TabularDecisionTreeViz tree={activeTree} targetClasses={activeDataset.targetClasses} highlightPath={highlightPath} criterion={splittingCriterion} />
             </div>
           {:else if codeExportTab === 'rules'}
             {@const naturalRules = extractNaturalRules(activeTree, $locale)}
@@ -1150,7 +1150,7 @@
                 {@const maxVal = Math.max(...activeDataset.data.map(d => Number(d[f])))}
                 <div class="flex items-center gap-3">
                   <span class="text-[10px] text-ink-faint font-bold font-mono">{minVal}</span>
-                  <input type="range" min={minVal} max={maxVal} step={Math.round((maxVal - minVal) / 20 * 100) / 100 || 0.1} value={predictorInputs[f] || minVal} on:input={(e) => handlePredictorInput(f, (e.target as HTMLInputElement).value)} class="flex-1 accent-[var(--color-dt)] cursor-pointer h-1 bg-sunken rounded-lg appearance-none" />
+                  <input type="range" min={minVal} max={maxVal} step={Math.round((maxVal - minVal) / 50 * 100) / 100 || 0.1} value={predictorInputs[f] || minVal} on:input={(e) => handlePredictorInput(f, (e.target as HTMLInputElement).value)} class="flex-1 accent-[var(--color-dt)] cursor-pointer h-1 bg-sunken rounded-lg appearance-none" />
                   <span class="text-[10px] text-ink-faint font-bold font-mono">{maxVal}</span>
                 </div>
               {:else}
