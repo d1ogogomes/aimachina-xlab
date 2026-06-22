@@ -116,23 +116,28 @@
   // can switch to 1:1 to inspect a large tree, where drag-to-pan kicks in.
   let fitView = true;
 
-  // Drag-to-pan controls (1:1 mode only)
+  // Drag-to-pan controls (1:1 mode only) — pans both axes
   let isDragging = false;
   let dragStartX = 0;
+  let dragStartY = 0;
   let dragStartScrollLeft = 0;
+  let dragStartScrollTop = 0;
 
   function onPointerDown(e: PointerEvent) {
     // Only drag with left click, and only when not fitted to view
     if (fitView || e.button !== 0) return;
     isDragging = true;
     dragStartX = e.clientX;
+    dragStartY = e.clientY;
     dragStartScrollLeft = scrollEl.scrollLeft;
+    dragStartScrollTop = scrollEl.scrollTop;
     scrollEl.setPointerCapture(e.pointerId);
   }
 
   function onPointerMove(e: PointerEvent) {
     if (!isDragging) return;
     scrollEl.scrollLeft = dragStartScrollLeft - (e.clientX - dragStartX);
+    scrollEl.scrollTop = dragStartScrollTop - (e.clientY - dragStartY);
   }
 
   function onPointerUp(e: PointerEvent) {
@@ -150,8 +155,10 @@
   afterUpdate(() => {
     if (fitView || tree === _centeredForTree || !scrollEl) return;
     _centeredForTree = tree;
-    const center = svgW / 2 - scrollEl.clientWidth / 2;
-    if (center > 0) scrollEl.scrollLeft = center;
+    // Center the canvas on both axes so the root is in view when entering 1:1.
+    const centerX = (scrollEl.scrollWidth - scrollEl.clientWidth) / 2;
+    if (centerX > 0) scrollEl.scrollLeft = centerX;
+    scrollEl.scrollTop = 0;
   });
 </script>
 
@@ -198,12 +205,13 @@
     bind:this={scrollEl}
     role="region"
     aria-label={$t('dtree_title')}
-    class="bg-[var(--color-paper)] flex items-center justify-center select-none {fitView
-      ? 'overflow-hidden w-full'
-      : 'overflow-x-auto min-h-[400px]'}"
+    data-allow-hscroll
+    class="bg-[var(--color-paper)] select-none {fitView
+      ? 'flex items-center justify-center overflow-hidden w-full'
+      : 'block overflow-auto min-h-[400px]'}"
     style={fitView
       ? `aspect-ratio:${aspect}; max-height:72vh;`
-      : `min-height:400px; will-change:scroll-position; cursor:${isDragging ? 'grabbing' : 'grab'}; touch-action:none;`}
+      : `max-height:72vh; will-change:scroll-position; cursor:${isDragging ? 'grabbing' : 'grab'}; touch-action:none;`}
     on:pointerdown={onPointerDown}
     on:pointermove={onPointerMove}
     on:pointerup={onPointerUp}

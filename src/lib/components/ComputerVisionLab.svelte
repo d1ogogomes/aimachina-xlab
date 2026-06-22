@@ -16,11 +16,6 @@
     renderOcclusionOverlay,
   } from "../ml/tfjs";
   import { preprocessMnistCanvas } from "../ml/preprocess";
-  import {
-    buildDecisionTree,
-    type TreeNode as DTNode,
-  } from "../ml/decisionTree";
-  import DecisionTreeViz from "./DecisionTreeViz.svelte";
   import { driver } from "driver.js";
   import "driver.js/dist/driver.css";
 
@@ -73,24 +68,6 @@
   let trainingImages: { [key: number]: string[] } = {};
   let isDemoDatasetLoaded = false;
   let selectedDemoTestClassId = 0;
-  let decisionTree: DTNode | null = null;
-
-  // Stable class names reference — only updates when a name actually changes,
-  // NOT on every confidence update. Prevents DecisionTreeViz from re-rendering
-  // during the 60fps prediction loop.
-  let _treeClassNames: string[] = classes.map((c) => c.name);
-  $: {
-    const next = classes.map((c) => c.name);
-    if (
-      next.length !== _treeClassNames.length ||
-      next.some((n, i) => n !== _treeClassNames[i])
-    ) {
-      _treeClassNames = next;
-    }
-  }
-  let savedEmbeddings: number[][] = [];
-  let savedLabels: number[] = [];
-  let isBuildingTree = false;
 
   /** Convert a blob: URL to a data: URL so it survives revocation. */
   function blobToDataUrl(url: string): Promise<string> {
@@ -275,9 +252,6 @@
     isDemoDatasetLoaded = false;
     confusionMatrix = [];
     detailedResults = [];
-    decisionTree = null;
-    savedEmbeddings = [];
-    savedLabels = [];
   }
 
   function addTrainingFiles(files: FileList, classId: number) {
@@ -629,19 +603,6 @@
       isModelTrained = true;
       trainingProgress = 100;
 
-      // Save raw embeddings for decision tree (built on demand)
-      try {
-        savedEmbeddings = [];
-        for (const tensor of xs) {
-          savedEmbeddings.push(Array.from(await tensor.data()));
-        }
-        savedLabels = [...ys];
-      } catch (e) {
-        console.warn("[train] failed to save embeddings:", e);
-        savedEmbeddings = [];
-        savedLabels = [];
-      }
-
       if (previewUrl) runPrediction();
     } catch (e) {
       console.error("[train] model training failed:", e);
@@ -753,10 +714,6 @@
     }
     confusionMatrix = [];
     detailedResults = [];
-    decisionTree = null;
-    savedEmbeddings = [];
-    savedLabels = [];
-    isBuildingTree = false;
     isEvaluating = false;
     // Reset XAI state
     showExplanation = false;
@@ -933,25 +890,6 @@
     isEvaluating = false;
   }
 
-  async function buildTreeDiagnostic() {
-    if (!isModelTrained || savedEmbeddings.length === 0) return;
-    isBuildingTree = true;
-    await new Promise((r) => setTimeout(r, 50)); // let UI update
-    try {
-      decisionTree = buildDecisionTree(
-        savedEmbeddings,
-        savedLabels,
-        classes.length,
-        3,
-        1,
-      );
-    } catch (e) {
-      console.error("[dtree] build failed:", e);
-      decisionTree = null;
-    }
-    isBuildingTree = false;
-  }
-
   async function explainInspectorImage(imgUrl: string, idx: number) {
     if (!isReady || !isModelTrained) return;
     inspectorExplainingIdx = idx;
@@ -1014,7 +952,6 @@
         step("#cv-input-source", 6),
         step("#cv-output", 7),
         step("#cv-diagnostics", 8),
-        step("#cv-dtree", 9),
       ],
     }).drive();
   }
@@ -1082,7 +1019,7 @@
     <section class="lg:col-span-8 flex flex-col gap-6">
       <!-- Step indicator -->
       <div id="cv-step-indicator" class="flex items-center gap-0">
-        {#each [{ n: 1, label: $t("teach_machine"), active: true }, { n: 2, label: $t("train_button"), active: isModelTrained || isTrainingModel }, { n: 3, label: $t("test_machine"), active: isModelTrained }, { n: 4, label: $t("diagnostics"), active: confusionMatrix.length > 0 && confusionMatrix.some( (row) => row.some((v) => v > 0), ) }, { n: 5, label: $t("dtree_title"), active: decisionTree !== null }] as step, i}
+        {#each [{ n: 1, label: $t("teach_machine"), active: true }, { n: 2, label: $t("train_button"), active: isModelTrained || isTrainingModel }, { n: 3, label: $t("test_machine"), active: isModelTrained }, { n: 4, label: $t("diagnostics"), active: confusionMatrix.length > 0 && confusionMatrix.some( (row) => row.some((v) => v > 0), ) }] as step, i}
           <div
             class="flex items-center gap-2 {step.active
               ? 'text-ink-muted'
@@ -1097,7 +1034,7 @@
               >{step.label}</span
             >
           </div>
-          {#if i < 4}
+          {#if i < 3}
             <div
               class="flex-1 max-w-8 h-px mx-2 {step.active
                 ? 'bg-cv'
@@ -2621,68 +2558,6 @@
               class="h-44 bg-sunken/50 rounded-lg border border-dashed border-line flex items-center justify-center text-sm font-medium text-ink-faint"
             >
               {$t("awaiting_samples")}
-            </div>
-          {/if}
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ── Decision Tree Section ───────────────────────────── -->
-  <section
-    id="cv-dtree"
-    class="max-w-[85rem] mx-auto w-full px-8 mt-12 relative z-10"
-  >
-    <div
-      class="bg-surface backdrop-blur-md rounded-2xl border border-hairline shadow-[0_8px_30px_rgba(0,0,0,0.02)] overflow-hidden hover:border-cv/50 transition-all duration-300"
-    >
-      <div class="bg-ink px-6 py-5">
-        <h2 class="text-base font-semibold tracking-tight text-white">
-          {$t("dtree_title")}
-        </h2>
-        <p class="text-xs text-white/65 mt-0.5">{$t("dtree_subtitle")}</p>
-      </div>
-
-      <div class="p-6 grid grid-cols-1 xl:grid-cols-12 gap-8">
-        <!-- Left: Description + Run button -->
-        <div class="xl:col-span-4 flex flex-col gap-4">
-          <div>
-            <h3 class="text-sm font-semibold text-ink-muted">
-              {$t("dtree_title")}
-            </h3>
-            <p class="text-xs text-ink-faint leading-relaxed mt-1">
-              {$t("dtree_note")}
-            </p>
-          </div>
-
-          <button
-            on:click={buildTreeDiagnostic}
-            disabled={!isModelTrained ||
-              savedEmbeddings.length === 0 ||
-              isBuildingTree}
-            class="w-full py-2.5 text-sm font-medium bg-ink hover:opacity-90 text-white rounded-lg transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
-          >
-            {#if isBuildingTree}
-              <div
-                class="w-4 h-4 border-2 border-hairline border-t-white rounded-full animate-spin"
-              ></div>
-            {/if}
-            {isBuildingTree ? $t("evaluating") : $t("run_diag")}
-          </button>
-        </div>
-
-        <!-- Right: Tree visualization -->
-        <div class="xl:col-span-8 flex flex-col gap-4 min-w-0">
-          {#if decisionTree}
-            <DecisionTreeViz
-              tree={decisionTree}
-              classNames={_treeClassNames}
-            />
-          {:else}
-            <div
-              class="h-44 bg-sunken/50 rounded-lg border border-dashed border-line flex items-center justify-center text-sm font-medium text-ink-faint"
-            >
-              {$t("dtree_awaiting")}
             </div>
           {/if}
         </div>
